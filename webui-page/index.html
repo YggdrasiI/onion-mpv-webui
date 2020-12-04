@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <!--<meta name="viewport" content="user-scalable=no">-->
+    <meta name="viewport" content="user-scalable=no,width=device-width, initial-scale=1.0">
+    <meta name="author" content="Fabio Ambauen">
+    <title>simple-mpv-webui</title>
+    <link rel="apple-touch-icon" sizes="180x180" href="static/favicons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="static/favicons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="static/favicons/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="static/favicons/android-chrome-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="static/favicons/android-chrome-512x512.png">
+    <link rel="manifest" href="static/favicons/site.webmanifest" crossorigin="use-credentials">
+    <link rel="mask-icon" href="static/favicons/safari-pinned-tab.svg" color="#000000">
+    <link rel="shortcut icon" href="static/favicons/favicon.ico">
+    <meta name="msapplication-config" content="static/favicons/browserconfig.xml">
+    <meta name="theme-color" content="#000000">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="format-detection" content="telephone=no">
+    <link rel="stylesheet" type="text/css" href="webui.css">
+    <link rel="stylesheet" href="static/fontawesome-free-5.0.2/css/fontawesome-all.min.css">
+  </head>
+  <body>
+    <div id="overlay">
+      <table class="playlist-control">
+        <tr>
+          <td>
+              <div onClick="togglePlayPause()" class="button green content icon-content playPauseButton playlist-controls">
+                <i class="fas fa-play"></i><i class="fas fa-pause"></i>
+              </div>
+          </td>
+          <td>
+              <div onClick="playlist_loop_cycle()" class="button blue content icon-content playlist-controls playlistLoopButton">
+                <i class="fas fa-redo-alt"></i>
+              </div>
+          </td>
+          <td>
+              <div onClick="send('playlist_shuffle')" class="button blue content icon-content playlist-controls">
+                <i class="fas fa-random"></i>
+              </div>
+          </td>
+          <td>
+              <div onClick="togglePlaylist()" class="button violet content icon-content playlist-controls">
+                <i class="fas fa-times-circle"></i>
+              </div>
+          </td>
+        </tr>
+      </table>
+      <div id="playlist"></div>
+    </div>
+    <div id="overlay2">
+      <table class="playlist-control">
+        <tr>
+          <td>
+            <select id="share_selector" onchange="share_change(this)"></select>
+          </td>
+          <td>
+              <div onClick="share_change_sorting('alpha'); sortShareList();" class="button blue content icon-content playlist-controls shareSortButton_alpha">
+                <i class="fas fa-sort-alpha-up"></i>Name
+              </div>
+          </td>
+          <td>
+              <div onClick="share_change_sorting('date'); sortShareList();" class="button blue content icon-content playlist-controls shareSortButton_date">
+                <i class="fas fa-sort-numeric-up"></i>Date
+              </div>
+          </td>
+          <td>
+              <div onClick="toggleShares()" class="button violet content icon-content playlist-controls">
+                <i class="fas fa-times-circle"></i>
+              </div>
+          </td>
+        </tr>
+      </table>
+      <ul id="sharelist"></ul>
+    </div>
+
+ <div id="controlBox">
+   <div id="header">
+    <h1 id="title">Title</h1>
+    <h2 id="artist">Artist</h2>
+    <h3 id="album">Album</h3>
+
+    <div class="table">
+      <table class="prop-table">
+        <tr>
+          <td class="">|</td> <!-- Height -->
+          <td class="sub-delay">Sub-delay: <span id="sub-delay"></span></td>
+          <td class="audio-delay">Audio-delay: <span id="audio-delay"></span></td>
+          <td class="chapter">Chapter: <span id="chapterContent"></span></td>
+        </tr>
+      </table>
+    </div>
+   </div>
+
+  <div id="topControls">
+    <div class="slidecontainer">
+      <input type="range" min="0" max="0" value="0" step="any" class="slider" id="mediaPosition" title="posSlider">
+      <div class="sliderInfoContainer">
+        <div class="left" id="playtime-remaining"></div>
+        <div class="sliderCenter" id="position"></div>
+        <div class="right" id="duration"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="leftControls">
+    <div class="slidecontainer control_full">
+        <input type="range" min="0" max="130" value="100" step="1" class="slider" id="mediaVolume" title="volSlider">
+      <div class="sliderInfoContainer sliderVolume">
+        <div class="left sliderVolume"><i class="fas fa-volume-down"></i></div>
+        <div class="sliderCenter" id="volume"></div>
+        <div class="right"><i class="fas fa-volume-up"></i></div>
+      </div>
+    </div>
+
+    <div onClick="togglePlayPause()" class="button green control_full">
+      <div class="content icon-content playPauseButton">
+        <i class="fas fa-play"></i><i class="fas fa-pause"></i>
+      </div>
+    </div>
+
+    <div onClick="send('seek', '-10')" class="button blue control_left">
+      <div class="content icon-content">
+        <i class="fas fa-backward"></i> -10s
+      </div>
+    </div>
+    <div onClick="send('seek', '10')" class="button blue control_right">
+      <div class="content icon-content"> +10s
+        <i class="fas fa-forward"></i>
+      </div>
+    </div>
+
+    <div onClick="send('add_chapter', '-1')" class="button blue chapter control_left">
+      <div class="content icon-content">
+        <i class="fas fa-step-backward"></i> Chapter
+      </div>
+    </div>
+    <div onClick="send('add_chapter', '1')" class="button blue chapter control_right">
+      <div class="content icon-content"> Chapter
+        <i class="fas fa-step-forward"></i>
+      </div>
+    </div>
+  </div>
+
+  <div id="rightControls">
+    <div onClick="send('playlist_prev')" class="button blue control_left">
+      <div class="content icon-content">
+        <i class="fas fa-fast-backward"></i> File
+      </div>
+    </div>
+    <div onClick="send('playlist_next')" class="button blue control_right">
+      <div class="content icon-content"> File
+        <i class="fas fa-fast-forward"></i>
+      </div>
+    </div>
+
+    <div onClick="send('cycle_sub')" class="button violet control_left">
+      <div id="nextSub" class="content text-content">
+        Next sub
+      </div>
+    </div>
+    <div onClick="send('cycle_audio')" class="button violet control_right">
+      <div id="nextAudio" class="content text-content">
+        Next audio
+      </div>
+    </div>
+
+    <div onClick="send('add_sub_delay', '-0.05')" class="button yellow control_left">
+      <div class="content text-content">
+        Sub delay -
+      </div>
+    </div>
+    <div onClick="send('add_sub_delay', '0.05')" class="button yellow control_right">
+      <div class="content text-content">
+        Sub delay +
+      </div>
+    </div>
+
+    <div onClick="send('add_audio_delay', '-0.05')" class="button yellow control_left">
+      <div class="content text-content">
+        Audio delay -
+      </div>
+    </div>
+    <div onClick="send('add_audio_delay', '0.05')" class="button yellow contol_right">
+      <div class="content text-content">
+        Audio delay +
+      </div>
+    </div>
+
+    <div onClick="send('fullscreen')" class="button gray control_left">
+      <div id="fullscreenButton" class="content text-content">
+        Fullscreen
+      </div>
+    </div>
+    <div onClick="send('cycle_audio_device')" class="button gray control_right">
+      <div class="content text-content">
+        Audio device
+      </div>
+    </div>
+  </div>
+ </div>
+
+ <div class="burger">
+   <a href="#" onClick="toggleShares(); return false;"><i class="fas fa-folder-open"></i></a>
+   <a href="#" onClick="togglePlaylist(); return false;"><i class="fas fa-list-ul"></i></a>
+ </div>
+
+    <audio id="audio" loop>
+      <source src="static/audio/silence1min.ogg" type="audio/ogg" />
+      <source src="static/audio/silence1min.m4a" type="audio/aac" />
+      <source src="static/audio/silence.mp3" type="audio/mpeg" />
+    </audio>
+
+  </body>
+  <script src="webui.js"></script>
+  <script src="webui2.js"></script>
+</html>

@@ -1,0 +1,58 @@
+{% load i18n %}
+<!DOCTYPE html>
+<html lang="{% if LANG %}{{LANG}}{%else%}en{% endif %}">
+<head>
+ <meta content="text/html; charset=UTF-8" http-equiv="content-type"/> 
+ <title>{% trans "Current directory: " %} {{dirname}}</title>
+<style>
+body{ background: #000; color: #aaa; font-family: sans-serif; margin-left: 5%; margin-right: 5%; }
+table{ background: #333; width: 100%; border: 1px solid #aaa; border-radius: 5px; }
+th{ background: rgba(60, 50, 50, 30); }
+tr.dir td{ rgba(40, 40, 40, 30); }
+tbody tr:hover td{ background: rgba(60, 60, 60, 30); }
+table a{ display: block; } th{ cursor: pointer} h1,h2{ text-align: center; }
+a{ color: red; text-decoration: none; }
+a.fname, a.dname { max-width:30em; overflow: hidden; text-overflow: ellipsis; }
+#copyright{ text-align: center; font-size: 0.7em; }
+#lang{ width: 0.6em; color: #aaa; }
+.icon{ width:1.3em; font-weight:bold; text-align:right; }
+.add{ width:3em; font-weight:bold; text-align:center; }
+.size{ text-align:right; }
+</style>
+</head>
+<body> 
+
+<h1>{{dirname}}</h1>
+
+{% if go_up %}<a href="..">{% trans "Go up" %}</a>{%endif%}
+
+<table>
+<thead>
+	<tr><th></th><th>{% trans "Filename" %}</th><th>{% trans "Size" %}</th><th>{% trans "Add" %}</th></tr>
+</thead>
+<tbody>
+{% for file in files %}
+ <tr>
+   <td class="icon">{% if file.type == "dir" %}
+		 &#x1F4C1;
+     {% else %}
+		 &#x1F4C4;
+     {% endif %}
+	 </td>
+   <td>{% if file.type == "dir" %}
+		 <a class="dname" href="/media/html/{{share_key}}{{uri_rel_path}}{{file.name}}/">{{file.name}}</a>
+     {% else %}
+     <a class="fname" target="_api" href="/media/api/playlist_play/{{share_key}}{{uri_rel_path}}{{file.name}}">{{file.name}}</a>
+     {% endif %}
+	 </td>
+	 <td class="size">{% if file.type != "dir" %} {{file.size2}} {% endif %}</td>
+	<td class="add"><a target="_api" href="/media/api/playlist_add/{{share_key}}{{uri_rel_path}}{{file.name}}">+</a></td>
+ </tr>
+{% endfor %}
+</tbody>
+</table>
+
+<div id="copyright"><a href="https://github.com/YggdrasiI/simple-mpv-webui">MPV simple webui</a> {% if LANG %}<span id="lang">{{LANG}}</span>{% endif %}</div>
+ <iframe name="_api" style="border:0px;height:200px;width:600px;display:none" title="Displays api return values"></iframe> 
+</body>
+</html>

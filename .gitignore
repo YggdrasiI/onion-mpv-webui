@@ -1,0 +1,6 @@
+.idea/
+.htpasswd
+dummy/
+3rdparty/
+build/
+*.swp
