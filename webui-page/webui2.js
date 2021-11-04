@@ -1,7 +1,20 @@
+var sortings = {
+	"alpha": {
+		// id for direction, normally just 1 for forward and -1 for backward
+		"dirs": [-1, 1],
+    "icons": ["fa-sort-alpha-up", "fa-sort-alpha-down"],
+		"active": 0 //index of above lists
+	},
+	"date": {
+		"dirs": [-1, 1],
+    "icons": ["fa-sort-numeric-up", "fa-sort-numeric-down"],
+		"active": 0 //index of above lists
+	}
+}
 
 var shares = {
   list: null,
-  sorting: {'typ':'alpha', 'dir': 1},
+  sorting: {'sname':'alpha'},
   selected: null,
 	close_event_registered: false,
 	scroll_positions: {}
@@ -222,7 +235,7 @@ function sortShareList() {
   var ul = document.getElementById("sharelist")
 
   if (ul === null){
-    DEBUG && console.log("Hey, sharlist element not found.")
+    DEBUG && console.log("Hey, sharelist element not found.")
     return
   }
 
@@ -231,8 +244,9 @@ function sortShareList() {
   /* remove from DOM during sorting*/
   pEl.removeChild(ul)
 
-  var s = shares.sorting
-  if (s.typ === "alpha" && s.dir == 1){
+  var sname = shares.sorting.sname
+	var s = sortings[sname]
+  if (sname === "alpha" && s.dirs[s.active] == 1){
     // A-Z
     Array.from(ul.getElementsByTagName("LI"))
       .sort((a, b) =>
@@ -245,7 +259,7 @@ function sortShareList() {
           ul.appendChild(li))
   }
 
-  if (s.typ === "alpha" && s.dir == -1){
+  if (sname === "alpha" && s.dirs[s.active] == -1){
     // Z-A
     Array.from(ul.getElementsByTagName("LI"))
       .sort((a, b) =>
@@ -258,7 +272,7 @@ function sortShareList() {
           ul.appendChild(li))
   }
 
-  if (s.typ === "date" && s.dir == 1){
+  if (sname === "date" && s.dirs[s.active] == 1){
     // newest top
     Array.from(ul.getElementsByTagName("LI"))
       .sort((a, b) =>
@@ -273,8 +287,8 @@ function sortShareList() {
           ul.appendChild(li))
   }
 
-  if (s.typ === "date" && s.dir == -1){
-    // oldes top
+  if (sname === "date" && s.dirs[s.active] == -1){
+    // oldest top
     Array.from(ul.getElementsByTagName("LI"))
       .sort((a, b) =>
         {
@@ -292,43 +306,39 @@ function sortShareList() {
   pEl.appendChild(ul)
 }
 
-function share_change_sorting(typ){
-  if (shares.sorting.typ === typ){
-    shares.sorting.dir = -shares.sorting.dir;  // flip revert flag
+function share_change_sorting(sname){
+	var s = sortings[sname]
+  if (shares.sorting.sname === sname){
+		// go to next index 
+		s.active = (s.active + 1) % s.dirs.length
   }else{
-    shares.sorting.typ = typ
+		shares.sorting.sname = sname
   }
   update_sort_buttons()
 }
 
-function get_fa_nodes(css_class1, css_class2){
-  /* Return chilren of class2 from elements of class1. */
-  var els = document.getElementsByClassName(css_class1)
-  var out = [];
-  [].slice.call(els).forEach(function (div) {
-    var els2 = div.getElementsByClassName(css_class2)
-    out = out.concat(Array.from(els2))
-  })
-  return out
-}
+function update_sort_buttons()
+{
+	function get_fa_nodes(css_class1, css_class2){
+		/* Return children of class2 from elements of class1. */
+		var els = document.getElementsByClassName(css_class1)
+		var out = [];
+		[].slice.call(els).forEach(function (div) {
+			var els2 = div.getElementsByClassName(css_class2)
+			out = out.concat(Array.from(els2))
+		})
+		return out
+	}
 
-function update_sort_buttons(){
-
-  var sortButtons = [
-    ["shareSortButton_alpha", "fa-sort-alpha-up", "fa-sort-alpha-down"],
-    ["shareSortButton_date", "fa-sort-numeric-up", "fa-sort-numeric-down"]
-  ]
-
-  sortButtons.forEach( function(sb) {
-    var x = get_fa_nodes(sb[0], "fas")
-    x.forEach(function (fasEl) {
-      if (shares.sorting.dir > 0 ){
-        fasEl.classList.replace(sb[1], sb[2])
-      }else{
-        fasEl.classList.replace(sb[2], sb[1])
-      }
-    })
-  })
+	for (var sname in sortings ){
+		var s = sortings[sname]
+		var cur = s.active
+		var prev = (s.dirs.length + cur - 1) % s.dirs.length
+		var x = get_fa_nodes("shareSortButton_" + sname, "fas")
+		x.forEach(function (fasEl) {
+			fasEl.classList.replace(s["icons"][prev], s["icons"][cur])
+		})
+	}
 }
 
 function refresh_share_list(){

@@ -6,7 +6,7 @@ but all LUA code was replaced by C code.
 
 ## Usage
 TODO
-Add `include="~~/script-opts/libwebui.conf" to `mpv.conf` and start mpv like
+Add `include="~~/script-opts/libwebui.conf"` to `mpv.conf` and start mpv like
 `mpv --profile=webui`
 
 You can access the webui when accessing [http://127.0.0.1:9000](http://127.0.0.1:9000) or

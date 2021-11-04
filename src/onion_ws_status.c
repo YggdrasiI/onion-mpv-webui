@@ -153,6 +153,7 @@ __websocket_t *add_client(
 {
     /* Store in array of active clients */
 
+    pthread_mutex_lock(&clients->lock);
     // Search free position
     int n;
     for( n=0;n<MAX_ACTIVE_CLIENTS;++n){
@@ -164,20 +165,20 @@ __websocket_t *add_client(
     if (n >= MAX_ACTIVE_CLIENTS){
         ONION_ERROR("All %d websocket(s) already in use. Close connection to client...",
                 MAX_ACTIVE_CLIENTS);
+        pthread_mutex_unlock(&clients->lock);
         return NULL;
     }
 
     // Insert into clients array
     __websocket_t *client = &clients->clients[n];
-    pthread_mutex_lock(&clients->lock);
     pthread_mutex_lock(&client->lock);
     ONION_INFO("Save websocket pointer on position %d", n);
     client->ws = ws;
     clients->num_active_clients++;
     ONION_INFO("New num active clients: %d", clients->num_active_clients);
     pthread_mutex_unlock(&client->lock);
-    pthread_mutex_unlock(&clients->lock);
 
+    pthread_mutex_unlock(&clients->lock);
     return client;
 }
 
@@ -649,7 +650,8 @@ __status_t *status_init()
     //TYPE_OUT needs to be the internal type of the property
     //in mpv if TYPE is MPV_FORMAT_NODE.
     int pos = 0;
-    ADD("filename", MPV_FORMAT_NODE, MPV_FORMAT_STRING);
+    //ADD("filename", MPV_FORMAT_NODE, MPV_FORMAT_STRING); // encoding problem?!
+    ADD("filename", MPV_FORMAT_STRING, MPV_FORMAT_STRING);
     ADD("duration", MPV_FORMAT_NODE, MPV_FORMAT_DOUBLE);
     ADD("time-pos", MPV_FORMAT_NODE, MPV_FORMAT_DOUBLE);
     // time-remaining = duration - time-pos
