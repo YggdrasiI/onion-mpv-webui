@@ -66,6 +66,7 @@ SET(SOURCE_FILES
 	mpv_script_options.c
 	tools.c
 	onion_ws_status.c
+	utf8.c
 	)
 if (${TERMUX})
 SET(SOURCE_FILES ${SOURCE_FILES}
@@ -116,6 +117,27 @@ if (${TERMUX})
 	# Here, we linking the static libs because we want
 	# share the file into a non-Termux environment later.
 	# Grouping is required to resolve interleaving dependencies.
+
+if("${CMAKE_SYSTEM_NAME}" STREQUAL "Android")
+	SET(WS_LIBS 
+		-Wl,--start-group
+		${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libgcrypt.a
+		${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libgnutls.a
+		${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libgnutlsxx.a
+		${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libgpg-error.a
+		${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libhogweed.a
+		${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libnettle.a
+		${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libgmp.a
+		${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libgmpxx.a
+		${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libiconv.a
+		${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libunistring.a
+		${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libidn2.a
+		-Wl,--end-group
+		)
+
+	# This doesn't work due(?) security of androids library loading
+	# target_link_libraries(webui "/data/app/is.xyz.mpv-xmZJB3QOZUmylqAcpwBIcA==/lib/arm64/libmpv.so")
+else("${CMAKE_SYSTEM_NAME}" STREQUAL "Android")
 	SET(WS_LIBS 
 		-Wl,--start-group
 		/data/data/com.termux/files/usr/lib/libgcrypt.a
@@ -131,6 +153,8 @@ if (${TERMUX})
 		/data/data/com.termux/files/usr/lib/libidn2.a
 		-Wl,--end-group
 		)
+endif("${CMAKE_SYSTEM_NAME}" STREQUAL "Android")
+
 else (${TERMUX})
 	SET(WS_LIBS gnutls gcrypt)
 endif (${TERMUX})

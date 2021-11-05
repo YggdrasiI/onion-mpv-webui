@@ -29,7 +29,7 @@ void clients_uninit(
 
 __websocket_t *add_client(
         __clients_t *pclients,
-        onion_websocket *ws); 
+        onion_websocket *ws);
 
 
 int remove_client(
@@ -98,7 +98,7 @@ void property_free(
 
 /* Converts input into json key-value-pair.  */
 void property_update(
-        __status_t *status, 
+        __status_t *status,
         mpv_event_property *in,
         __property_t *out);
 
@@ -121,7 +121,7 @@ void status_unobserve(
 
 
 void status_update(
-        __status_t *status, 
+        __status_t *status,
         mpv_handle *mpv,
         mpv_event *event);
 
@@ -144,6 +144,18 @@ void clients_close(
 
 
 // ================== END mpv releated part ===============
+
+/*
+ * Enclose utf-8 input string 'src' with quotes and also escape
+ * the quote character.
+ * Example:  'ab"cd' -> "ab\"cd",
+ *
+ * Note that multichar wide characters will not be
+ * destroyed even if one byte matches 'quote_char'.
+ *
+ * Free return result after usage.
+ */
+char * utf8_quote_with_escape(char *src, char quote_char);
 
 /*
    char *json = NULL;

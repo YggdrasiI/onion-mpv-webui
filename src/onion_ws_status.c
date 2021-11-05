@@ -28,6 +28,8 @@
 #include "onion_ws_status.h"
 #include "webui_onion.h"
 
+#include "utf8.h"
+
 // ================== BEGIN onion releated part ===============
 extern __clients_t *websockets;
 extern __status_t *status;
@@ -410,10 +412,10 @@ __property_t property_init(
                 || format_out == MPV_FORMAT_DOUBLE
                 || format_out == MPV_FORMAT_FLAG
                 || format_out == MPV_FORMAT_STRING )
-            || ( format_out == MPV_FORMAT_NODE_MAP 
-                && format == MPV_FORMAT_NODE_MAP) 
-            || ( format_out == MPV_FORMAT_NODE_ARRAY 
-                && format == MPV_FORMAT_NODE_ARRAY) 
+            || ( format_out == MPV_FORMAT_NODE_MAP
+                && format == MPV_FORMAT_NODE_MAP)
+            || ( format_out == MPV_FORMAT_NODE_ARRAY
+                && format == MPV_FORMAT_NODE_ARRAY)
           );
 
     __property_t ret;
@@ -524,7 +526,7 @@ void property_update(
                         //asprintf(&out->json, "\"%s\": \"%s\"",
                         //        out->node.name, svalue);
                         // Store escaped variant between quotes
-                        out->json = onion_c_quote_new(svalue);
+                        out->json = utf8_quote_with_escape(svalue, '"');
                         changed = 1;
                         break;
                     }
@@ -535,7 +537,7 @@ void property_update(
               // This will be reached if loop_playlist is set to "inf"
               // Maybe a wrong value for a flag?! (Copied bug)
               char *svalue = (result_node->u.string);
-              out->json = onion_c_quote_new(svalue);
+              out->json = utf8_quote_with_escape(svalue, '"');
               changed = 1;
           }else{
               ONION_INFO("mpv_node missmatch. Format in: %d, Format out: %d",
@@ -594,7 +596,7 @@ void property_update(
                         //asprintf(&out->json, "\"%s\": \"%s\"",
                         //        out->node.name, svalue);
                         // Store escaped variant between quotes
-                        out->json = onion_c_quote_new(svalue);
+                        out->json = utf8_quote_with_escape(svalue, '"');
                         changed = 1;
                         break;
                     }
@@ -605,7 +607,7 @@ void property_update(
               // This will be reached if loop_playlist is set to "inf"
               // Maybe a wrong value for a flag?! (Copied bug)
               char *svalue = *(char **)(in->data);
-              out->json = onion_c_quote_new(svalue);
+              out->json = utf8_quote_with_escape(svalue, '"');
               changed = 1;
           }else{
               ONION_INFO("mpv_node missmatch. Format in: %d, Format out: %d",
@@ -613,6 +615,7 @@ void property_update(
           }
         }
     }
+
     assert( out->json != NULL );
 
     if (changed){
@@ -778,10 +781,10 @@ int status_observe(
     status->is_observed = 1;
     status->num_updated = 0;
 #ifdef WITH_MPV
-    status->is_initialized = 0; 
+    status->is_initialized = 0;
     status->num_initialized = 0;
 #else
-    status->is_initialized = 1; 
+    status->is_initialized = 1;
     status->num_initialized = status->num_props;
 #endif
     pthread_mutex_unlock(&status->lock);
@@ -954,3 +957,61 @@ void status_send_update(
 }
 
 // ================== END mpv releated part ===============
+
+char * utf8_quote_with_escape(char *src, char quote_char){
+
+    // 1. Count how often quote_char occurs in src.
+
+    int i, j, d;
+    int num_quote_char = 0;
+    const int src_len = strlen(src);
+
+    i = 0; j = 0;
+    for( u8_inc(src,&j), d=j-i;
+            i<src_len;
+            i=j, u8_inc(src,&j), d=j-i )
+    {
+        if( d == 1 && *(src+i) == quote_char){
+            ++num_quote_char;
+        }
+    }
+
+    // 2. Alloc enough space for result
+    const int out_len = src_len + num_quote_char + 2;
+    char *out = malloc(out_len * sizeof(char) + 1);
+    if (out == NULL) return NULL;
+
+    // 3. Fill out buffer
+    if( num_quote_char == 0 ){
+        // No escaping required. Just enclose with quotes.
+        out[0] = quote_char;
+        memcpy(out+1, src, src_len);
+        out[out_len-1] = quote_char;
+    }else{
+        char *pos = out;
+        i = 0; j = 0;
+
+        *pos++ = quote_char;
+        for( u8_inc(src,&j), d=j-i;
+                i<src_len;
+                i=j, u8_inc(src,&j), d=j-i )
+        {
+            // " ==> \"
+            if( d == 1 && *(src+i) == quote_char){
+                *pos++ = '\\';
+            }
+
+            // copy 1, 2, 3, or 4 bytes
+            while( d-- > 0 ){
+                *pos++ = *(src + i++);
+            }
+        }
+        *pos++ = quote_char;
+        assert( pos-out == out_len );
+    }
+
+    // Finallize string
+    out[out_len] = '\0';
+
+    return out;
+}
