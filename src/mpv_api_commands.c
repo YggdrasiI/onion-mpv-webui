@@ -115,7 +115,7 @@ int cmd_playlist_prev(const char *name,
     double fposition;
     int err;
     if (sscanf(STR(position), "%lf", &fposition) != 1){ fposition = 0.0; }
-    if (fposition > 1.0) {
+    if (fposition > 5.0) {
         char *cmd[] = {"seek", NULL, NULL};
         asprintf(&cmd[1], "%lf", -fposition); // Negative seek
         err = mpv_command(mpv, (const char **)cmd);
