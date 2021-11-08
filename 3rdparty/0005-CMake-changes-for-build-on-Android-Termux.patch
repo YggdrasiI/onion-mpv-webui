@@ -1,0 +1,114 @@
+From d9fee615b4ed048a49bbaf241d5f686a138ad437 Mon Sep 17 00:00:00 2001
+From: Olaf Schulz <olaf_schulz@posteo.de>
+Date: Fri, 13 Nov 2020 12:40:02 +0100
+Subject: [PATCH 5/5] CMake changes for build on Android/Termux
+
+On Android we need to link to liblog but remove
+linking on libpthread and librt.
+---
+ CMakeLists.txt           | 20 ++++++++++++++++++++
+ src/onion/CMakeLists.txt |  4 +++-
+ src/onion/low.c          | 17 +++++++++++++++++
+ 3 files changed, 40 insertions(+), 1 deletion(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index f4ba1da..40a7ac5 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -17,8 +17,13 @@ SET(ONION_USE_TESTS true CACHE BOOL "Compile the tests")
+ SET(ONION_EXAMPLES true CACHE BOOL "Compile the examples")
+ SET(ONION_USE_BINDINGS_CPP true CACHE BOOL "Compile the CPP bindings")
+ SET(ONION_POLLER default CACHE string "Default poller to use: default | epoll | libev | libevent")
++SET(TERMUX false CACHE BOOL "Compiling on Android/Boinc")
+ ########
+ 
++if("${CMAKE_SYSTEM_NAME}" STREQUAL "Android")  # True in Termux
++	SET(TERMUX TRUE)
++endif("${CMAKE_SYSTEM_NAME}" STREQUAL "Android")
++
+ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMakeModules")
+ 
+ execute_process(
+@@ -103,6 +108,20 @@ if (${ONION_USE_REDIS})
+ 	endif(HIREDIS_FOUND)
+ endif(${ONION_USE_REDIS})
+ 
++if (${TERMUX})
++	add_definitions(-DTERMUX)
++	# Add folder with execinfo.h
++	#     include_directories(SYSTEM "${CMAKE_SOURCE_DIR}/../../src/include")
++
++	# Link extra library log on all targets
++	macro (add_executable _name)
++		# invoke built-in add_executable
++		_add_executable(${ARGV})
++		if (TARGET ${_name})
++			target_link_libraries(${_name} log)
++		endif()
++	endmacro()
++else (${TERMUX})
+ if (${ONION_USE_PTHREADS})
+ 	find_library(PTHREADS_LIB NAMES pthread PATH ${LIBPATH})
+ 	if(PTHREADS_LIB)
+@@ -112,6 +131,7 @@ if (${ONION_USE_PTHREADS})
+ 		message("pthreads not found. Threading is not supported.")
+ 	endif(PTHREADS_LIB)
+ endif(${ONION_USE_PTHREADS})
++endif (${TERMUX})
+ 
+ if (${ONION_USE_XML2})
+ 	find_package(LibXml2)
+diff --git a/src/onion/CMakeLists.txt b/src/onion/CMakeLists.txt
+index af1d8b9..4a8a271 100644
+--- a/src/onion/CMakeLists.txt
++++ b/src/onion/CMakeLists.txt
+@@ -13,7 +13,9 @@ set(SOURCES onion.c codecs.c dict.c low.c request.c response.c handler.c log.c s
+ 	)
+ 
+ set(LIBRARIES)
+-LIST(APPEND LIBRARIES rt)
++if (NOT ${TERMUX})
++	LIST(APPEND LIBRARIES rt)
++endif (NOT ${TERMUX})
+ 
+ ## optional add sources and libraries depeding on features
+ 
+diff --git a/src/onion/low.c b/src/onion/low.c
+index 87f376e..a30414f 100644
+--- a/src/onion/low.c
++++ b/src/onion/low.c
+@@ -35,6 +35,9 @@
+ 
+ #ifdef HAVE_PTHREADS
+ #include <pthread.h>
++#ifdef TERMUX
++#include <signal.h>
++#endif
+ #endif
+ 
+ #include "low.h"
+@@ -58,7 +61,21 @@ static onion_low_memoryfailure_sigt *memoryfailure_onion_f
+ /* the pointers to user provided routines for threads */
+ static onion_low_pthread_create_sigt *thrcreate_onion_f = pthread_create;
+ static onion_low_pthread_join_sigt *thrjoin_onion_f = pthread_join;
++#ifdef TERMUX
++void pthread_testcancel(void){
++	sigset_t waiting_mask;
++	sigpending(&waiting_mask);
++	if(sigismember (&waiting_mask, SIGUSR1)){
++		pthread_exit(0);
++	}
++}
++int pthread_cancel(pthread_t thread){
++	pthread_kill(thread, SIGUSR1);
++};
++static onion_low_pthread_cancel_sigt *thrcancel_onion_f = &pthread_cancel;
++#else
+ static onion_low_pthread_cancel_sigt *thrcancel_onion_f = pthread_cancel;
++#endif
+ static onion_low_pthread_detach_sigt *thrdetach_onion_f = pthread_detach;
+ static onion_low_pthread_exit_sigt *threxit_onion_f = pthread_exit;
+ static onion_low_pthread_sigmask_sigt *thrsigmask_onion_f = pthread_sigmask;
+-- 
+2.25.1
+

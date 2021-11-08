@@ -93,3 +93,6 @@ apk_copy_config2:
 	sudo adb push webui.androidtv2.conf sdcard/mpv/webui.conf
 	echo "Insert 'include="/sdcard/mpv/webui.conf"' into the mpv.conf file" \
 		"on the target system."
+
+apk_copy_page:
+	adb push webui-page sdcard/mpv/
