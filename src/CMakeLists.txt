@@ -1,14 +1,16 @@
 SET(ONION_DIR "${PROJECT_SOURCE_DIR}/3rdparty/onion" CACHE STRING "Git folder of onion lib")
-SET(ONION_BUILD_DIR "${ONION_DIR}/build" CACHE STRING "build dir of onion lib")
-SET(OTEMPLATE "${ONION_BUILD_DIR}/tools/otemplate/otemplate" CACHE STRING "binary compiled by onion lib") 
+# SET(ONION_BUILD_DIR "${ONION_DIR}/build" CACHE STRING "build dir of onion lib")
+SET(ONION_BUILD_DIR "${CMAKE_BINARY_DIR}/3rdparty/onion" CACHE STRING "build dir of onion lib")
+SET(OTEMPLATE "${ONION_BUILD_DIR}/tools/otemplate/otemplate" CACHE STRING "binary compiled by onion lib")
+SET(NATIVE_TOOLS false CACHE BOOL "Compile tools (otemplate, etc) native")
 # TODO: Set path for installed 'libonion package'-case.
 SET(OTEMPLATE_TAGSDIR "${ONION_BUILD_DIR}/tools/otemplate/templatetags" CACHE STRING "Path to libi18n.so")
 
 MACRO (compile_template _name)
-	string(REPLACE "." "_" _name2 "${_name}")
+	STRING(REPLACE "." "_" _name2 "${_name}")
 	add_custom_command(
 		OUTPUT ${_name2}.c
-		COMMAND ${OTEMPLATE} -t "${OTEMPLATE_TAGSDIR}" "${CMAKE_SOURCE_DIR}/templates/${_name}"
+		COMMAND ${OTEMPLATE} --no-libintl -t "${OTEMPLATE_TAGSDIR}" "${CMAKE_SOURCE_DIR}/templates/${_name}"
 		"${CMAKE_CURRENT_BINARY_DIR}/${_name2}.c"
 		DEPENDS "${CMAKE_SOURCE_DIR}/templates/${_name}"
 		)
@@ -18,7 +20,7 @@ MACRO (compile_localization _lang)
 	add_custom_target(
 		fo_${_lang} ALL
 		COMMAND mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/locale/LC_MESSAGES/
-		COMMAND msgfmt  ${CMAKE_SOURCE_DIR}/po/${_lang}.po 
+		COMMAND msgfmt  ${CMAKE_SOURCE_DIR}/po/${_lang}.po
 		-o ${CMAKE_CURRENT_BINARY_DIR}/locale/LC_MESSAGES/${_lang}.mo
 		DEPENDS ${CMAKE_SOURCE_DIR}/po/${_lang}.po
 		)
@@ -26,11 +28,11 @@ ENDMACRO()
 
 
 if(${BUILD_ONION})
-	include_directories ("${ONION_DIR}/src/") 
+	include_directories ("${ONION_DIR}/src/")
 	link_directories("${ONION_BUILD_DIR}/src/onion")
 else(${BUILD_ONION})
 	# Use variables defined by find_* commands of target CMakeLists.txt
-	include_directories ("${ONION_INCLUDE_DIR}") 
+	include_directories ("${ONION_INCLUDE_DIR}")
 	link_directories("${ONION_STATIC_LIB}")
 endif(${BUILD_ONION})
 
@@ -54,7 +56,7 @@ endif (${TERMUX})
 
 
 #############################################################################
-SET(SOURCE_FILES 
+SET(SOURCE_FILES
 	webui_onion.c
 	fileserver_html.c
 	defines.c
@@ -87,13 +89,13 @@ target_compile_options(onion-webui.bin PUBLIC -fPIC)
 
 # Android dlopen test
 add_library(simple SHARED simple.c)
-target_include_directories(simple PUBLIC "include") 
+target_include_directories(simple PUBLIC "include")
 target_compile_options(simple PUBLIC -shared -fPIC)
 
 
 #############################################################################
 if (${TERMUX})
-	target_include_directories(webui PUBLIC "include") 
+	target_include_directories(webui PUBLIC "include")
 	target_include_directories(onion-webui.bin PUBLIC "include")
 
 	target_link_libraries(webui log)
@@ -119,7 +121,7 @@ if (${TERMUX})
 	# Grouping is required to resolve interleaving dependencies.
 
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "Android")
-	SET(WS_LIBS 
+	SET(WS_LIBS
 		-Wl,--start-group
 		${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libgcrypt.a
 		${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libgnutls.a
@@ -138,7 +140,7 @@ if("${CMAKE_SYSTEM_NAME}" STREQUAL "Android")
 	# This doesn't work due(?) security of androids library loading
 	# target_link_libraries(webui "/data/app/is.xyz.mpv-xmZJB3QOZUmylqAcpwBIcA==/lib/arm64/libmpv.so")
 else("${CMAKE_SYSTEM_NAME}" STREQUAL "Android")
-	SET(WS_LIBS 
+	SET(WS_LIBS
 		-Wl,--start-group
 		/data/data/com.termux/files/usr/lib/libgcrypt.a
 		/data/data/com.termux/files/usr/lib/libgnutls.a
@@ -163,17 +165,37 @@ target_link_libraries(onion-webui.bin ${WS_LIBS})
 
 
 if(${BUILD_ONION})
-	# Build, setup and compile minimal onion lib
-	add_custom_command(
-		OUTPUT .onion_build
-		# COMMAND test -d "${ONION_DIR}" || git clone --depth=1 https://github.com/davidmoreno/onion.git "${ONION_DIR}"
-		COMMAND test -d "${ONION_DIR}" || 
-		git clone --depth=1 --branch=unstable https://github.com/YggdrasiI/onion.git "${ONION_DIR}"
-		COMMAND test -e "${ONION_DIR}/.onion_patched" || ( cd "${ONION_DIR}" && 
-		git am ../0001-Termux-pthread-fix.patch &&
-		cmake -E touch .onion_patched )
-		COMMAND test -d "${ONION_DIR}/build" || mkdir "${ONION_DIR}/build"
-		COMMAND cd "${ONION_DIR}/build" && cmake -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+
+	# Fetch source
+	execute_process(
+		COMMAND git clone --depth=1 "https://github.com/davidmoreno/onion.git"
+		"${ONION_DIR}"
+		)
+	# git clone --depth=1 --branch=unstable "https://github.com/YggdrasiI/onion.git"
+
+	# Patch source
+	FILE(GLOB ONION_PATCH_FILES "${CMAKE_SOURCE_DIR}/3rdparty/*.patch")
+
+	# ARGH, files seperated by ';'
+	#string (REPLACE ";" " " ONION_PATCH_FILES "${ONION_PATCH_FILES}")
+	#separate_arguments (ONION_PATCH_FILES UNIX_COMMAND "${ONION_PATCH_FILES}")
+	#message("Patch files: \n ${ONION_PATCH_FILES}")
+
+	foreach(ONION_PATCH_FILE ${ONION_PATCH_FILES})
+		message("Patch file: \n ${ONION_PATCH_FILE}")
+		execute_process(
+			COMMAND git am ${ONION_PATCH_FILE}
+			WORKING_DIRECTORY "${ONION_DIR}"
+			)
+	endforeach()
+
+	# Setup (minimal) onion lib
+	execute_process(
+		COMMAND mkdir -p "${ONION_BUILD_DIR}"
+		)
+	execute_process(
+		COMMAND cmake -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+		-DCMAKE_INSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}"
 		-DONION_USE_SSL=true
 		-DONION_USE_PAM=false
 		-DONION_USE_PTHREADS=true
@@ -189,9 +211,16 @@ if(${BUILD_ONION})
 		-DONION_USE_BINDINGS_CPP=false
 		-DONION_POLLER=epoll
 		${TERMUX_EXTRA_OPTIONS}
-		..
-		COMMAND cd "${ONION_DIR}/build" && make
-		COMMAND cmake -E touch .onion_build 
+		${ONION_DIR}
+		WORKING_DIRECTORY "${ONION_BUILD_DIR}"
+		)
+
+		# Compile onion lib (at build time)
+	add_custom_command(
+		OUTPUT .onion_build
+		COMMAND make
+		COMMAND cmake -E touch .onion_build
+		WORKING_DIRECTORY "${ONION_BUILD_DIR}"
 		)
 
 	add_custom_target(compile_onion ALL DEPENDS .onion_build )
@@ -202,9 +231,56 @@ if(${BUILD_ONION})
 
 	add_dependencies(webui compile_onion)
 	add_dependencies(onion-webui.bin compile_onion)
+
+
+	if(NATIVE_TOOLS)
+
+	message("Build native version for tools.")
+	execute_process(
+		COMMAND mkdir -p "${ONION_BUILD_DIR}/../native"
+		)
+	execute_process(
+		COMMAND cmake -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+		-DCMAKE_C_COMPILER=cc
+		-DCMAKE_CXX_COMPILER=c++
+		-DONION_USE_SSL=true
+		-DONION_USE_PAM=false
+		-DONION_USE_PTHREADS=true
+		-DONION_USE_PNG=false
+		-DONION_USE_JPEG=false
+		-DONION_USE_XML2=false
+		-DONION_USE_SYSTEMD=false
+		-DONION_USE_SQLITE3=false
+		-DONION_USE_REDIS=false
+		-DONION_USE_GC=false
+		-DONION_USE_TESTS=false
+		-DONION_EXAMPLES=false
+		-DONION_USE_BINDINGS_CPP=false
+		-DONION_POLLER=epoll
+		${ONION_DIR}
+		WORKING_DIRECTORY "${ONION_BUILD_DIR}/../native"
+		)
+	execute_process(
+		COMMAND make
+		WORKING_DIRECTORY "${ONION_BUILD_DIR}/../native"
+		)
+
+	message("END Build native version for tools.")
+	SET(OTEMPLATE "${ONION_BUILD_DIR}/../native/tools/otemplate/otemplate" CACHE STRING "binary compiled by onion lib" FORCE)
+	message("Update path of otemplate to native binary: '${OTEMPLATE}'")
+	endif(NATIVE_TOOLS)
+
 else(${BUILD_ONION})
 endif(${BUILD_ONION})
 
+
+
+include(GNUInstallDirs)
+# message("data: ${CMAKE_INSTALL_DATADIR}")
+
+configure_file("webui.pc.in" "webui.pc" @ONLY)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/webui.pc"
+  DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
 
 #############################################################################
 # Templates
@@ -219,15 +295,19 @@ if(HAVE_MSGFMT)
 	# compile_localization(fr)
 	# compile_localization(zh)
 	# compile_localization(pl)
-	install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/locale" DESTINATION ${INSTALL_PATH})
+	#install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/locale" DESTINATION ${INSTALL_PATH})
+	#	install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/locale/*" DESTINATION "${CMAKE_INSTALL_LOCALEDIR}/onion-mpv-webui")
 endif(HAVE_MSGFMT)
 
 
 #############################################################################
 set_target_properties(onion-webui.bin PROPERTIES OUTPUT_NAME "onion-webui.bin")
-install(TARGETS onion-webui.bin	DESTINATION ${INSTALL_PATH})
-install(TARGETS webui DESTINATION ${INSTALL_PATH})
-install(DIRECTORY ../webui-page DESTINATION ${INSTALL_PATH})
+# set_target_properties(onion-webui.bin PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
+# set_target_properties(webui PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+install(TARGETS onion-webui.bin	DESTINATION "${CMAKE_INSTALL_BINDIR}")
+install(TARGETS webui EXPORT webui DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+install(DIRECTORY ../webui-page DESTINATION "${CMAKE_INSTALL_DATADIR}")
 
 
 #############################################################################

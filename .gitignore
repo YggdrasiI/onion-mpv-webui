@@ -3,4 +3,5 @@
 dummy/
 3rdparty/
 build/
+_build*/
 *.swp

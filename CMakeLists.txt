@@ -6,7 +6,7 @@ SET(CMAKE_C_STANDARD 11)
 
 # SET(INSTALL_PATH "${HOME}.config/mpv/scripts" CACHE STRING "Install path of plugin")
 # SET(INSTALL_PATH "${PROJECT_SOURCE_DIR}/mpv/scripts" CACHE STRING "Install path of plugin")
-SET(INSTALL_PATH "/dev/shm/mpv/scripts" CACHE STRING "Install path of plugin")
+# SET(INSTALL_PATH "/dev/shm/mpv/scripts" CACHE STRING "Install path of plugin")
 SET(BUILD_ONION FALSE CACHE BOOL 
 	"Do not search installed onion lib but build in 3rdparty/onion.")
 

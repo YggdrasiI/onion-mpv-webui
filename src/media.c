@@ -10,7 +10,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <locale.h>
-#include <libintl.h>
+//#include <libintl.h>
 #include <assert.h>
 #include <wordexp.h>
 

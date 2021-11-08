@@ -10,7 +10,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <locale.h>
-#include <libintl.h>
+//#include <libintl.h>
 #include <assert.h>
 #include <wordexp.h>
 
@@ -378,7 +378,7 @@ int webui_onion_init(onion_dict *_options) {
   //const char *dirname = "./webui-page";
 
   /* Localization setup */
-#if 1
+#if 0
   // This is the root directory where the translations are.
 #define W "."
   setenv("LANGUAGE", "locale", 1);      // Remove LANGUAGE env var, set it to the locale name,
