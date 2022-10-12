@@ -77,15 +77,17 @@ endif (${TERMUX})
 
 # Plugin for mpv
 add_library(webui SHARED mpv_plugin.c mpv_api_commands.c ${SOURCE_FILES} )
+target_include_directories(webui PUBLIC "include")
 target_link_libraries(webui onion_static m)
 target_compile_options(webui PUBLIC -shared -fPIC)
 target_compile_options(webui PUBLIC -DWITH_MPV=1)
 target_compile_options(webui PUBLIC -DMPV_PLUGIN_NAME=libwebui)  # mpv option prefix
 
-# Test executable without mpv dependecies.
-add_executable(onion-webui.bin standalone.c  ${SOURCE_FILES})
-target_link_libraries(onion-webui.bin onion_static m)
-target_compile_options(onion-webui.bin PUBLIC -fPIC)
+## Test executable without mpv dependecies.
+#add_executable(onion-webui.bin standalone.c ${SOURCE_FILES})
+#include_directories ("include")
+#target_link_libraries(onion-webui.bin onion_static m)
+#target_compile_options(onion-webui.bin PUBLIC -fPIC)
 
 # Android dlopen test
 add_library(simple SHARED simple.c)
@@ -96,22 +98,22 @@ target_compile_options(simple PUBLIC -shared -fPIC)
 #############################################################################
 if (${TERMUX})
 	target_include_directories(webui PUBLIC "include")
-	target_include_directories(onion-webui.bin PUBLIC "include")
+	# target_include_directories(onion-webui.bin PUBLIC "include")
 
 	target_link_libraries(webui log)
-	target_link_libraries(onion-webui.bin log)
+	# target_link_libraries(onion-webui.bin log)
 	target_link_libraries(simple log)
 	# In this case, no linking on pthread.
 	# Thread functions are buildin in Bionic libc
 else (${TERMUX})
 	target_link_libraries(webui pthread )
-	target_link_libraries(onion-webui.bin pthread )
+	# target_link_libraries(onion-webui.bin pthread )
 endif (${TERMUX})
 
 
 #############################################################################
 if (${ZLIB_FOUND})
-   target_link_libraries(onion-webui.bin ${ZLIB_LIBRARIES})
+	# target_link_libraries(onion-webui.bin ${ZLIB_LIBRARIES})
 endif(${ZLIB_FOUND})
 
 # This libs are required for websockets support
@@ -161,7 +163,7 @@ else (${TERMUX})
 	SET(WS_LIBS gnutls gcrypt)
 endif (${TERMUX})
 target_link_libraries(webui ${WS_LIBS})
-target_link_libraries(onion-webui.bin ${WS_LIBS})
+# target_link_libraries(onion-webui.bin ${WS_LIBS})
 
 
 if(${BUILD_ONION})
@@ -227,10 +229,10 @@ if(${BUILD_ONION})
 
 	# Set flag for slightly different header file path
 	target_compile_options(webui PUBLIC -DBUILD_ONION=1)
-	target_compile_options(onion-webui.bin PUBLIC -DBUILD_ONION=1)
+	# target_compile_options(onion-webui.bin PUBLIC -DBUILD_ONION=1)
 
 	add_dependencies(webui compile_onion)
-	add_dependencies(onion-webui.bin compile_onion)
+	# add_dependencies(onion-webui.bin compile_onion)
 
 
 	if(NATIVE_TOOLS)
@@ -301,11 +303,11 @@ endif(HAVE_MSGFMT)
 
 
 #############################################################################
-set_target_properties(onion-webui.bin PROPERTIES OUTPUT_NAME "onion-webui.bin")
-# set_target_properties(onion-webui.bin PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
-# set_target_properties(webui PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
+#set_target_properties(onion-webui.bin PROPERTIES OUTPUT_NAME "onion-webui.bin")
+## set_target_properties(onion-webui.bin PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
+## set_target_properties(webui PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-install(TARGETS onion-webui.bin	DESTINATION "${CMAKE_INSTALL_BINDIR}")
+# install(TARGETS onion-webui.bin	DESTINATION "${CMAKE_INSTALL_BINDIR}")
 install(TARGETS webui EXPORT webui DESTINATION "${CMAKE_INSTALL_LIBDIR}")
 install(DIRECTORY ../webui-page DESTINATION "${CMAKE_INSTALL_DATADIR}")
 
