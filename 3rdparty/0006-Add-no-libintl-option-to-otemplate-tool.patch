@@ -27,22 +27,6 @@ index 40a7ac5..2688b2f 100644
  SET(TERMUX false CACHE BOOL "Compiling on Android/Boinc")
  ########
  
-diff --git a/src/onion/CMakeLists.txt b/src/onion/CMakeLists.txt
-index 4a8a271..2f14c41 100644
---- a/src/onion/CMakeLists.txt
-+++ b/src/onion/CMakeLists.txt
-@@ -13,9 +13,9 @@ set(SOURCES onion.c codecs.c dict.c low.c request.c response.c handler.c log.c s
- 	)
- 
- set(LIBRARIES)
--if (NOT ${TERMUX})
-+if (NOT TERMUX)
- 	LIST(APPEND LIBRARIES rt)
--endif (NOT ${TERMUX})
-+endif (NOT TERMUX)
- 
- ## optional add sources and libraries depeding on features
- 
 diff --git a/tools/otemplate/otemplate.c b/tools/otemplate/otemplate.c
 index 6a7c8e4..96d06f8 100644
 --- a/tools/otemplate/otemplate.c

@@ -62,14 +62,21 @@ diff --git a/src/onion/CMakeLists.txt b/src/onion/CMakeLists.txt
 index af1d8b9..4a8a271 100644
 --- a/src/onion/CMakeLists.txt
 +++ b/src/onion/CMakeLists.txt
-@@ -13,7 +13,9 @@ set(SOURCES onion.c codecs.c dict.c low.c request.c response.c handler.c log.c s
+@@ -13,13 +13,15 @@ set(SOURCES onion.c codecs.c dict.c low.c request.c response.c handler.c log.c s
  	)
  
  set(LIBRARIES)
--LIST(APPEND LIBRARIES rt)
-+if (NOT ${TERMUX})
-+	LIST(APPEND LIBRARIES rt)
-+endif (NOT ${TERMUX})
+ 
+ # Link to librt on the platform supports it.
+ find_library(RT_LIB rt)
+ if (NOT ${RT_LIB} STREQUAL "RT_LIB-NOTFOUND")
+-	LIST(APPEND LIBRARIES rt)
++	if (NOT TERMUX)
++		LIST(APPEND LIBRARIES rt)
++	endif (NOT TERMUX)
+ else()
+ 	message("librt NOT found. Your target platform may just not supported it. Skipping.")
+ endif()
  
  ## optional add sources and libraries depeding on features
  
