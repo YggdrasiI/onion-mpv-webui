@@ -1,0 +1,13 @@
+[webui]
+profile-desc="Enables webinterface"
+
+# Mandatory arguments
+script="${PWD}/build/src/libwebui.so"
+script-opts-add=libwebui-root_dir="${PWD}/webui-page"
+
+# idle=yes # Otherwise, mpv returns before plugin is loaded without files
+
+# Optional arguments
+script-opts-add=libwebui-paused=0
+script-opts-add=libwebui-daemon=0
+script-opts-add=libwebui-shared_folders="music:${HOME}/Music,/dev/shm"

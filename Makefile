@@ -3,33 +3,39 @@ MPV_CONFIG_DIR="${HOME}/.config/mpv/script-opts"
 
 APK_DIR=/dev/shm/
 
-main: build
-	cd build && make
+main: configure_build build
+	echo "Done"
 
-build:
+configure_build:
 	test -e build || mkdir build
 	cd build && cmake -DBUILD_ONION=TRUE ..
 
-install: main
+build:
+	cd build && make
+
+# Not needed
+install: main build
 	cd build && make install
 
 script_opts_folder:
 	@test -e "$(MPV_CONFIG_DIR)" \
 		|| mkdir -p "$(MPV_CONFIG_DIR)"
 
+# Setup mpv config files
 config: script_opts_folder
 	@test -e "$(MPV_CONFIG_DIR)/libwebui.conf" \
-		|| cp libwebui.conf.example "${HOME}/.config/mpv/script-opts/libwebui.conf"
-	@grep 'libwebui.conf' "${HOME}/.config/mpv/mpv.conf" \
+		|| cat libwebui.conf.example | envsubst \
+		> "${HOME}/.config/mpv/script-opts/libwebui.conf"
+	@grep 'libwebui.conf' "${HOME}/.config/mpv/mpv.conf" >/dev/null \
 		|| $(shell which echo) -e '# Webui\ninclude="~~/script-opts/libwebui.conf"' \
 		>> "${HOME}/.config/mpv/mpv.conf"
 	@echo "Call mpv with '--profile=webui' to enable webinterface"
 
-# Config über script-opts/libwebui.conf
+
 run: config
 	ONION_DEBUG=0 ONION_DEBUG0=onion_ws_status.c \
 	mpv --profile=webui --quiet\
-		"$${HOME}/Musik/jeder_tag.ogg" "$${HOME}/Musik/Die Planeten/"
+		"$${HOME}/Music"
 
 bin:
 	build/src/onion-webui.bin ./webui-page
@@ -40,12 +46,12 @@ nemiver:
 val: config
 	valgrind --leak-check=full --log-file=/dev/shm/val.log \
 		mpv --profile=webui --quiet\
-		"$${HOME}/Musik/jeder_tag.ogg" "$${HOME}/Musik/Die Planeten/"
+		"$${HOME}/Music"
 
 valB: config
 	valgrind --leak-check=full \
 		mpv --profile=webui --quiet\
-		"$${HOME}/Musik/jeder_tag.ogg" "$${HOME}/Musik/Die Planeten/"
+		"$${HOME}/Music"
 
 
 # Integrate plugin into mpv-android package
@@ -96,3 +102,6 @@ apk_copy_config2:
 
 apk_copy_page:
 	adb push webui-page sdcard/mpv/
+
+
+.PHONY: build
