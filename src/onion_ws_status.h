@@ -19,6 +19,22 @@ typedef struct __clients_t {
     pthread_mutex_t lock;
 } __clients_t;
 
+/* Somehow the file descriptor writes are limited to approx 2^16 bytes. (Why?!)
+ * Thus, we cannot write big data without getting a bad file descriptor.
+ *
+ * As workaround send chunked data to client.
+ * We prepend a data struture to infom the client about the number of chunks
+ * and each chunk id.
+ */
+typedef struct websocket_metadata_t {
+    uint16_t num_chunks;
+    uint16_t chunk_id;
+} websocket_metadata;
+
+#define MAX_FD_WRITE_SIZE (65536 - 16)
+int __chunked_websocket_vprintf(onion_websocket * ws, const char *fmt, va_list args);
+int __chunked_websocket_printf(onion_websocket * ws, const char *fmt, ...);
+
 
 __clients_t *clients_init();
 

@@ -15,6 +15,9 @@
 #include <errno.h>
 #include <unistd.h>
 
+#include <stdarg.h>
+#include <stdint.h>
+
 // for pthread_cond_timedwait
 #include <time.h>
 #include <sys/time.h>
@@ -23,6 +26,7 @@
 #include <onion/onion.h>
 #include <onion/codecs.h>
 #include <onion/shortcuts.h>
+#include <onion/low.h>
 
 #include "defines.h"
 #include "onion_ws_status.h"
@@ -44,7 +48,7 @@ enum onion_websocket_status_e {
     GOING_AWAY                  = 1001,
     PROTOCOL_ERROR              = 1002,
     UNSUPPORTED_DATA            = 1003,
-    //	RESERVED                = 1004,
+    //  RESERVED                = 1004,
     NO_STATUS_RECEIVED          = 1005,
     ABNORMAL_CLOSURE            = 1006,
     INVALID_FRAME_PAYLOAD_DATA  = 1007,
@@ -222,22 +226,39 @@ onion_connection_status ws_status_start(
     onion_websocket *ws = onion_websocket_new(req, res);
     if (!ws) {
         onion_response_write0(res,
-                "<html><body style=\"color:#DDD;background:black;\">"
+                "<!DOCTYPE html>\n"
+                "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"></head>\n"
+                "<body style=\"color:#DDD;background:black;\">"
                 "<h1>Websocket Status</h1>"
                 "<pre id=\"start\"></pre>"
                 "<pre id=\"full\" style=\"white-space:normal;\"></pre>"
                 "<pre id=\"update\"></pre>"
                 "<pre id=\"other\"></pre>"
-                " <script>\ninit = function(){\nmsg=document.getElementById('msg');\nmsg.focus();\n\nws=new WebSocket('ws://'+window.location.host+'/ws');\nws.onmessage=function(ev){\n "
-                "if( ev.data.includes(\"status_diff\") ) {\n"
-                "document.getElementById('update').textContent=ev.data+'\\n';\n}"
-                "else if( ev.data.includes(\"status_info\") ) {\n"
-                "document.getElementById('start').textContent=ev.data+'\\n';\n}"
-                "else if( ev.data.includes(\"status\") ) {\n"
-                "document.getElementById('full').textContent=ev.data+'\\n';\n}"
-                "else {\n"
-                "document.getElementById('other').textContent=ev.data+'\\n';\n}"
-                "};}\n"
+                "<script>\ninit = function(){\n"
+                "  msg=document.getElementById('msg')\nmsg.focus()\n\n"
+                "  ws=new WebSocket('ws://'+window.location.host+'/ws')\n"
+                "  ws.__unhandled_data = []\n\n"
+                "  ws.onmessage=function(ev){\n "
+                "  metadata = [\n"
+                "    (ev.data.charCodeAt(1) << 8) + ev.data.charCodeAt(0),\n"
+                "    (ev.data.charCodeAt(3) << 8) + ev.data.charCodeAt(2),\n"
+                "  ]\n"
+                "  ws.__unhandled_data[metadata[1]] = ev.data.slice(4)\n"
+                "  // Skip handle of data if incomplete\n"
+                "  if ( ws.__unhandled_data.length < metadata[0] ){\n"
+                "    return\n"
+                "  }\n"
+                "  var data = ws.__unhandled_data.join('')\n"
+                "  ws.__unhandled_data = []\n"
+                "  if( data.includes(\"status_diff\") ) {\n"
+                "  document.getElementById('update').textContent=data+'\\n';\n}"
+                "  else if( data.includes(\"status_info\") ) {\n"
+                "  document.getElementById('start').textContent=data+'\\n';\n}"
+                "  else if( data.includes(\"status\") ) {\n"
+                "  document.getElementById('full').textContent=data+'\\n';\n}"
+                "  else {\n"
+                "  document.getElementById('other').textContent=data+'\\n';\n}"
+                "  };}\n"
                 "window.addEventListener('load', init, false);\n</script>"
                 "<input type=\"text\" id=\"msg\" oninput=\"javascript:ws.send(msg.value); \"/><br/>\n"
                 "<button onclick='ws.close(1000);'>Close connection</button>"
@@ -254,7 +275,7 @@ onion_connection_status ws_status_start(
     // Store in array of active clients
     __websocket_t *client = add_client(websockets, ws);
     if (client == NULL){
-        onion_websocket_printf(ws, "{\"status_info\": \"-1\","
+        __chunked_websocket_printf(ws, "{\"status_info\": \"-1\","
                 "\"message\": \"Maximum of clients %d already reached. "
                 "Close connection...\" }",
                 MAX_ACTIVE_CLIENTS);
@@ -266,7 +287,7 @@ onion_connection_status ws_status_start(
     }
 
     //(Debug) Push initial message (short 'hello client' before several locks)
-    onion_websocket_printf(ws, "{\"status_info\": \"1\"}");
+    __chunked_websocket_printf(ws, "{\"status_info\": \"1\"}");
 
     assert( client->ws == ws );
     pthread_mutex_lock(&client->lock);
@@ -308,7 +329,7 @@ onion_connection_status ws_status_start(
     pthread_mutex_lock(&status->lock);
     assert( status->json != NULL );
     assert( client->ws != NULL );
-    onion_websocket_printf(client->ws,
+    __chunked_websocket_printf(client->ws,
             "{\"status\": %s }", status->json);
     pthread_mutex_unlock(&status->lock);
 
@@ -356,8 +377,8 @@ onion_connection_status ws_status_cont(
     pthread_mutex_unlock(&client->lock);
 
     if (len <= 0) {
-        ONION_ERROR("Error reading data: %d: %s (%d)", errno, strerror(errno),
-                data_ready_len);
+        //ONION_ERROR("Error reading data: %d: %s (%d)", errno, strerror(errno),
+        //        data_ready_len);
         return OCS_NEED_MORE_DATA;
     }
     tmp[len] = 0;
@@ -369,7 +390,7 @@ onion_connection_status ws_status_cont(
     pthread_mutex_lock(&client->lock);
 
     // send feedback to source client
-    onion_websocket_printf(ws, "{\"result\": %s}", output);
+    __chunked_websocket_printf(ws, "{\"result\": %s}", output);
     FREE(output);
     pthread_mutex_unlock(&client->lock);
 
@@ -378,7 +399,7 @@ onion_connection_status ws_status_cont(
 #if 0
     ONION_INFO("Send to source client...");
     pthread_mutex_lock(&client->lock);
-    onion_websocket_printf(ws, "{\"echo\": \"%s\"}", tmp);
+    __chunked_websocket_printf(ws, "{\"echo\": \"%s\"}", tmp);
     pthread_mutex_unlock(&client->lock);
 #endif
 
@@ -390,7 +411,7 @@ onion_connection_status ws_status_cont(
             ONION_INFO("Send to other clients...");
 
             pthread_mutex_lock(&ws_lock[n]);
-            onion_websocket_printf(ws_active[n], "Other: %s", tmp);
+            __chunked_websocket_printf(ws_active[n], "Other: %s", tmp);
             pthread_mutex_unlock(&ws_lock[n]);
         }
     }
@@ -844,12 +865,13 @@ void send_to_all_clients(
         __property_t *prop)
 {
     int i;
+    return;
     for( i=0; i<MAX_ACTIVE_CLIENTS; ++i){
         __websocket_t *pclient = &pclients->clients[i];
         if ( pclient->ws ){
             //ONION_INFO("Send websocket msg");
             pthread_mutex_lock(&pclient->lock);
-            onion_websocket_printf(pclient->ws,
+            __chunked_websocket_printf(pclient->ws,
                     "{\"status_diff\": { \"%s\": %s }}",
                     prop->node.name, prop->json);
             pthread_mutex_unlock(&pclient->lock);
@@ -967,10 +989,9 @@ char * utf8_quote_with_escape(char *src, char quote_char){
     const int src_len = strlen(src);
 
     i = 0; j = 0;
-    for( u8_inc(src,&j), d=j-i;
-            i<src_len;
-            i=j, u8_inc(src,&j), d=j-i )
+    for( ; i<src_len; i=j)
     {
+        u8_inc(src,&j), d=j-i;
         if( d == 1 && *(src+i) == quote_char){
             ++num_quote_char;
         }
@@ -1014,4 +1035,76 @@ char * utf8_quote_with_escape(char *src, char quote_char){
     out[out_len] = '\0';
 
     return out;
+}
+
+// Like onion_websocket_vprintf(onion_websocket * ws, const char *fmt, va_list args)
+int __chunked_websocket_vprintf(onion_websocket * ws, const char *fmt, va_list args) {
+#define SHORT_BUFFER_LEN 256 // Assume < MAX_FD_WRITE_SIZE + METADATA_LEN
+#define METADATA_LEN sizeof(websocket_metadata)
+  char md_temp[SHORT_BUFFER_LEN + METADATA_LEN];
+  char *temp = md_temp + METADATA_LEN;
+
+  va_list argz; // required for second vsnprintf call
+  int l;
+  va_copy(argz, args);
+  l = vsnprintf(temp, SHORT_BUFFER_LEN, fmt, argz);
+  va_end(argz);
+  if (l < SHORT_BUFFER_LEN){
+    // Prepend string with meta data
+    websocket_metadata* md = (websocket_metadata *)md_temp;
+    md->num_chunks = 1;
+    md->chunk_id = 0;
+
+    return onion_websocket_write(ws, md_temp, l + METADATA_LEN);
+  } else {
+
+    // Evaluate number of required chunks
+#define ROUND_UP(NUM, DIV) (((NUM) + (DIV-1))/(DIV))
+    const int num_chunks = ROUND_UP(l, MAX_FD_WRITE_SIZE - METADATA_LEN); 
+    ssize_t s_sum = 0;
+    char * const buf = onion_low_scalar_malloc(l + 1 + METADATA_LEN);
+    if (!buf) {
+      // this cannot happen, since onion_low_scalar_malloc
+      // handles that error...
+      ONION_ERROR("Could not reserve %d bytes", l + 1);
+      return -1;
+    }
+    l = vsnprintf(buf + METADATA_LEN, l + 1 + METADATA_LEN, fmt, args);
+    char *chunk = buf; // First bytes for metadata...
+    int l_left = l;
+
+    // Write buffer, but prepend each chunk with meta data
+    for( int chunk_id=0; chunk_id<num_chunks; ++chunk_id){
+      websocket_metadata* md = (websocket_metadata *)chunk;
+      // Filling metadata will overwrite parts of previous chunk.
+      md->num_chunks = num_chunks;
+      md->chunk_id = chunk_id;
+      const int num_bytes_to_write = (l_left>MAX_FD_WRITE_SIZE?MAX_FD_WRITE_SIZE:l_left) + METADATA_LEN;
+
+      ssize_t s = onion_websocket_write(ws, chunk, num_bytes_to_write);
+
+      if ( s<0 ){
+        ONION_ERROR("Could not write chunk %d with %d bytes. Errno: %d",
+            chunk_id, num_bytes_to_write, s);
+      }else{
+        s_sum += s - METADATA_LEN;
+      }
+
+      // Prepare next loop step
+      l_left -= MAX_FD_WRITE_SIZE;
+      chunk += MAX_FD_WRITE_SIZE; // here, without METADATA_LEN offset!
+    }
+    onion_low_free(buf);
+    return s_sum;
+  }
+}
+
+// Like onion_websocket_printf(onion_websocket * ws, const char *fmt, ...)
+// but prepend metadata structure and limit size of written data
+int __chunked_websocket_printf(onion_websocket * ws, const char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  int l = __chunked_websocket_vprintf(ws, fmt, ap);
+  va_end(ap);
+  return l;
 }

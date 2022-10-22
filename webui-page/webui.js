@@ -661,13 +661,59 @@ function handleStatusUpdate(status_updates) {
 function status_init_ws(){
 	ws = new WebSocket('ws://'+window.location.host+'/ws');
 
+	ws.__unhandled_data = []
 	ws.onmessage=function(ev){
 		try {
-			var json = JSON.parse(ev.data)
+			// Strip websocket metadata
+			//var metadata = Uint16Array.from(ev.data.slice(0,8)) // Wrong?!
+			metadata = [
+				(ev.data.charCodeAt(1) << 8) + ev.data.charCodeAt(0),
+				(ev.data.charCodeAt(3) << 8) + ev.data.charCodeAt(2),
+			]
+			console.log("Num chunks: " + metadata[0])
+			console.log("Chunk   ID: " + metadata[1])
 		} catch (e) {
 			//e instanceof SyntaxError
 			console.log(e.name + ": " + e.message)
 			console.log("Input: " + ev.data)
+			return
+		}
+
+		// Remove pending data.
+		if ( metadata[1] == 0 && ws.__unhandled_data.length > 0 ){
+			console.log("Websocket communication error. New set of chunks begins,"
+				+ "but previous one was not completed?!")
+			console.log("Old data:\n" + ws.__unhandled_data)
+			console.log("New data:\n" + ev.data.slice(4))
+			console.log("New Metadata: chunks/id= " + metadata[0] + "/" + metadata[1])
+
+			ws.__unhandled_data = []
+		}
+
+		if ( 1 == metadata[0] ){
+			// Just one chunk, skip call of join()...
+			ws.oncompletejson(ev.data.slice(4))
+		}else{
+			// Cache data
+			ws.__unhandled_data[metadata[1]] = ev.data.slice(4)
+
+			// Handle data if complete
+			if ( ws.__unhandled_data.length == metadata[0] ){
+				var data = ws.__unhandled_data.join('')
+				ws.__unhandled_data = []
+				ws.oncompletejson(data)
+			}
+		}
+	}
+
+	// Triggered after complete json-struct was recived
+	ws.oncompletejson=function(data){
+		try {
+			var json = JSON.parse(data)
+		} catch (e) {
+			//e instanceof SyntaxError
+			console.log(e.name + ": " + e.message)
+			console.log("Input: " + data)
 			return
 		}
 
