@@ -11,8 +11,8 @@ var ws = null
 var mpv_status = {}
 
 const REGEXS = {
-  'brackets': new RegExp('\[\w\]', 'g'),
-  'extension': new RegExp('\[.]\w$', 'g'),
+  'brackets': new RegExp('\[[^\]]*\]', 'g'), // [...]
+  'extension': new RegExp('\[.\]\w{2,10}$', ''),   // .ext
 }
 
 /* Collect [num] milliseconds status updates before 
@@ -101,7 +101,7 @@ function createPlaylistTable(entry, position, pause, first) {
   }
 
   // limit length of entry
-  title = trim_title_string(title, max_title_size)
+  var title_trimmed = trim_title_string(title, max_title_size)
 
   var table = document.createElement('table')
   var tr = document.createElement('tr')
@@ -113,7 +113,8 @@ function createPlaylistTable(entry, position, pause, first) {
   td_2.className = 'playlist'
   td_left.className = 'playlist'
   td_right.className = 'playlist'
-  td_2.innerText = title
+  td_2.innerText = title_trimmed
+  td_2.setAttribute('title', title)
   if (first === false) {
     var td_3 = document.createElement('td')
     td_3.innerHTML = '<i class="fas fa-arrow-up"></i>'
@@ -344,6 +345,9 @@ function setMetadata(metadata, playlist, filename) {
   }
 
   document.getElementById("title").innerHTML = window.metadata.title
+  document.getElementById("title").innerHTML = title
+  document.getElementById("title").setAttribute('title', title) // may be longer string
+
   document.getElementById("artist").innerHTML = window.metadata.artist
   document.getElementById("album").innerHTML = window.metadata.album
 }
@@ -682,8 +686,8 @@ function status_init_ws(){
         (ev.data.charCodeAt(1) << 8) + ev.data.charCodeAt(0),
         (ev.data.charCodeAt(3) << 8) + ev.data.charCodeAt(2),
       ]
-      console.log("Num chunks: " + metadata[0])
-      console.log("Chunk   ID: " + metadata[1])
+      //console.log("Num chunks: " + metadata[0])
+      //console.log("Chunk   ID: " + metadata[1])
     } catch (e) {
       //e instanceof SyntaxError
       console.log(e.name + ": " + e.message)
@@ -773,9 +777,9 @@ function status_init_ws(){
 }
 
 function print_disconnected(){
-  document.getElementById("title").innerHTML = "<h1><span class='error'>Not connected to MPV!</span></h1>"
-  document.getElementById("artist").innerHTML = "|"
-  document.getElementById("album").innerHTML = "|"
+  document.getElementById("title").innerHTML = "<h1><span class='info'>Not connected to MPV!</span></h1>"
+  document.getElementById("artist").innerHTML = ""
+  document.getElementById("album").innerHTML = ""
   setPlayPause("yes")
 }
 

@@ -32,6 +32,11 @@ h1 span.error {
   padding: 5px;
 }
 
+h1 span.info {
+  background-color: rgba(100, 30, 30, 0.3);
+  padding: 5px;
+}
+
 h2 {
   font-size: 4vmin;
   margin-top: 2px;

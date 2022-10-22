@@ -874,7 +874,6 @@ void send_to_all_clients(
         __property_t *prop)
 {
     int i;
-    return;
     for( i=0; i<MAX_ACTIVE_CLIENTS; ++i){
         __websocket_t *pclient = &pclients->clients[i];
         if ( pclient->ws ){
