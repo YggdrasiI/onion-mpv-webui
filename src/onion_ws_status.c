@@ -113,7 +113,7 @@ void clients_close(
 #endif
 
             int opcode = onion_websocket_get_opcode(ws);
-            //ONION_INFO("   Opcode: %d", opcode);
+            ONION_INFO("   Opcode: %d", opcode);
 
             if( opcode == OWS_CONNECTION_CLOSE ){
                 ONION_INFO("Hey, it was already closed!");
@@ -229,11 +229,9 @@ onion_connection_status ws_status_start(
                 "<!DOCTYPE html>\n"
                 "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"></head>\n"
                 "<body style=\"color:#DDD;background:black;\">"
-                "<h1>Websocket Status</h1>"
-                "<pre id=\"start\"></pre>"
-                "<pre id=\"full\" style=\"white-space:normal;\"></pre>"
-                "<pre id=\"update\"></pre>"
-                "<pre id=\"other\"></pre>"
+                "<h1>Test of Websocket CLI.</h1>"
+                "<input type=\"text\" id=\"msg\" /><span style=\"width:2em;\"/>\n"
+                "<button onclick='ws.close(1000);'>Close connection</button>"
                 "<script>\ninit = function(){\n"
                 "  msg=document.getElementById('msg')\nmsg.focus()\n\n"
                 "  ws=new WebSocket('ws://'+window.location.host+'/ws')\n"
@@ -250,6 +248,8 @@ onion_connection_status ws_status_start(
                 "  }\n"
                 "  var data = ws.__unhandled_data.join('')\n"
                 "  ws.__unhandled_data = []\n"
+                ""
+                "  data = data.substring(0,2000)\n"
                 "  if( data.includes(\"status_diff\") ) {\n"
                 "  document.getElementById('update').textContent=data+'\\n';\n}"
                 "  else if( data.includes(\"status_info\") ) {\n"
@@ -259,9 +259,18 @@ onion_connection_status ws_status_start(
                 "  else {\n"
                 "  document.getElementById('other').textContent=data+'\\n';\n}"
                 "  };}\n"
-                "window.addEventListener('load', init, false);\n</script>"
-                "<input type=\"text\" id=\"msg\" oninput=\"javascript:ws.send(msg.value); \"/><br/>\n"
-                "<button onclick='ws.close(1000);'>Close connection</button>"
+                "  handle_input = function(ev){\n"
+                "    if( ev.key == 'Enter'){\n"
+                "      ws.send(ev.target.value)"
+                "    }\n"
+                "  }\n"
+                "  window.addEventListener('load', init, false);\n"
+                "  document.getElementById('msg').addEventListener('keyup', handle_input);\n"
+                "</script>"
+                "<pre id=\"start\"></pre>"
+                "<pre id=\"other\"></pre>"
+                "<pre id=\"update\"></pre>"
+                "<pre id=\"full\" style=\"white-space:normal;\"></pre>"
                 "</body></html>");
 
         return OCS_PROCESSED;
