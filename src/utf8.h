@@ -3,23 +3,57 @@
 #include <stdint.h>
 #include <string.h>
 
+/********* Example usage ********/
 /*
-    // Example usage
-    char s[] = "Unicode ÄxÖxÜxẞxßxüxöxä";
-    printf("%s\n", s);
+#include <stdio.h>
+#include <locale.h>
+#include "utf8.h"
 
+int main(){
+    char s[] = "Unicode\n2 bytes: ÄßͶۺ\n3 bytes: ẞṀ€‖\n4 bytes: 𝄞";
+    printf("Input:\n%s\n", s);
+
+#if 0 // With generation of unicode code point
+    setlocale(LC_ALL, "C.UTF-8");
     int i = 0, j = 0;
     int d, l;
-    //unsigned int uc; // 4 byte unicode code point
-    // for( l=strlen(s), uc=u8_nextchar(s,&j), d=j-i; i<l; i=j, uc=u8_nextchar(s,&j), d=j-i )
-    for( l=strlen(s), u8_inc(s,&j), d=j-i; i<l; i=j, u8_inc(s,&j), d=j-i )
+    unsigned int uc; // 4 byte unicode code point
+    
+    for(l=strlen(s); i<l; i=j)
     {
-        if( d == 1 ) printf("%c(%i) ", *(s+i), d);
-        if( d == 2 ) printf("%c%c(%i) ", *(s+i), *(s+i+1), d);
-        if( d == 3 ) printf("%c%c%c(%i) ", *(s+i), *(s+i+1), *(s+i+2), d);
-        if( d == 4 ) printf("%c%c%c%c(%i) ", *(s+i), *(s+i+1), *(s+i+2), *(s+i+3), d);
+        uc=u8_nextchar(s,&j); d=j-i;
+        // Note that shifting this into the head of the for loop 
+        // Leads to unwanted read after string in u8_inc-call.
+
+        printf("%lc", uc);  // just works after setlocale-call
+        printf("%c%c%c ", 0xE2, 0x82, 0x80+d);
+        // U+208X are supscript chars.
+        //                              2    0    8    X
+        // 2 byte unicode code point: 0010 0000 1000 xxxx
+        // 3 byte Utf-8:  1110 0010
+        //                10 000010
+        //                10 00xxxx
     }
+#else // Without generation of unicode code point
+    int i = 0, j = 0;
+    int d, l;
+    for( l=strlen(s); i<l; i=j)
+    {
+        u8_inc(s,&j); d=j-i;
+        // Note that shifting this into the head of the for loop 
+        // Leads to unwanted read after string in u8_inc-call.
+
+        if( d == 1 ) printf("%c₁ ", *(s+i));
+        if( d == 2 ) printf("%c%c₂ ", *(s+i), *(s+i+1));
+        if( d == 3 ) printf("%c%c%c₃ ", *(s+i), *(s+i+1), *(s+i+2));
+        if( d == 4 ) printf("%c%c%c%c₄ ", *(s+i), *(s+i+1), *(s+i+2), *(s+i+3));
+    }
+#endif
+
     printf("\n");
+
+    return 0;
+    }
 */
 
 /* is c the start of a utf8 sequence? */
