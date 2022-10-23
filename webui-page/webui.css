@@ -19,11 +19,18 @@ body {
 
 h1, h2, h3 {
   word-wrap: break-word;
+  display:inline-block;
 }
 
 h1 {
   font-size: 5vmin;
   margin-bottom: 2px;
+}
+
+#title {
+  max-height:2.5em;
+  overflow:hidden;
+  height:inherit;
 }
 
 h1 span.error {
@@ -65,7 +72,11 @@ h3 {
 
 
 .hidden {
-  display: none;
+  display: none !important;
+}
+
+.invisible {
+  visibility: hidden !important;
 }
 
 .button:hover {
@@ -128,12 +139,18 @@ h3 {
 }
 
 table.prop-table {
+  width:100%;
+  margin-right:5rem;
+  margin-left:0rem;
   margin-bottom: 40px;
   font-size: 4vmin;
+  /*border:1px solid red;*/
 }
 
 table.prop-table td {
-  padding: 0 17px 0 0;
+  padding: 0 0.5rem 0 0;
+  overflow-y: visible;
+  /*border:1px solid blue;*/
 }
 
 .slidecontainer {

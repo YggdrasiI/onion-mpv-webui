@@ -6,6 +6,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <mpv/client.h>
+
 typedef struct option_t{
   char *key;
   char *val;
@@ -74,3 +76,8 @@ void strip_slash(
  */
 char *add_slash_if_notempty(
         const char *path);
+
+/*
+ */
+int check_mpv_err(
+        int status);

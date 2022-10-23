@@ -326,3 +326,12 @@ char *add_slash_if_notempty(
    return ret;
 }
 
+int check_mpv_err(
+        int status)
+{
+    if( status < MPV_ERROR_SUCCESS ){
+        printf("mpv API error %d: %s\n", status,
+                mpv_error_string(status));
+    }
+    return status; // == 0 for MPV_ERROR_SUCCESS
+}

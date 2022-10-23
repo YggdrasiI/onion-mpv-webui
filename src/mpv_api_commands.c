@@ -11,18 +11,12 @@
 extern mpv_handle *mpv;
 
 #include "mpv_api_commands.h"
+#include "onion_ws_status.h"
+extern __status_t *status;
 #include "tools.h"
 
 #define STR(s) ((s)?(s):"")
 #define OBJ(s) ((s)?(s):"{}")
-
-int check_mpv_err(int status){
-    if( status < MPV_ERROR_SUCCESS ){
-        printf("mpv API error %d: %s\n", status,
-                mpv_error_string(status));
-    }
-    return status; // == 0 for MPV_ERROR_SUCCESS
-}
 
 
 int cmd_play(const char *name,
@@ -336,6 +330,9 @@ int cmd_cycle_sub(const char *name,
     int err = mpv_command(mpv, cmd);
     check_mpv_err(err);
 
+    // Trigger update of ws status.
+    property_reobserve("track-list");
+
     return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
 }
 
@@ -346,6 +343,9 @@ int cmd_cycle_audio(const char *name,
     const char *cmd[] = {"cycle", "audio", NULL};
     int err = mpv_command(mpv, cmd);
     check_mpv_err(err);
+
+    // Trigger update of ws status.
+    property_reobserve("track-list");
 
     return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
 }
@@ -374,6 +374,80 @@ int cmd_add_chapter(const char *name,
 
     return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
 }
+
+// mpv/options.c:    {"speed", OPT_DOUBLE(playback_speed), M_RANGE(0.01, 100.0)}
+int cmd_increase_playback_speed(const char *name,
+        const char *param1, const char *param2,
+        char **pOutput_message)
+{
+    if( !check_int_or_float(param1, pOutput_message) ) return CMD_FAIL;
+
+    double current_speed;
+    if (mpv_get_property(mpv, "speed", MPV_FORMAT_DOUBLE, &current_speed) < 0){
+        perror("Can not fetch playback speed property.\n");
+        return CMD_FAIL;
+    }
+
+    double fspeed_change;
+    if (sscanf(STR(param1), "%lf", &fspeed_change) != 1){
+        fspeed_change = 1.0;
+    }
+
+    // For multiplacations < 1.0 adapt values to generate linear balance.
+    // Thus input '0.9' inverts '1.1', etc
+    if (fspeed_change - 1.0 < 0 ){
+        fspeed_change = 1.0 / (2.0 - fspeed_change);
+    }
+
+    double fnew_speed = current_speed * fspeed_change;
+    // Round on second digit.
+    fnew_speed = ((int)(fnew_speed * 100 + 0.5)) / 100.0;
+
+    // Convert parsed value back to string
+    char *new_speed = NULL;
+    if ( asprintf(&new_speed, "%lf", fnew_speed) < 0 ){
+        perror("asprintf failed.\n");
+        free(new_speed);
+        return CMD_FAIL;
+    }
+
+    printf("New SPEED: %s\n", new_speed);
+    
+    int err = 0;
+    //const char *cmd[] = {"multiply", "speed", param1, NULL};
+    //err = mpv_command(mpv, cmd);
+    // Range check
+    if (fnew_speed < 0.01) {
+        const char *cmd[] = {"set", "speed", "0.01", NULL};
+        err = mpv_command(mpv, cmd);
+    }else if (fnew_speed > 100.0){
+        const char *cmd[] = {"set", "speed", "100.0", NULL};
+        err = mpv_command(mpv, cmd);
+    }else {
+        const char *cmd[] = {"set", "speed", new_speed, NULL};
+        err = mpv_command(mpv, cmd);
+    }
+
+
+    check_mpv_err(err);
+    free(new_speed);
+
+    return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
+}
+
+int cmd_reset_playback_speed(const char *name,
+        const char *param1, const char *param2,
+        char **pOutput_message)
+{
+    if( !check_int_or_float(param1, pOutput_message) ) return CMD_FAIL;
+
+    const char *cmd[] = {"set", "speed", "1.0", NULL};
+    int err = mpv_command(mpv, cmd);
+    check_mpv_err(err);
+
+    return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
+}
+
 
 int cmd_quit(const char *name,
         const char *param1, const char *param2,
@@ -447,8 +521,10 @@ char *json_status_response(){
     char *filename = mpv_get_property_string(mpv, "filename");
     char *duration = mpv_get_property_string(mpv, "duration");
     char *position = mpv_get_property_string(mpv, "time-pos");
+    char *speed = mpv_get_property_string(mpv, "speed");
     char *remaining = mpv_get_property_string(mpv, "playtime-remaining");
     char *metadata = mpv_get_property_string(mpv, "metadata");
+    char *chapter_metadata = mpv_get_property_string(mpv, "chapter-metadata");
     char *volume = mpv_get_property_string(mpv, "volume");
     char *volume_max = mpv_get_property_string(mpv, "volume-max");
     char *playlist = mpv_get_property_string(mpv, "playlist");
@@ -487,6 +563,8 @@ char *json_status_response(){
     if (sscanf(STR(duration), "%lf", &fduration) != 1){ fduration = 0; }
     double fposition;
     if (sscanf(STR(position), "%lf", &fposition) != 1){ fposition = 0; }
+    double fspeed;
+    if (sscanf(STR(speed), "%lf", &fspeed) != 1){ fspeed = 0; }
     double fremaining;
     if (sscanf(STR(remaining), "%lf", &fremaining) != 1){ fremaining = 0; }
     double fvolume;
@@ -506,6 +584,7 @@ char *json_status_response(){
             ",\n\"position\":"          "%d"
             ",\n\"remaining\":"         "%d"
             ",\n\"metadata\":"          "%s"  // obj
+            ",\n\"chapter-metadata\":"  "%s"  // obj
             ",\n\"volume\":"            "%d"
             ",\n\"volume-max\":"        "%d"
             ",\n\"playlist\":"          "%s"  // obj
@@ -519,6 +598,7 @@ char *json_status_response(){
 
             ",\n\"pause\":"             "%d"
             ",\n\"fullscreen\":"        "%d"
+            ",\n\"speed\":"             "%f"
 
             ",\n\"chapter\":"          "%ld"
             "}\n"
@@ -528,6 +608,7 @@ char *json_status_response(){
             , (int)(fposition)
             , (int)(fremaining)
             , OBJ(metadata)
+            , OBJ(chapter_metadata)
             , (int)(fvolume)
             , (int)(fvolume_max)
             , OBJ(playlist)
@@ -541,6 +622,7 @@ char *json_status_response(){
 
             , pause
             , fullscreen
+            , fspeed
 
             , chapter
             );
@@ -560,8 +642,10 @@ gen_status_end:
     mpv_free(filename);
     mpv_free(duration);
     mpv_free(position);
+    mpv_free(speed);
     mpv_free(remaining);
     mpv_free(metadata);
+    mpv_free(chapter_metadata);
     mpv_free(volume);
     mpv_free(volume_max);
     mpv_free(playlist);
@@ -586,9 +670,11 @@ gen_status_end:
        '"loop-file":"'..values.loop_file..'",' ..
        '"loop-playlist":"'..values.loop_playlist..'",' ..
        '"metadata":'..values.metadata..',' ..
+       '"chapter-metadata":'..values.chapter_metadata..',' ..
        '"pause":'..values.pause..',' ..
        '"playlist":'..values.playlist..',' ..
        '"position":'..round(values.position)..',' ..
+       '"speed":'..values.speed..',' ..
        '"remaining":'..round(values.remaining)..',' ..
        '"sub-delay":'..values.sub_delay:sub(1, -4)..',' ..
        '"track-list":'..values.track_list..',' ..

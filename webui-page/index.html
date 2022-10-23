@@ -79,14 +79,19 @@
 
  <div id="controlBox">
    <div id="header">
-    <h1 id="title">Title</h1>
-    <h2 id="artist">Artist</h2>
-    <h3 id="album">Album</h3>
 
     <div class="table">
       <table class="prop-table">
         <tr>
-          <td class="">|</td> <!-- Height -->
+          <td colspan="5">
+            <h1 id="title">Title</h1>
+          </td>
+        </tr>
+        <tr>
+          <td class="">&nbsp;</td> <!-- Height -->
+          <td>
+            <span id="artist">Artist</span><span id="album">Album</span>
+          </td>
           <td class="sub-delay">Sub-delay: <span id="sub-delay"></span></td>
           <td class="audio-delay">Audio-delay: <span id="audio-delay"></span></td>
           <td class="chapter">Chapter: <span id="chapterContent"></span></td>
@@ -157,34 +162,46 @@
       </div>
     </div>
 
-    <div onClick="send('cycle_sub')" class="button violet control_left">
+    <div onClick="send('cycle_sub')" class="button violet control_left subtitle">
       <div id="nextSub" class="content text-content">
         Next sub
       </div>
     </div>
-    <div onClick="send('cycle_audio')" class="button violet control_right">
+    <div onClick="send('cycle_audio')" class="button violet control_right audio2">
       <div id="nextAudio" class="content text-content">
         Next audio
       </div>
     </div>
 
-    <div onClick="send('add_sub_delay', '-0.05')" class="button yellow control_left">
+    <div onClick="send('increase_playback_speed', '0.9')" class="button yellow control_left audio1">
+      <div id="slowerPlayback" class="content text-content">
+        Playback -
+      </div>
+    </div>
+    <div onClick="send('increase_playback_speed', '1.1')" class="button yellow control_right audio1">
+      <div id="fasterPlayback" class="content text-content">
+        Playback +
+      </div>
+    </div>
+
+
+    <div onClick="send('add_sub_delay', '-0.05')" class="button yellow control_left subtitle">
       <div class="content text-content">
         Sub delay -
       </div>
     </div>
-    <div onClick="send('add_sub_delay', '0.05')" class="button yellow control_right">
+    <div onClick="send('add_sub_delay', '0.05')" class="button yellow control_right subtitle">
       <div class="content text-content">
         Sub delay +
       </div>
     </div>
 
-    <div onClick="send('add_audio_delay', '-0.05')" class="button yellow control_left">
+    <div onClick="send('add_audio_delay', '-0.05')" class="button yellow control_left audio1">
       <div class="content text-content">
         Audio delay -
       </div>
     </div>
-    <div onClick="send('add_audio_delay', '0.05')" class="button yellow contol_right">
+    <div onClick="send('add_audio_delay', '0.05')" class="button yellow contol_right audio1">
       <div class="content text-content">
         Audio delay +
       </div>

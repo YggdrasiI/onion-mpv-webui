@@ -144,6 +144,14 @@ int cmd_add_chapter(const char *name,
         const char *param1, const char *param2,
         char **pOutput_message);
 
+int cmd_increase_playback_speed(const char *name,
+        const char *param1, const char *param2,
+        char **pOutput_message);
+
+int cmd_reset_playback_speed(const char *name,
+        const char *param1, const char *param2,
+        char **pOutput_message);
+
 // quit [<code>]
 int cmd_quit(const char *name,
         const char *param1, const char *param2,

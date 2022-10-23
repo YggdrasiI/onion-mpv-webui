@@ -11,8 +11,9 @@ var ws = null
 var mpv_status = {}
 
 const REGEXS = {
-  'brackets': new RegExp('\[[^\]]*\]', 'g'), // [...]
-  'extension': new RegExp('\[.\]\w{2,10}$', ''),   // .ext
+  'brackets': new RegExp('\\[[^\\]]*\\]', 'g'), // [...]
+  'extension': new RegExp('[.][A-z]{3,10}$', ''),   // .ext
+  'checksumBeforeExtension': new RegExp('-[A-z0-9-]{10,12}([.][A-z]+)$', ''), // -AbCdEXFGL.
 }
 
 /* Collect [num] milliseconds status updates before 
@@ -252,6 +253,11 @@ function webui_keydown(e) {
       "code": 80,
       "command": "playlist_prev",
     },
+    {
+      "key": "Backspace",
+      "code": 8,
+      "command": "reset_playback_speed",
+    },
   ]
   for (var i = 0; i < bindings.length; i++) {
     if (e.keyCode === bindings[i].code || e.key === bindings[i].key) {
@@ -259,6 +265,7 @@ function webui_keydown(e) {
       return false
     }
   }
+  //console.log("Key pressed: " + e.keyCode + " " + e.key )
 }
 
 function format_time(seconds){
@@ -286,17 +293,42 @@ function setTrackList(tracklist) {
     if (tracklist[i].type === 'audio') {
       window.audios.count++
       if (tracklist[i].selected) {
-          window.audios.selected = tracklist[i].id
+        window.audios.selected = tracklist[i].id
       }
     } else if (tracklist[i].type === 'sub') {
       window.subs.count++
       if (tracklist[i].selected) {
-          window.subs.selected = tracklist[i].id
+        window.subs.selected = tracklist[i].id
       }
     }
   }
-  document.getElementById("nextSub").innerText = 'Next sub ' + window.subs.selected + '/' + window.subs.count
-  document.getElementById("nextAudio").innerText = 'Next audio ' + window.audios.selected + '/' + window.audios.count
+
+  // Subtitle
+  var el = document.getElementById("nextSub")
+  if (window.subs.count > 0) {
+    el.innerText = 'Next sub ' + window.subs.selected + '/' + window.subs.count
+    displayElementClass('subtitle', true)
+  }else{
+    displayElementClass('subtitle', false)
+    el.innerText = 'No subtitle'
+  }
+
+  // Audio tracks
+  var el = document.getElementById("nextAudio")
+  if (window.audios.count > 1){
+    el.innerText = 'Next audio ' + window.audios.selected + '/' + window.audios.count
+    displayElementClass('audio2', true) // for #audio tracks > 1
+    displayElementClass('audio1', true) // for #audio tracks > 0
+  }else{
+    displayElementClass('audio2', false)
+    if (window.audios.count == 1){
+      displayElementClass('audio1', true)
+      el.innerText = 'Audio ' + window.audios.selected + '/' + window.audios.count
+    }else{
+      displayElementClass('audio1', false)
+      el.innerText = 'No audio'
+    }
+  }
 }
 
 function setMetadata(metadata, playlist, filename) {
@@ -345,7 +377,6 @@ function setMetadata(metadata, playlist, filename) {
   }
 
   document.getElementById("title").innerHTML = window.metadata.title
-  document.getElementById("title").innerHTML = title
   document.getElementById("title").setAttribute('title', title) // may be longer string
 
   document.getElementById("artist").innerHTML = window.metadata.artist
@@ -502,49 +533,45 @@ function playlist_loop_cycle() {
   }
 }
 
-function setChapter(chapters, chapter) {
-  var chapterElements = document.getElementsByClassName('chapter')
+function setChapter(chapters, chapter, metadata) {
   var chapterContent = document.getElementById('chapterContent')
+  var chapter_title = ''
+  if (metadata !== null ){
+    if (metadata['title']) {
+      chapter_title = metadata['title']
+    } else if (metadata['TITLE']) {
+      chapter_title = metadata['TITLE']
+    } else {
+      //chapter_title = "No title"
+    }
+  }
   if (chapters === 0) {
-    [].slice.call(chapterElements).forEach(function (div) {
-      div.classList.add('hidden')
-    })
+    displayElementClass('chapter', false)
     chapterContent.innerText = "0/0"
   } else {
-    [].slice.call(chapterElements).forEach(function (div) {
-      div.classList.remove('hidden')
-    })
-    chapterContent.innerText = chapter + 1 + "/" + chapters
+    displayElementClass('chapter', true)
+    chapterContent.innerText = "" + (chapter + 1) + "/" + chapters
+      + " " + chapter_title
   }
 }
 
 function setSubDelay(fDelay) {
-  var subElements = document.getElementsByClassName('sub-delay')
   var subContent = document.getElementById('sub-delay')
   if ( fDelay == 0 ){
-    [].slice.call(subElements).forEach(function (div) {
-      div.classList.add('hidden')
-    })
+    displayElementClass('sub-delay', false)
   }else{
     subContent.innerHTML = parseInt(1000*fDelay) + ' ms';
-    [].slice.call(subElements).forEach(function (div) {
-      div.classList.remove('hidden')
-    })
+    displayElementClass('sub-delay', true)
   }
 }
 
 function setAudioDelay(fDelay) {
-  var audioElements = document.getElementsByClassName('audio-delay')
   var audioContent = document.getElementById('audio-delay')
   if ( fDelay == 0 ){
-    [].slice.call(audioElements).forEach(function (div) {
-      div.classList.add('hidden')
-    })
+    displayElementClass('audio-delay', false)
   }else{
     audioContent.innerHTML = parseInt(1000*fDelay) + ' ms';
-    [].slice.call(audioElements).forEach(function (div) {
-      div.classList.remove('hidden')
-    })
+    displayElementClass('audio-delay', true)
   }
 }
 
@@ -596,7 +623,7 @@ function handleStatusResponse(json) {
   setVolumeSlider(json['volume'], json['volume-max'])
   setLoop(json["loop-file"], json["loop-playlist"])
   setFullscreenButton(json['fullscreen'])
-  setChapter(json['chapters'], json['chapter'])
+  setChapter(json['chapters'], json['chapter'], json['chapter-metadata'])
   populatePlaylist(json['playlist'], json['pause'])
   if ('mediaSession' in navigator) {
     setupNotification()
@@ -606,9 +633,9 @@ function handleStatusResponse(json) {
 function handleStatusUpdate(status_updates) {
 
   new_status = Object.assign({}, mpv_status, status_updates)
-  if ( "metadata" in status_updates 
+  if ("metadata" in status_updates 
     ||"playlist" in status_updates 
-    ||"filename" in status_updates ){
+    ||"filename" in status_updates){
     setMetadata(new_status['metadata'], new_status['playlist'], new_status['filename'])
   }
   if ("track-list" in status_updates){
@@ -642,32 +669,33 @@ function handleStatusUpdate(status_updates) {
     setPlayPause(new_status['pause'])
   }
   if ("time-pos" in status_updates
-    ||"duration" in status_updates ){
+    ||"duration" in status_updates){
     setPosSlider(new_status['time-pos'], new_status['duration'])
   }
   if ("volume" in status_updates
-    ||"volume-max" in status_updates ){
+    ||"volume-max" in status_updates){
     setVolumeSlider(new_status['volume'], new_status['volume-max'])
   }
   if ("loop-file" in status_updates
-    ||"loop-playlist" in status_updates ){
+    ||"loop-playlist" in status_updates){
     setLoop(new_status["loop-file"], new_status["loop-playlist"])
   }
   if ("fullscreen" in status_updates){
     setFullscreenButton(new_status['fullscreen'])
   }
   if ("chapters" in status_updates
-    ||"chapter" in status_updates ){
-    setChapter(new_status['chapters'], new_status['chapter'])
+    ||"chapter" in status_updates
+    ||"chapter-metadata" in status_updates){
+    setChapter(new_status['chapters'], new_status['chapter'], new_status['chapter-metadata'])
   }
   if ("playlist" in status_updates
-    ||"pause" in status_updates ){
+    ||"pause" in status_updates){
     populatePlaylist(new_status['playlist'], new_status['pause'])
   }
   if ("metadata" in status_updates
     ||"playlist" in status_updates 
     ||"filename" in status_updates 
-    ||"pause" in status_updates ){
+    ||"pause" in status_updates){
     updateNotification(new_status)
   }
 
@@ -777,7 +805,7 @@ function status_init_ws(){
 }
 
 function print_disconnected(){
-  document.getElementById("title").innerHTML = "<h1><span class='info'>Not connected to MPV!</span></h1>"
+  document.getElementById("title").innerHTML = "<span class='info'>Not connected to MPV!</span>"
   document.getElementById("artist").innerHTML = ""
   document.getElementById("album").innerHTML = ""
   setPlayPause("yes")
@@ -874,9 +902,10 @@ function trim_title_string(s, max_len, sub_char, end_char){
   if (arguments.length < 4) end_char = '…';
   if (arguments.length < 3) sub_char = '…';
 
-  if (s.length <= max_len ) return s;
+  //if (s.length <= max_len ) return s;
 
   s = s.replace(REGEXS['brackets'], sub_char)
+  s = s.replace(REGEXS['checksumBeforeExtension'], RegExp.$1)
   if (s.length <= max_len ) return s;
 
   s = s.replace(REGEXS['extension'], end_char)
@@ -887,6 +916,26 @@ function trim_title_string(s, max_len, sub_char, end_char){
     s = s.concat(end_char)
 
   return s;
+}
+
+function displayElementClass(cls_of_elements, bDisplay, classname){
+  // Note: We didn't change the css class property, but add/remove
+  // class '.hidden'
+  // So be careful if this is called twice for the same element
+  // (one adds 'hidden' and one removes…)
+  //
+  if (arguments.length < 3) classname = 'hidden';
+
+  var classElements = document.getElementsByClassName(cls_of_elements)
+  if (bDisplay == true ){
+    [].slice.call(classElements).forEach(function (div) {
+      div.classList.remove(classname)
+    })
+  }else{
+    [].slice.call(classElements).forEach(function (div) {
+      div.classList.add(classname)
+    })
+  }
 }
 
 function updateNotification(mpv_status) {

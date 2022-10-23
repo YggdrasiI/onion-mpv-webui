@@ -79,6 +79,7 @@ typedef struct __property_t {
 
     // extra elements
     mpv_format format_out;
+    uint64_t userdata;
     char initialized;
     char updated;
 
@@ -107,7 +108,8 @@ typedef struct __status_t {
 __property_t property_init(
         const char *name,
         mpv_format format,
-        mpv_format format_out);
+        mpv_format format_out,
+        uint64_t userdata);
 
 void property_free(
         __property_t *property);
@@ -118,6 +120,7 @@ void property_update(
         mpv_event_property *in,
         __property_t *out);
 
+int property_reobserve(const char *prop_name);
 
 __status_t *status_init();
 

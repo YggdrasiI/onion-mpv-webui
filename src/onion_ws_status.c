@@ -29,6 +29,7 @@
 #include <onion/low.h>
 
 #include "defines.h"
+#include "tools.h"
 #include "onion_ws_status.h"
 #include "webui_onion.h"
 
@@ -64,6 +65,10 @@ enum onion_websocket_status_e {
 // convert into char[2] e.g.: STATUS(sname, NORMAL_CLOSURE)
 #define STATUS_STR(NAME, NUM) char NAME[2] \
     = {((NUM>>8)&0xFF) , ((NUM)&0xFF)};
+
+// Helper function
+int __property_observe(__property_t *prop);
+int __property_reobserve(__property_t *prop);
 
 
 __clients_t *clients_init()
@@ -249,7 +254,7 @@ onion_connection_status ws_status_start(
                 "  var data = ws.__unhandled_data.join('')\n"
                 "  ws.__unhandled_data = []\n"
                 ""
-                "  data = data.substring(0,2000)\n"
+                "  //data = data.substring(0,2000)\n"
                 "  if( data.includes(\"status_diff\") ) {\n"
                 "  document.getElementById('update').textContent=data+'\\n';\n}"
                 "  else if( data.includes(\"status_info\") ) {\n"
@@ -317,6 +322,7 @@ onion_connection_status ws_status_start(
                     &status->init_in_process, &abstime);
             if( err == ETIMEDOUT ){
                 ONION_INFO("MPV does not returned all observed variables.");
+                // TODO: Add info which variable hangs.
             }
 #endif
 
@@ -436,7 +442,8 @@ onion_connection_status ws_status_cont(
 __property_t property_init(
         const char *name,
         mpv_format format,
-        mpv_format format_out)
+        mpv_format format_out,
+        uint64_t userdata)
 {
     assert( ( format_out == MPV_FORMAT_INT64
                 || format_out == MPV_FORMAT_DOUBLE
@@ -454,6 +461,7 @@ __property_t property_init(
     ret.node.data = NULL;
     //ret.initialized = 0;
     ret.format_out = format_out;
+    ret.userdata = userdata;
     ret.updated = 0;
     ret.json = NULL;
 
@@ -678,7 +686,7 @@ __status_t *status_init()
 
     status->props = calloc(sizeof(__property_t), NUM_PROPS);
 #define ADD(NAME, TYPE, TYPE_OUT) if( pos<NUM_PROPS ) {\
-    status->props[pos++] = property_init(NAME, TYPE, TYPE_OUT); } \
+    status->props[pos++] = property_init(NAME, TYPE, TYPE_OUT, REPLY_ID_OFFSET + pos); } \
     else { printf("Increase NUM_PROPS"); }
     //TYPE_OUT needs to be the internal type of the property
     //in mpv if TYPE is MPV_FORMAT_NODE.
@@ -703,10 +711,12 @@ __status_t *status_init()
     ADD("sub-delay", MPV_FORMAT_NODE, MPV_FORMAT_DOUBLE);
     //ADD("sub-delay", MPV_FORMAT_DOUBLE, MPV_FORMAT_STRING); // not '[num] ms' but 0.00…
     ADD("audio-delay", MPV_FORMAT_NODE, MPV_FORMAT_DOUBLE);
+    ADD("speed", MPV_FORMAT_NODE, MPV_FORMAT_DOUBLE);
 
     ADD("pause", MPV_FORMAT_NODE,  MPV_FORMAT_FLAG);
     ADD("fullscreen", MPV_FORMAT_NODE,  MPV_FORMAT_FLAG);
     ADD("chapter", MPV_FORMAT_NODE, MPV_FORMAT_INT64);
+    ADD("chapter-metadata", MPV_FORMAT_NODE_MAP, MPV_FORMAT_NODE_MAP); // like metadata, but rare. Usually chapter title only.
     status->num_props = pos;
 #undef ADD
 
@@ -751,61 +761,7 @@ int status_observe(
         prop->initialized = 0;
         prop->updated = 0;
         FREE(prop->json);
-#ifdef WITH_MPV
-        if ( prop->node.format == MPV_FORMAT_NODE
-                &&  ( prop->format_out == MPV_FORMAT_STRING
-                    || prop->format_out == MPV_FORMAT_INT64
-                    || prop->format_out == MPV_FORMAT_FLAG
-                    || prop->format_out == MPV_FORMAT_DOUBLE)
-           )
-        {
-            mpv_observe_property(mpv, REPLY_ID_OFFSET+pos,
-                    prop->node.name,
-                    MPV_FORMAT_NODE); // no conversion by mpv
-        }else if ( prop->format_out == MPV_FORMAT_NODE_MAP
-                || prop->format_out == MPV_FORMAT_NODE_ARRAY )
-        {
-            // request result as string, but propagate it without
-            // quotes into the status-json.
-            mpv_observe_property(mpv, REPLY_ID_OFFSET+pos,
-                    prop->node.name,
-                    MPV_FORMAT_STRING); // conversion by mpv
-        }else{
-            mpv_observe_property(mpv, REPLY_ID_OFFSET+pos,
-                    prop->node.name,
-                    MPV_FORMAT_STRING); // conversion by mpv
-        }
-#else
-        switch(prop->format_out){
-            case MPV_FORMAT_STRING:
-                //asprintf(&prop->json, "\"%s\": \"undefined\"", prop->node.name);
-                prop->json = strdup("\"undefined\"");
-                break;
-            case MPV_FORMAT_NODE_MAP:
-                //asprintf(&prop->json, "\"%s\": []", prop->node.name);
-                prop->json = strdup("[]");
-                break;
-            case MPV_FORMAT_NODE_ARRAY:
-                //asprintf(&prop->json, "\"%s\": {}", prop->node.name);
-                prop->json = strdup("{}");
-                break;
-            case MPV_FORMAT_DOUBLE:
-                //asprintf(&prop->json, "\"%s\": 0.0", prop->node.name);
-                prop->json = strdup("0.0");
-                break;
-            case MPV_FORMAT_INT64:
-                //asprintf(&prop->json, "\"%s\": 0", prop->node.name);
-                prop->json = strdup("0");
-                break;
-            case MPV_FORMAT_FLAG:
-            default:
-                //asprintf(&prop->json, "\"%s\": null", prop->node.name);
-                prop->json = strdup("null");
-                break;
-        }
-        prop->initialized = 1;
-        prop->updated = 0;
-#endif
+        __property_observe(prop);
     }
 
     status->is_observed = 1;
@@ -822,6 +778,94 @@ int status_observe(
     return 1;
 }
 
+
+int __property_observe(__property_t *prop){
+#ifdef WITH_MPV
+    if ( prop->node.format == MPV_FORMAT_NODE
+            &&  ( prop->format_out == MPV_FORMAT_STRING
+                || prop->format_out == MPV_FORMAT_INT64
+                || prop->format_out == MPV_FORMAT_FLAG
+                || prop->format_out == MPV_FORMAT_DOUBLE)
+       )
+    {
+        return mpv_observe_property(mpv, prop->userdata,
+                prop->node.name,
+                MPV_FORMAT_NODE); // no conversion by mpv
+    }else if ( prop->format_out == MPV_FORMAT_NODE_MAP
+            || prop->format_out == MPV_FORMAT_NODE_ARRAY )
+    {
+        // request result as string, but propagate it without
+        // quotes into the status-json.
+        return mpv_observe_property(mpv, prop->userdata,
+                prop->node.name,
+                MPV_FORMAT_STRING); // conversion by mpv
+    }else{
+        return mpv_observe_property(mpv, prop->userdata,
+                prop->node.name,
+                MPV_FORMAT_STRING); // conversion by mpv
+    }
+#else
+    switch(prop->format_out){
+        case MPV_FORMAT_STRING:
+            //asprintf(&prop->json, "\"%s\": \"undefined\"", prop->node.name);
+            prop->json = strdup("\"undefined\"");
+            break;
+        case MPV_FORMAT_NODE_MAP:
+            //asprintf(&prop->json, "\"%s\": []", prop->node.name);
+            prop->json = strdup("[]");
+            break;
+        case MPV_FORMAT_NODE_ARRAY:
+            //asprintf(&prop->json, "\"%s\": {}", prop->node.name);
+            prop->json = strdup("{}");
+            break;
+        case MPV_FORMAT_DOUBLE:
+            //asprintf(&prop->json, "\"%s\": 0.0", prop->node.name);
+            prop->json = strdup("0.0");
+            break;
+        case MPV_FORMAT_INT64:
+            //asprintf(&prop->json, "\"%s\": 0", prop->node.name);
+            prop->json = strdup("0");
+            break;
+        case MPV_FORMAT_FLAG:
+        default:
+            //asprintf(&prop->json, "\"%s\": null", prop->node.name);
+            prop->json = strdup("null");
+            break;
+    }
+    prop->initialized = 1;
+    prop->updated = 0;
+    return 0;
+#endif
+}
+
+// To trigger fetching of data again.
+int __property_reobserve(__property_t *prop){
+    // Remove property first to avoid multiple observation
+    // of same variable.
+
+    //pthread_mutex_lock(&status->lock);
+    int err;
+    err = mpv_unobserve_property(mpv, prop->userdata);
+    check_mpv_err(err);
+    if (! (err < 0) ){
+        err = __property_observe(prop);
+        check_mpv_err(err);
+    }
+    //pthread_mutex_unlock(&status->lock);
+    return err;
+}
+
+int property_reobserve(const char *prop_name){
+    for( int pos=0; pos<status->num_props; ++pos){
+        __property_t *prop = &status->props[pos];
+        if (0 == strcmp(prop->node.name, prop_name)){
+            return __property_reobserve(prop);
+        }
+    }
+    ONION_INFO("No property '%s' observed.", prop_name);
+    return -1;
+}
+
 void status_unobserve(
         mpv_handle *mpv,
         __status_t *status)
@@ -832,8 +876,9 @@ void status_unobserve(
         int pos;
         for( pos=0; pos<status->num_props; ++pos){
 #ifdef WITH_MPV
-            int u = mpv_unobserve_property(mpv, REPLY_ID_OFFSET+pos);
-            assert(u == 1);
+            __property_t *prop = &status->props[pos];
+            int u = mpv_unobserve_property(mpv, prop->userdata);
+            assert(u == 1); // assume that just one observation for each userdata exists
 #endif
         }
         status->num_updated = 0;
