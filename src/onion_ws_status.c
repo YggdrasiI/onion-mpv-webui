@@ -704,6 +704,8 @@ __status_t *status_init()
     ADD("volume-max", MPV_FORMAT_NODE,  MPV_FORMAT_DOUBLE);
     ADD("playlist", MPV_FORMAT_NODE_MAP, MPV_FORMAT_NODE_MAP);
     ADD("track-list", MPV_FORMAT_NODE_MAP, MPV_FORMAT_NODE_MAP);
+    // Format of chapter list: [{'title':'chapter 1', 'time': 1.0},...]
+    ADD("chapter-list", MPV_FORMAT_NODE_MAP, MPV_FORMAT_NODE_MAP)
     ADD("loop-file", MPV_FORMAT_NODE,  MPV_FORMAT_FLAG);
     ADD("loop-playlist", MPV_FORMAT_NODE,  MPV_FORMAT_FLAG);
     ADD("chapters", MPV_FORMAT_NODE, MPV_FORMAT_INT64);  // no list of  chapter titles, but number
@@ -717,6 +719,7 @@ __status_t *status_init()
     ADD("fullscreen", MPV_FORMAT_NODE,  MPV_FORMAT_FLAG);
     ADD("chapter", MPV_FORMAT_NODE, MPV_FORMAT_INT64);
     ADD("chapter-metadata", MPV_FORMAT_NODE_MAP, MPV_FORMAT_NODE_MAP); // like metadata, but rare. Usually chapter title only.
+    // chapter-metadata redundant to chapter-list entry..
     status->num_props = pos;
 #undef ADD
 

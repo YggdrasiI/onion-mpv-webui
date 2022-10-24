@@ -529,6 +529,7 @@ char *json_status_response(){
     char *volume_max = mpv_get_property_string(mpv, "volume-max");
     char *playlist = mpv_get_property_string(mpv, "playlist");
     char *track_list = mpv_get_property_string(mpv, "track-list");
+    char *chapter_list = mpv_get_property_string(mpv, "chapter-list");
     char *loop_file = mpv_get_property_string(mpv, "loop-file");
     char *loop_playlist = mpv_get_property_string(mpv, "loop-playlist");
     char *chapters = mpv_get_property_string(mpv, "chapters");
@@ -589,6 +590,7 @@ char *json_status_response(){
             ",\n\"volume-max\":"        "%d"
             ",\n\"playlist\":"          "%s"  // obj
             ",\n\"track-list\":"        "%s"  // obj
+            ",\n\"chapter-list\":"      "%s"  // obj
             ",\n\"loop-file\":"       "\"%s\""
             ",\n\"loop-playlist\":"   "\"%s\""
             ",\n\"chapters\":"          "%s"  // obj
@@ -613,6 +615,7 @@ char *json_status_response(){
             , (int)(fvolume_max)
             , OBJ(playlist)
             , OBJ(track_list)
+            , OBJ(chapter_list)
             , STR(loop_file)
             , STR(loop_playlist)
             , OBJ(chapters)
@@ -650,6 +653,7 @@ gen_status_end:
     mpv_free(volume_max);
     mpv_free(playlist);
     mpv_free(track_list);
+    mpv_free(chapter_list);
     mpv_free(loop_file);
     mpv_free(loop_playlist);
     mpv_free(chapters);
@@ -678,6 +682,7 @@ gen_status_end:
        '"remaining":'..round(values.remaining)..',' ..
        '"sub-delay":'..values.sub_delay:sub(1, -4)..',' ..
        '"track-list":'..values.track_list..',' ..
+       '"chapter-list":'..values.chapter_list..',' ..
        '"volume":'..round(values.volume)..',' ..
        '"volume-max":'..round(values.volume_max)..'}'
        */
