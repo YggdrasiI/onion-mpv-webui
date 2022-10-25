@@ -27,6 +27,8 @@
 #include <onion/codecs.h>
 #include <onion/shortcuts.h>
 #include <onion/low.h>
+#include <onion/websocket.h>
+#include <onion/types_internal.h>
 
 #include "defines.h"
 #include "tools.h"
@@ -189,37 +191,61 @@ __websocket_t *add_client(
     ONION_INFO("New num active clients: %d", clients->num_active_clients);
     pthread_mutex_unlock(&client->lock);
 
+    // Put information about index 'n' into userdata
+    ws_userdata *userdata = ws_userdata_new(n);
+    onion_websocket_set_userdata(ws, userdata, ws_userdata_free);
+
     pthread_mutex_unlock(&clients->lock);
     return client;
 }
 
+ws_userdata *ws_userdata_new(
+        size_t index)
+{
+  ws_userdata *ret = malloc(sizeof(ws_userdata));
+  ret->index = index;
+
+  return ret;
+};
+
+void ws_userdata_free(
+        void * data)
+{
+  ws_userdata *userdata = (ws_userdata *) data; 
+  //__websocket_t *client = &clients->clients[userdata->index];
+
+  remove_client(websockets, userdata->index);
+  pthread_mutex_lock(&websockets->lock);
+  free(userdata);
+
+  // TODO: Bad position here?!
+  if (websockets->num_active_clients == 0 ){
+      // No further status data needed
+      status_unobserve(mpv, status);
+  }
+  pthread_mutex_unlock(&websockets->lock);
+
+}
 
 int remove_client(
         __clients_t *clients,
-        onion_websocket *ws)
+        size_t index)
 {
-    int n;
-    for( n=0;n<MAX_ACTIVE_CLIENTS;++n){
-        if (clients->clients[n].ws == ws){
-            break;
-        }
+    if (index > MAX_ACTIVE_CLIENTS) {
+        ONION_ERROR("Wrong client index %u", index);
+        return -1;
     }
 
-    if (n >= MAX_ACTIVE_CLIENTS){
-        ONION_INFO("No client found for onion_websocket instance.");
-        // Note: If the server triggers the closing, we will not found
-        return OCS_INTERNAL_ERROR;
-    }
-
-    __websocket_t *client = &clients->clients[n];
     pthread_mutex_lock(&clients->lock);
+    __websocket_t *client = &clients->clients[index];
     pthread_mutex_lock(&client->lock);
-    ONION_INFO("Remove websocket pointer on position %d", n);
+    ONION_INFO("Remove websocket pointer on position %d", index);
     client->ws = NULL;
-    clients->num_active_clients--;
     pthread_mutex_unlock(&client->lock);
+    clients->num_active_clients--;
     pthread_mutex_unlock(&clients->lock);
-    return OCS_PROCESSED;
+
+    return 0;
 }
 
 onion_connection_status ws_status_start(
@@ -289,6 +315,7 @@ onion_connection_status ws_status_start(
     // Store in array of active clients
     __websocket_t *client = add_client(websockets, ws);
     if (client == NULL){
+        onion_websocket_set_opcode(ws, OWS_TEXT);
         __chunked_websocket_printf(ws, "{\"status_info\": \"-1\","
                 "\"message\": \"Maximum of clients %d already reached. "
                 "Close connection...\" }",
@@ -300,11 +327,12 @@ onion_connection_status ws_status_start(
         return OCS_WEBSOCKET;
     }
 
-    //(Debug) Push initial message (short 'hello client' before several locks)
-    __chunked_websocket_printf(ws, "{\"status_info\": \"1\"}");
-
     assert( client->ws == ws );
     pthread_mutex_lock(&client->lock);
+
+    //(Debug) Push initial message (short 'hello client' before several locks)
+    onion_websocket_set_opcode(ws, OWS_TEXT);
+    __chunked_websocket_printf(ws, "{\"status_info\": \"1\"}");
 
     pthread_mutex_lock(&websockets->lock);
     // Push status (maybe delayed ?!)
@@ -340,10 +368,11 @@ onion_connection_status ws_status_start(
     }
     pthread_mutex_unlock(&websockets->lock);
 
-    //ONION_INFO("Sends status to new client.");
+    //ONION_INFO("Send status to new client.");
     pthread_mutex_lock(&status->lock);
     assert( status->json != NULL );
     assert( client->ws != NULL );
+    onion_websocket_set_opcode(ws, OWS_TEXT);
     __chunked_websocket_printf(client->ws,
             "{\"status\": %s }", status->json);
     pthread_mutex_unlock(&status->lock);
@@ -354,49 +383,85 @@ onion_connection_status ws_status_start(
     return OCS_WEBSOCKET;
 }
 
+// Call onion_websocket_read if new data is available 
+// and terminate string with '\0' .
+int __read_string(
+        __websocket_t *client,
+        char *tmp,
+        ssize_t data_ready_len)
+{
+    int len = 0;
+    // Avoid read in case of zero data! It would fetch header on empty buffer.
+    if (data_ready_len > 0){
+        pthread_mutex_lock(&client->lock);
+        len = onion_websocket_read(client->ws, tmp, data_ready_len);
+        pthread_mutex_unlock(&client->lock);
+    }
+
+    // Add termination char.
+    tmp[(len<0?0:len)] = '\0';
+    return len;
+}
+
 onion_connection_status ws_status_cont(
         void *data,
         onion_websocket * ws,
         ssize_t data_ready_len)
 {
-    char tmp[256];  // TODO: Maybe too short for input of clients.
-    if (data_ready_len > sizeof(tmp))
-        data_ready_len = sizeof(tmp) - 1;
-
     int opcode = onion_websocket_get_opcode(ws);
 
+    ws_userdata *userdata = (ws_userdata *) ws->user_data;
+    assert (0 <= userdata->index && userdata->index < MAX_ACTIVE_CLIENTS);
+    assert (ws == websockets->clients[userdata->index].ws);
+    __websocket_t *client = &websockets->clients[userdata->index];
+
+    // Handle closing message
     if( opcode == OWS_CONNECTION_CLOSE ){
+        //Freeing memory was shifted in userdata_free handler
+        return OCS_PROCESSED;
+    }
 
-        onion_connection_status ret = remove_client(websockets, ws);
-        pthread_mutex_lock(&websockets->lock);
-        if (websockets->num_active_clients == 0 ){
-            // No further status data needed
-            status_unobserve(mpv, status);
+    // Setup buffer for reading
+    onion_connection_status ret = OCS_NEED_MORE_DATA;
+    char _tmp[256];  // Maybe too short for input of clients.
+    char *tmp = _tmp; // Allocation of more memory if needed.
+
+    if (data_ready_len > WS_MAX_BUFFER_SIZE){
+        data_ready_len = WS_MAX_BUFFER_SIZE;
+        ONION_DEBUG("Really big input requested. Just read first %u bytes", data_ready_len);
+    }
+    if (data_ready_len > sizeof(_tmp)){
+        tmp = malloc(data_ready_len + 1);
+    }
+
+
+    // Handle pong message
+    if( opcode == OWS_PONG ){
+        ONION_INFO("Got PONG from client!");
+
+        // Consume message payload, if needed (max 125 bytes)
+        int len = __read_string(client, tmp, data_ready_len);
+        if (len > 0) {
+            ONION_INFO("PONG payload: '%s'", tmp);
         }
-        pthread_mutex_unlock(&websockets->lock);
-        return ret;
+
+        goto cleanup_and_end;
     }
 
-    // search matching client struct (TODO: Shift into privdata of handler?!)
-    int n;
-    for( n=0;n<MAX_ACTIVE_CLIENTS;++n){
-        if (websockets->clients[n].ws == ws){
-            break;
-        }
+    if( opcode == OWS_PING ){
+        // libonion already send pong reply.
+        // Ignore this messages here.
+        goto cleanup_and_end;
     }
 
-    __websocket_t *client = &websockets->clients[n];
-    assert( ws == client->ws );
-    pthread_mutex_lock(&client->lock);
-    int len = onion_websocket_read(ws, tmp, data_ready_len);
-    pthread_mutex_unlock(&client->lock);
+    // Other messages (assume OWS_TEXT or OWS_BINARY)
+    int len = __read_string(client, tmp, data_ready_len);
 
-    if (len <= 0) {
-        //ONION_ERROR("Error reading data: %d: %s (%d)", errno, strerror(errno),
-        //        data_ready_len);
-        return OCS_NEED_MORE_DATA;
+    if (len < 0) {
+        ONION_ERROR("Error reading data: %d: %s (%d)",
+                errno, strerror(errno), data_ready_len);
+        goto cleanup_and_end;
     }
-    tmp[len] = 0;
 
     ONION_INFO("Read from websocket: %d: %s", len, tmp);
 
@@ -405,34 +470,16 @@ onion_connection_status ws_status_cont(
     pthread_mutex_lock(&client->lock);
 
     // send feedback to source client
+    onion_websocket_set_opcode(ws, OWS_TEXT);
     __chunked_websocket_printf(ws, "{\"result\": %s}", output);
+    pthread_mutex_unlock(&client->lock);
     FREE(output);
-    pthread_mutex_unlock(&client->lock);
 
-
-    // reply this client
-#if 0
-    ONION_INFO("Send to source client...");
-    pthread_mutex_lock(&client->lock);
-    __chunked_websocket_printf(ws, "{\"echo\": \"%s\"}", tmp);
-    pthread_mutex_unlock(&client->lock);
-#endif
-
-    // send data to other clients
-#if 0
-    int n;
-    for (n=0;n<MAX_ACTIVE_CLIENTS; ++n){
-        if (ws_active[n] && ws_active[n] != ws ){
-            ONION_INFO("Send to other clients...");
-
-            pthread_mutex_lock(&ws_lock[n]);
-            __chunked_websocket_printf(ws_active[n], "Other: %s", tmp);
-            pthread_mutex_unlock(&ws_lock[n]);
-        }
+cleanup_and_end:
+    if (tmp != _tmp ){ // clean dyn. allocated mem
+        free(tmp);
     }
-#endif
-
-    return OCS_NEED_MORE_DATA;
+    return ret; // OCS_NEED_MORE_DATA
 }
 
 // ================== END onion releated part ===============
@@ -922,6 +969,22 @@ void send_to_all_clients(
         __property_t *prop)
 {
     int i;
+
+#if 0
+    // Test PING/PONG mechanism
+    for( i=0; i<MAX_ACTIVE_CLIENTS; ++i){
+        __websocket_t *pclient = &pclients->clients[i];
+        if ( pclient->ws ){
+            char pl[] = "payload";
+            ONION_INFO("Send PING to client %d", i);
+            onion_websocket_set_opcode(pclient->ws, OWS_PING);
+            ssize_t s = onion_websocket_write(pclient->ws,
+                    pl, strlen(pl));
+        }
+    }
+    return;
+#endif
+
     for( i=0; i<MAX_ACTIVE_CLIENTS; ++i){
         __websocket_t *pclient = &pclients->clients[i];
         if ( pclient->ws ){
@@ -1137,6 +1200,7 @@ int __chunked_websocket_vprintf(onion_websocket * ws, const char *fmt, va_list a
       md->chunk_id = chunk_id;
       const int num_bytes_to_write = (l_left>MAX_FD_WRITE_SIZE?MAX_FD_WRITE_SIZE:l_left) + METADATA_LEN;
 
+      //onion_websocket_set_opcode(ws, OWS_TEXT);
       ssize_t s = onion_websocket_write(ws, chunk, num_bytes_to_write);
 
       if ( s<0 ){

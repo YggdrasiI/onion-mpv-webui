@@ -7,6 +7,9 @@
 #define NUM_PROPS 50
 #define REPLY_ID_OFFSET 10000
 
+// Maximal allowed size of messages from clients
+#define WS_MAX_BUFFER_SIZE (1<<12)
+
 // ================== BEGIN onion releated part ===============
 typedef struct __websocket_t {
     onion_websocket *ws;
@@ -18,6 +21,12 @@ typedef struct __clients_t {
     int num_active_clients;
     pthread_mutex_t lock;
 } __clients_t;
+
+// Data of user session
+typedef struct ws_userdata_t {
+  size_t index;
+  // Add more field here…
+} ws_userdata;
 
 /* Somehow the file descriptor writes are limited to approx 2^16 bytes. (Why?!)
  * Thus, we cannot write big data without getting a bad file descriptor.
@@ -47,10 +56,14 @@ __websocket_t *add_client(
         __clients_t *pclients,
         onion_websocket *ws);
 
+ws_userdata *ws_userdata_new(
+        size_t index);
+
+void ws_userdata_free(void * data);
 
 int remove_client(
         __clients_t *pclients,
-        onion_websocket *ws);
+        size_t index);
 
 
 // url handler

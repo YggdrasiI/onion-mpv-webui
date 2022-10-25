@@ -1,0 +1,98 @@
+commit 0d86d827a300e1b47490405c0c4088d158403a95
+Author: Olaf Schulz <olaf_schulz@posteo.de>
+Date:   Wed Oct 26 00:22:15 2022 +0200
+
+    Websocket changes
+    
+    • Correct constants OWS_PING and OWS_PONG in websocket header.
+    • Add payload handling of ping messages.
+    • Correct handling of messages without data. Sometimes the
+      header reading was invoked even if no data was available.
+      This leads to SEGFAULT.
+      Example message: /ping with 'wscat'
+      Solved by prepend check if more data is available.
+
+diff --git a/src/onion/types.h b/src/onion/types.h
+index 5ef24be..d86ced9 100644
+--- a/src/onion/types.h
++++ b/src/onion/types.h
+@@ -273,8 +273,8 @@ extern "C" {
+     OWS_TEXT = 1,
+     OWS_BINARY = 2,
+     OWS_CONNECTION_CLOSE = 8,
+-    OWS_PING = 0x0a,
+-    OWS_PONG = 0x0b
++    OWS_PING = 0x09,
++    OWS_PONG = 0x0a
+   };
+ 
+   typedef enum onion_websocket_opcode_e onion_websocket_opcode;
+diff --git a/src/onion/websocket.c b/src/onion/websocket.c
+index 7a95a8c..83a57cc 100644
+--- a/src/onion/websocket.c
++++ b/src/onion/websocket.c
+@@ -465,11 +465,30 @@ onion_websocket_read_packet_header(onion_websocket * ws) {
+   }
+ 
+   if (ws->opcode == OWS_PING) { // I do answer ping myself.
+-    onion_websocket_set_opcode(ws, OWS_PONG);
+-    char *data = onion_low_scalar_malloc(ws->data_left);
+-    ssize_t r = onion_websocket_read(ws, data, ws->data_left);
+ 
++    char *data = NULL;
++    ssize_t r = 0;
++    if( ws->data_left > 0 ){
++      data = onion_low_scalar_malloc(ws->data_left);
++      // here, no recursive loop is generated because data_left > 0.
++      r = onion_websocket_read(ws, data, ws->data_left);
++
++      if ( r < 0 ) {
++        ONION_DEBUG("Read of %d bytes failed. Error: %d", ws->data_left, r);
++        onion_low_free(data);
++        return OCS_CLOSE_CONNECTION;
++      }
++    }
++    onion_websocket_set_opcode(ws, OWS_PONG);
+     onion_websocket_write(ws, data, r);
++
++    /* We can not let opcode in OWS_PONG state,
++     * but setting OWS_TEXT would also be wrong.
++     *
++     * Please set correct opcode before calling onion_websocket_write.
++     * Maybe, this setup shouly be forced by adding it as argument...
++     */
++    onion_websocket_set_opcode(ws, OWS_PING);
+   }
+   if (ws->opcode == OWS_CONNECTION_CLOSE) {     // Closing connection
+     r = (*lpreader) (ws->req, tmp, 2);
+@@ -506,18 +525,22 @@ onion_connection_status onion_websocket_call(onion_websocket * ws) {
+       if (r == 0)
+         return OCS_INTERNAL_ERROR;
+       //ONION_DEBUG("waited for data fd %d -- res %d -- events %d", ws->req->fd, r, pfd.events);
+-    } else
++    } else {
+       sleep(1);                 // FIXME Worst possible solution. But solution anyway to the problem of not know when new data is available.
+-    if (ws->callback) {
+-      //ONION_DEBUG("data left %i", ws->data_left);
+-      if (ws->data_left == 0) {
++    }
++
++    // Always read header, even if ws->callback is not set.
++    if (ws->data_left == 0) {
+         onion_connection_status err = onion_websocket_read_packet_header(ws);
+         if (err < 0) {
+-          if (err != -2)
+-            ONION_ERROR("Error reading websocket header (%i)", err);
+-          return err;
++            if (err != -2)
++                ONION_ERROR("Error reading websocket header (%i)", err);
++            return err;
+         }
+-      }
++    }
++
++    if (ws->callback) {
++      //ONION_DEBUG("data left %i", ws->data_left);
+ 
+       size_t last_d_l;
+       do {
