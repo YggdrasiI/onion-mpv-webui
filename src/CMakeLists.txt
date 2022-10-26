@@ -175,21 +175,23 @@ if(${BUILD_ONION})
 		)
 	# git clone --depth=1 --branch=unstable "https://github.com/YggdrasiI/onion.git"
 
-	# Patch source
-	FILE(GLOB ONION_PATCH_FILES "${CMAKE_SOURCE_DIR}/3rdparty/*.patch")
+	# Patch source of libonion
+	execute_process(
+		COMMAND git checkout -b onion-mpv-webui
+		COMMAND git pull ../onion-mpv-webui_0001-0008.bundle HEAD
+		WORKING_DIRECTORY "${ONION_DIR}"
+		)
 
-	# ARGH, files seperated by ';'
-	#string (REPLACE ";" " " ONION_PATCH_FILES "${ONION_PATCH_FILES}")
-	#separate_arguments (ONION_PATCH_FILES UNIX_COMMAND "${ONION_PATCH_FILES}")
-	#message("Patch files: \n ${ONION_PATCH_FILES}")
+	# FILE(GLOB ONION_PATCH_FILES "${CMAKE_SOURCE_DIR}/3rdparty/*.patch")
+	# (Note: files seperated by ';')
 
-	foreach(ONION_PATCH_FILE ${ONION_PATCH_FILES})
-		message("Patch file: \n ${ONION_PATCH_FILE}")
-		execute_process(
-			COMMAND git am ${ONION_PATCH_FILE}
-			WORKING_DIRECTORY "${ONION_DIR}"
-			)
-	endforeach()
+	#foreach(ONION_PATCH_FILE ${ONION_PATCH_FILES})
+	#	message("Patch file: \n ${ONION_PATCH_FILE}")
+	#	execute_process(
+	#		COMMAND git am ${ONION_PATCH_FILE}
+	#		WORKING_DIRECTORY "${ONION_DIR}"
+	#		)
+	#endforeach()
 
 	# Setup (minimal) onion lib
 	execute_process(

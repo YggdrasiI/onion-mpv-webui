@@ -604,16 +604,10 @@ function handleStatusResponse(json) {
   setTrackList(json['track-list'])
   document.getElementById("duration").innerHTML =
     '&nbsp;'+ format_time(json['duration'])
+
   document.getElementById("playtime-remaining").innerHTML =
     "-" + format_time(json['playtime-remaining'])
-
-
-  // derive position value if not given
-  /* // bad idea because playback-time is scaled by speed, but duration not
-  if (!("playback-time" in json ) && "duration" in json){
-    d = json["duration"] - json["playtime-remaining"]
-    json["playback-time"] = (d>=0.0?d:0.0)
-  }*/
+		+ ((json['speed'] && json['speed'] != 1.0)?` (x ${Number(json['speed']).toFixed(2)})`:'')
 
   setSubDelay(json['sub-delay'])
   setAudioDelay(json['audio-delay'])
@@ -648,15 +642,7 @@ function handleStatusUpdate(status_updates) {
   if ("playtime-remaining" in status_updates){
     document.getElementById("playtime-remaining").innerHTML =
       "-" + format_time(new_status['playtime-remaining'])
-
-    // derive position value if not given
-    /* // bad idea because playback-time is scaled by speed, but duration not
-    if (!("playback-time" in status_updates )
-      && "duration" in new_status){
-      d = new_status["duration"] - new_status["playtime-remaining"]
-      status_updates["playback-time"] = (d>=0.0?d:0.0)
-      new_status["playback-time"] = (d>=0.0?d:0.0)
-    }*/
+			+ ((new_status['speed'] && new_status['speed'] != 1.0)?` (x ${Number(new_status['speed']).toFixed(2)})`:'')
   }
   if ("sub-delay" in status_updates){
     setSubDelay(new_status['sub-delay'])
