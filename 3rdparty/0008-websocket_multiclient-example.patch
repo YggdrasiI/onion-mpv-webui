@@ -1,8 +1,13 @@
-commit e6c19ad77983c7c7d368dbcf88cf4e4c332f7d41
-Author: Olaf Schulz <olaf_schulz@posteo.de>
-Date:   Wed Oct 26 00:44:49 2022 +0200
+From e6c19ad77983c7c7d368dbcf88cf4e4c332f7d41 Mon Sep 17 00:00:00 2001
+From: Olaf Schulz <olaf_schulz@posteo.de>
+Date: Wed, 26 Oct 2022 00:44:49 +0200
+Subject: [PATCH] Add websocket_multiclient example program
 
-    Add websocket_multiclient example program
+---
+ examples/websockets/CMakeLists.txt           |   3 +
+ examples/websockets/websockets_multiclient.c | 326 +++++++++++++++++++
+ 2 files changed, 329 insertions(+)
+ create mode 100644 examples/websockets/websockets_multiclient.c
 
 diff --git a/examples/websockets/CMakeLists.txt b/examples/websockets/CMakeLists.txt
 index c9f8b01..aa5573b 100644
@@ -347,3 +352,6 @@ index 0000000..c916d6a
 +  onion_free(o);
 +  return 0;
 +}
+-- 
+2.25.1
+

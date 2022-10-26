@@ -1,16 +1,22 @@
-commit 0d86d827a300e1b47490405c0c4088d158403a95
-Author: Olaf Schulz <olaf_schulz@posteo.de>
-Date:   Wed Oct 26 00:22:15 2022 +0200
+From 0d86d827a300e1b47490405c0c4088d158403a95 Mon Sep 17 00:00:00 2001
+From: Olaf Schulz <olaf_schulz@posteo.de>
+Date: Wed, 26 Oct 2022 00:22:15 +0200
+Subject: [PATCH] Websocket changes
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
-    Websocket changes
-    
-    • Correct constants OWS_PING and OWS_PONG in websocket header.
-    • Add payload handling of ping messages.
-    • Correct handling of messages without data. Sometimes the
-      header reading was invoked even if no data was available.
-      This leads to SEGFAULT.
-      Example message: /ping with 'wscat'
-      Solved by prepend check if more data is available.
+• Correct constants OWS_PING and OWS_PONG in websocket header.
+• Add payload handling of ping messages.
+• Correct handling of messages without data. Sometimes the
+  header reading was invoked even if no data was available.
+  This leads to SEGFAULT.
+  Example message: /ping with 'wscat'
+  Solved by prepend check if more data is available.
+---
+ src/onion/types.h     |  4 ++--
+ src/onion/websocket.c | 45 ++++++++++++++++++++++++++++++++-----------
+ 2 files changed, 36 insertions(+), 13 deletions(-)
 
 diff --git a/src/onion/types.h b/src/onion/types.h
 index 5ef24be..d86ced9 100644
@@ -96,3 +102,6 @@ index 7a95a8c..83a57cc 100644
  
        size_t last_d_l;
        do {
+-- 
+2.25.1
+
