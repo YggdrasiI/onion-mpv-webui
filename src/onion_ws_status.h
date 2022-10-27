@@ -1,11 +1,19 @@
-#include <onion/websocket.h>
+#include <time.h>
 #include <pthread.h>
+#include <onion/websocket.h>
 
 #include <mpv/client.h>
 
 #define MAX_ACTIVE_CLIENTS 20
 #define NUM_PROPS 50
 #define REPLY_ID_OFFSET 10000
+
+// To avoid permanent propagation of property changes
+// this value in milliseconds defines a minimal
+// time between two updates. 
+// It is set for variables known for change during play,
+// e.g. 'time-pos'
+#define MINIMAL_TIME_BETWEEN_PROPERTY_UPDATE 500
 
 // Maximal allowed size of messages from clients
 #define WS_MAX_BUFFER_SIZE (1<<12)
@@ -14,13 +22,13 @@
 typedef struct __websocket_t {
     onion_websocket *ws;
     pthread_mutex_t lock;
-} __websocket_t;
+} __websocket;
 
 typedef struct __clients_t {
-    __websocket_t clients[MAX_ACTIVE_CLIENTS];
+    __websocket clients[MAX_ACTIVE_CLIENTS];
     int num_active_clients;
     pthread_mutex_t lock;
-} __clients_t;
+} __clients;
 
 // Data of user session
 typedef struct ws_userdata_t {
@@ -45,15 +53,15 @@ int __chunked_websocket_vprintf(onion_websocket * ws, const char *fmt, va_list a
 int __chunked_websocket_printf(onion_websocket * ws, const char *fmt, ...);
 
 
-__clients_t *clients_init();
+__clients *clients_init();
 
 
 void clients_uninit(
-        __clients_t *pclients);
+        __clients *pclients);
 
 
-__websocket_t *add_client(
-        __clients_t *pclients,
+__websocket *add_client(
+        __clients *pclients,
         onion_websocket *ws);
 
 ws_userdata *ws_userdata_new(
@@ -62,7 +70,7 @@ ws_userdata *ws_userdata_new(
 void ws_userdata_free(void * data);
 
 int remove_client(
-        __clients_t *pclients,
+        __clients *pclients,
         size_t index);
 
 
@@ -89,21 +97,25 @@ typedef struct __property_t {
        mpv_format format;
        void *data;
        */
+    mpv_node value; // copy of input struct, but strdup's strings
 
     // extra elements
     mpv_format format_out;
     uint64_t userdata;
     char initialized;
     char updated;
+    struct timespec last_update_time;
+    struct timespec next_update_time;
+    struct timespec minimal_update_diff;
 
     char *json;
 
-} __property_t;
+} __property;
 
-typedef struct __status_t {
+typedef struct __status {
   char *json;
   int num_props;
-  __property_t* props;
+  __property* props;
 
   int num_initialized;
   int num_updated;
@@ -114,66 +126,82 @@ typedef struct __status_t {
   pthread_mutex_t lock;
   pthread_mutex_t init_in_process;
   pthread_cond_t init_done;
-} __status_t;
+} __status;
 
 
 
-__property_t property_init(
+__property property_init(
         const char *name,
         mpv_format format,
         mpv_format format_out,
+        uint32_t update_interval_ms,
         uint64_t userdata);
 
 void property_free(
-        __property_t *property);
+        __property *prop);
 
 /* Converts input into json key-value-pair.  */
 void property_update(
-        __status_t *status,
+        __status *status,
         mpv_event_property *in,
-        __property_t *out);
+        __property *out);
 
-int property_reobserve(const char *prop_name);
+int property_reobserve(
+        const char *prop_name);
 
-__status_t *status_init();
+__status *status_init();
 
 
 void status_free(
-        __status_t *status);
+        __status *status);
 
 
 int status_observe(
         mpv_handle *mpv,
-        __status_t *status);
+        __status *status);
 
 
 void status_unobserve(
         mpv_handle *mpv,
-        __status_t *status);
+        __status *status);
 
 
 void status_update(
-        __status_t *status,
+        __status *status,
         mpv_handle *mpv,
         mpv_event *event);
 
 
 void status_set_initialized(
-        __status_t *status);
+        __status *status);
 
 void status_send_update(
-        __status_t *status,
-        __clients_t *pclients);
+        __status *status,
+        __clients *pclients,
+        int force);
 
 
 // intern
 void status_build_full_json(
-        __status_t *status);
+        __status *status);
 
 void clients_close(
-        __status_t *status,
-        __clients_t *pclients);
+        __status *status,
+        __clients *pclients);
 
+
+/* in onion_ws_time.c */
+// Returns 1 if update interval exceeded.
+int time_diff_reached(
+        __property *prop,
+        const struct timespec *new_time);
+
+void update_timestamp(
+        __property *prop,
+        const struct timespec * time);
+
+void fetch_timestamp(
+        struct timespec * pspec);
 
 // ================== END mpv releated part ===============
 
@@ -187,7 +215,9 @@ void clients_close(
  *
  * Free return result after usage.
  */
-char * utf8_quote_with_escape(char *src, char quote_char);
+char * utf8_quote_with_escape(
+        char *src,
+        char quote_char);
 
 /*
    char *json = NULL;

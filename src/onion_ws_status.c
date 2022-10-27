@@ -38,8 +38,8 @@
 #include "utf8.h"
 
 // ================== BEGIN onion releated part ===============
-extern __clients_t *websockets;
-extern __status_t *status;
+extern __clients *websockets;
+extern __status *status;
 #ifdef WITH_MPV
 extern mpv_handle *mpv;
 #else
@@ -69,13 +69,13 @@ enum onion_websocket_status_e {
     = {((NUM>>8)&0xFF) , ((NUM)&0xFF)};
 
 // Helper function
-int __property_observe(__property_t *prop);
-int __property_reobserve(__property_t *prop);
+int __property_observe(__property *prop);
+int __property_reobserve(__property *prop);
 
 
-__clients_t *clients_init()
+__clients *clients_init()
 {
-    __clients_t *pclients  = calloc(sizeof(__clients_t), 1);
+    __clients *pclients  = calloc(sizeof(__clients), 1);
     pclients->num_active_clients = 0;
     pthread_mutex_init(&pclients->lock, NULL);
 
@@ -88,8 +88,8 @@ __clients_t *clients_init()
 }
 
 void clients_close(
-        __status_t *status,
-        __clients_t *pclients)
+        __status *status,
+        __clients *pclients)
 {
     ONION_INFO("Closing websockets…");
 
@@ -102,7 +102,7 @@ void clients_close(
     }
     int i, j;
     for( i=0, j=0; i<MAX_ACTIVE_CLIENTS; ++i){
-        __websocket_t *pclient = &pclients->clients[i];
+        __websocket *pclient = &pclients->clients[i];
         if ( pclient->ws ){
 
             onion_websocket *ws = pclient->ws;
@@ -135,7 +135,7 @@ void clients_close(
 }
 
 void clients_uninit(
-        __clients_t *pclients)
+        __clients *pclients)
 {
     /* Send closing information and remove client. */
     if (pclients == NULL){
@@ -143,7 +143,7 @@ void clients_uninit(
     }
     int i;
     for( i=0; i<MAX_ACTIVE_CLIENTS; ++i){
-        __websocket_t *pclient = &pclients->clients[i];
+        __websocket *pclient = &pclients->clients[i];
         //pclient->ws = NULL; // weak reference (destroyed by libonion)
         if ( pclient->ws ){
             pthread_mutex_lock(&pclients->lock);
@@ -160,8 +160,8 @@ void clients_uninit(
     pthread_mutex_destroy(&pclients->lock);
 }
 
-__websocket_t *add_client(
-        __clients_t *clients,
+__websocket *add_client(
+        __clients *clients,
         onion_websocket *ws)
 {
     /* Store in array of active clients */
@@ -183,7 +183,7 @@ __websocket_t *add_client(
     }
 
     // Insert into clients array
-    __websocket_t *client = &clients->clients[n];
+    __websocket *client = &clients->clients[n];
     pthread_mutex_lock(&client->lock);
     ONION_INFO("Save websocket pointer on position %d", n);
     client->ws = ws;
@@ -212,7 +212,7 @@ void ws_userdata_free(
         void * data)
 {
   ws_userdata *userdata = (ws_userdata *) data; 
-  //__websocket_t *client = &clients->clients[userdata->index];
+  //__websocket *client = &clients->clients[userdata->index];
 
   remove_client(websockets, userdata->index);
   pthread_mutex_lock(&websockets->lock);
@@ -228,7 +228,7 @@ void ws_userdata_free(
 }
 
 int remove_client(
-        __clients_t *clients,
+        __clients *clients,
         size_t index)
 {
     if (index > MAX_ACTIVE_CLIENTS) {
@@ -237,7 +237,7 @@ int remove_client(
     }
 
     pthread_mutex_lock(&clients->lock);
-    __websocket_t *client = &clients->clients[index];
+    __websocket *client = &clients->clients[index];
     pthread_mutex_lock(&client->lock);
     ONION_INFO("Remove websocket pointer on position %d", index);
     client->ws = NULL;
@@ -313,7 +313,7 @@ onion_connection_status ws_status_start(
     ONION_INFO("Websocket started!");
 
     // Store in array of active clients
-    __websocket_t *client = add_client(websockets, ws);
+    __websocket *client = add_client(websockets, ws);
     if (client == NULL){
         onion_websocket_set_opcode(ws, OWS_TEXT);
         __chunked_websocket_printf(ws, "{\"status_info\": \"-1\","
@@ -386,7 +386,7 @@ onion_connection_status ws_status_start(
 // Call onion_websocket_read if new data is available 
 // and terminate string with '\0' .
 int __read_string(
-        __websocket_t *client,
+        __websocket *client,
         char *tmp,
         ssize_t data_ready_len)
 {
@@ -413,7 +413,7 @@ onion_connection_status ws_status_cont(
     ws_userdata *userdata = (ws_userdata *) ws->user_data;
     assert (0 <= userdata->index && userdata->index < MAX_ACTIVE_CLIENTS);
     assert (ws == websockets->clients[userdata->index].ws);
-    __websocket_t *client = &websockets->clients[userdata->index];
+    __websocket *client = &websockets->clients[userdata->index];
 
     // Handle closing message
     if( opcode == OWS_CONNECTION_CLOSE ){
@@ -486,10 +486,11 @@ cleanup_and_end:
 
 // ================== BEGIN mpv releated part ===============
 
-__property_t property_init(
+__property property_init(
         const char *name,
         mpv_format format,
         mpv_format format_out,
+        uint32_t update_interval_ms,
         uint64_t userdata)
 {
     assert( ( format_out == MPV_FORMAT_INT64
@@ -502,51 +503,66 @@ __property_t property_init(
                 && format == MPV_FORMAT_NODE_ARRAY)
           );
 
-    __property_t ret;
+    __property ret;
     ret.node.name = name;
     ret.node.format = format;
     ret.node.data = NULL;
+    ret.value = (mpv_node){0};
     //ret.initialized = 0;
     ret.format_out = format_out;
     ret.userdata = userdata;
     ret.updated = 0;
+    ret.last_update_time = (struct timespec){.tv_sec=0, .tv_nsec=0};
+    ret.next_update_time = (struct timespec){.tv_sec=0, .tv_nsec=0};
+    ret.minimal_update_diff = (struct timespec){
+        .tv_sec=update_interval_ms/1000,         // seconds
+        .tv_nsec=(update_interval_ms%1000) * 1E6 // nanoseconds
+    };
     ret.json = NULL;
 
     return ret;
 }
 
 void property_free(
-        __property_t *property)
+        __property *prop)
 {
-    free(property->json);
+    if (prop->value.format == MPV_FORMAT_STRING) {
+        if (prop->value.u.string != prop->json) {
+            free(prop->value.u.string);
+        }
+    }
+    free(prop->json);
 }
 
-/* Converts input into json key-value-pair.  */
-void property_update(
-        __status_t *status,
-        mpv_event_property *in,
-        __property_t *out)
-{
-    char changed = 0;
 
-    //ONION_INFO("\nFormat in: %d\nFormat out: %d\nFormat expected:%d\n",
-    //        in->format, out->format_out, out->node.format);
+void parse_value(
+        __property *out){
 
-    pthread_mutex_lock(&status->lock);
 
-    if (in->format == MPV_FORMAT_NONE){
+    if (out->value.format == MPV_FORMAT_STRING) {
+        if (out->json == out->value.u.string) {
+            ONION_DEBUG("Double parsing of same string. Probably some logic is broken.")
+            return;
+        }
+
+        // Node is already parsed. Just map pointer;
+        FREE(out->json);
+        out->json = out->value.u.string;
+        return;
+    }
+
+    FREE(out->json);
+    if (out->value.format == MPV_FORMAT_NONE) {
         // no data avail for this mpv property
-        // return;
         /* Note 'chapter' has this format if 'chapters' is empty.
          * we can not simply ignore None-Nodes because
          * we wait on all properties if the observertion has started.
          */
-        FREE(out->json);
         switch(out->format_out){
             case MPV_FORMAT_STRING:
                 //asprintf(&out->json, "\"%s\": \"undefined\"", out->node.name);
                 out->json = strdup("\"undefined\"");
-                break;
+               break;
             case MPV_FORMAT_NODE_MAP:
                 //asprintf(&out->json, "\"%s\": []", out->node.name);
                 out->json = strdup("[]");
@@ -569,39 +585,119 @@ void property_update(
                 out->json = strdup("null");
                 break;
         }
-        changed = 1;
-
-    }else if (in->format == MPV_FORMAT_NODE){
-        mpv_node *result_node = (mpv_node *)(in->data);
-        //ONION_INFO("\nNode: %d", result_node->format);
-
-        if( result_node->format == out->format_out ){
-            FREE(out->json);
-            switch(result_node->format){
+    } else if (out->value.format == MPV_FORMAT_NODE) {
+        if( out->value.format == out->format_out ){
+            switch(out->value.format){
                 case MPV_FORMAT_INT64:
                     {
-                        int64_t ivalue = (result_node->u.int64);
+                        int64_t ivalue = (out->value.u.int64);
                         //asprintf(&out->json, "\"%s\": %ld",
                         //        out->node.name, ivalue);
                         asprintf(&out->json, "%ld", ivalue);
-                        changed = 1;
+                        out->value.format = MPV_FORMAT_STRING;
                         break;
                     }
                 case MPV_FORMAT_FLAG:
                     {
-                        int bvalue = (result_node->u.flag);
+                        int bvalue = (out->value.u.flag);
                         //asprintf(&out->json, "\"%s\": \"%s\"",
                         //        out->node.name, bvalue?"yes":"no");
                         asprintf(&out->json, "\"%s\"", bvalue?"yes":"no");
-                        changed = 1;
+                        out->value.format = MPV_FORMAT_STRING;
                         break;
                     }
                 case MPV_FORMAT_DOUBLE:
                     {
-                        double fvalue = (result_node->u.double_);
+                        double fvalue = (out->value.u.double_);
                         //asprintf(&out->json, "\"%s\": %lf",
                         //        out->node.name, fvalue);
                         asprintf(&out->json, "%lf", fvalue);
+                        out->value.format = MPV_FORMAT_STRING;
+                        break;
+                    }
+                case MPV_FORMAT_STRING:
+                    {
+                        out->json = out->value.u.string;
+                        break;
+                    }
+            }
+        }else{
+            // case already handled in property_update
+            out->json = out->value.u.string;
+        }
+    }else if (out->format_out == MPV_FORMAT_NODE_MAP
+            || out->format_out == MPV_FORMAT_NODE_ARRAY)
+    {
+        // case already handled in property_update
+        out->json = out->value.u.string;
+    }else{
+        if( out->value.format == out->format_out ){
+            switch(out->value.format){
+                case MPV_FORMAT_INT64:
+                    {
+                        asprintf(&out->json, "%ld", out->value.u.int64);
+                        break;
+                    }
+                case MPV_FORMAT_FLAG:
+                    {
+                        asprintf(&out->json, "\"%s\"", out->value.u.flag?"yes":"no");
+                        break;
+                    }
+                case MPV_FORMAT_DOUBLE:
+                    {
+                        asprintf(&out->json, "%lf", out->value.u.double_);
+                        break;
+                    }
+                case MPV_FORMAT_STRING:
+                    {
+                        // case already handled in property_update
+                        out->json = out->value.u.string;
+                        break;
+                    }
+            }
+        }else{
+            // case already handled in property_update
+            out->json = out->value.u.string;
+        }
+    }
+
+    assert(out->json != NULL);
+}
+
+/* Converts input into json key-value-pair.  */
+void property_update(
+        __status *status,
+        mpv_event_property *in,
+        __property *out)
+{
+    char changed = 0;
+
+    //ONION_INFO("\nFormat in: %d\nFormat out: %d\nFormat expected:%d\n",
+    //        in->format, out->format_out, out->node.format);
+
+    pthread_mutex_lock(&status->lock);
+
+    // If out->value maps on dynamic allocated data we 
+    // need to copy content now. Otherwise, we can delay/omit its parsing.
+    if (in->format == MPV_FORMAT_NONE){
+        // no data avail for this mpv property. Gen dummy entries.
+        /* Note 'chapter' has this format if 'chapters' is empty.
+         * we can not simply ignore None-Nodes because
+         * we wait on all properties if the observertion has started.
+         */
+        out->value.format = MPV_FORMAT_NONE;
+        changed = 1;
+
+    }else if (in->format == MPV_FORMAT_NODE){
+        mpv_node *result_node = (mpv_node *)(in->data);
+        out->value = *result_node;
+
+        if( result_node->format == out->format_out ){
+            switch(result_node->format){
+                case MPV_FORMAT_INT64:
+                case MPV_FORMAT_FLAG:
+                case MPV_FORMAT_DOUBLE:
+                    {
                         changed = 1;
                         break;
                     }
@@ -611,98 +707,102 @@ void property_update(
                         //asprintf(&out->json, "\"%s\": \"%s\"",
                         //        out->node.name, svalue);
                         // Store escaped variant between quotes
-                        out->json = utf8_quote_with_escape(svalue, '"');
-                        changed = 1;
+                        out->value.format = MPV_FORMAT_STRING;
+                        out->value.u.string = utf8_quote_with_escape(svalue, '"');
+                        changed = 2;
                         break;
                     }
             }
         }else{
-          if ( result_node->format == MPV_FORMAT_STRING &&
-                  out->format_out == MPV_FORMAT_FLAG ){
-              // This will be reached if loop_playlist is set to "inf"
-              // Maybe a wrong value for a flag?! (Copied bug)
-              char *svalue = (result_node->u.string);
-              out->json = utf8_quote_with_escape(svalue, '"');
-              changed = 1;
-          }else{
-              ONION_INFO("mpv_node missmatch. Format in: %d, Format out: %d",
-                      result_node->format, out->format_out );
-          }
+            if ( result_node->format == MPV_FORMAT_STRING &&
+                    out->format_out == MPV_FORMAT_FLAG ){
+                // This will be reached if loop_playlist is set to "inf"
+                // Maybe a wrong value for a flag?! (Copied bug)
+                char *svalue = (result_node->u.string);
+                out->value.format = MPV_FORMAT_STRING;
+                out->value.u.string = utf8_quote_with_escape(svalue, '"');
+                changed = 2;
+            }else{
+                ONION_INFO("mpv_node missmatch. Format in: %d, Format out: %d",
+                        result_node->format, out->format_out );
+                out->value.format = MPV_FORMAT_STRING;
+                out->value.u.string = strdup("???");
+                changed = 2;
+            }
         }
-
     }else if (out->format_out == MPV_FORMAT_NODE_MAP
             || out->format_out == MPV_FORMAT_NODE_ARRAY)
     {
         assert( in->format == MPV_FORMAT_STRING );
-        FREE(out->json);
         char *svalue = *(char **)(in->data);
+        out->value.format = MPV_FORMAT_STRING;
         // Print lists and dicts without quotes
-        //asprintf(&out->json, "\"%s\": %s",
+        //asprintf(&out->value.u.string, "\"%s\": %s",
         //        out->node.name, svalue);
-        out->json = strdup(svalue);
+        out->value.u.string = strdup(svalue);
         // NOTE: Array is already converted in a json-string
         // No further escaping required/useful.
-        changed = 1;
+        changed = 2;
     }else{
         assert( in->format == out->format_out );
-        if( in->format == out->format_out ){
-            FREE(out->json);
-            switch(in->format){
+        if (in->format == out->format_out) {
+            out->value.format = in->format;
+            switch(out->value.format){
                 case MPV_FORMAT_INT64:
                     {
                         int64_t *ivalue = *(int64_t **)(in->data);
-                        //asprintf(&out->json, "\"%s\": %ld",
-                        //        out->node.name, *ivalue);
-                        asprintf(&out->json, "%ld", *ivalue);
+                        out->value.u.int64 = *ivalue;
                         changed = 1;
                         break;
                     }
                 case MPV_FORMAT_FLAG:
                     {
                         int *bvalue = *(int **)(in->data);
-                        //asprintf(&out->json, "\"%s\": \"%s\"",
-                        //        out->node.name, bvalue?"yes":"no");
-                        asprintf(&out->json, "\"%s\"", bvalue?"yes":"no");
+                        out->value.u.flag = *bvalue;
                         changed = 1;
                         break;
                     }
                 case MPV_FORMAT_DOUBLE:
                     {
                         double *fvalue = *(double **)(in->data);
-                        //asprintf(&out->json, "\"%s\": %lf",
-                        //        out->node.name, *fvalue);
-                        asprintf(&out->json, "%lf",*fvalue);
+                        out->value.u.double_ = *fvalue;
                         changed = 1;
                         break;
                     }
                 case MPV_FORMAT_STRING:
                     {
                         char *svalue = *(char **)(in->data);
-                        //asprintf(&out->json, "\"%s\": \"%s\"",
+                        out->value.format = MPV_FORMAT_STRING;
+                        //asprintf(&out->value.u.string, "\"%s\": \"%s\"",
                         //        out->node.name, svalue);
                         // Store escaped variant between quotes
-                        out->json = utf8_quote_with_escape(svalue, '"');
-                        changed = 1;
+                        out->value.u.string = utf8_quote_with_escape(svalue, '"');
+                        changed = 2;
                         break;
                     }
             }
         }else{
-          if ( in->format == MPV_FORMAT_STRING &&
-                  out->format_out == MPV_FORMAT_FLAG ){
-              // This will be reached if loop_playlist is set to "inf"
-              // Maybe a wrong value for a flag?! (Copied bug)
-              char *svalue = *(char **)(in->data);
-              out->json = utf8_quote_with_escape(svalue, '"');
-              changed = 1;
-          }else{
-              ONION_INFO("mpv_node missmatch. Format in: %d, Format out: %d",
-                      in->format, out->format_out );
-          }
+            if ( in->format == MPV_FORMAT_STRING &&
+                    out->format_out == MPV_FORMAT_FLAG ){
+                // This will be reached if loop_playlist is set to "inf"
+                // Maybe a wrong value for a flag?! (Copied bug)
+                char *svalue = *(char **)(in->data);
+                out->value.format = MPV_FORMAT_STRING;
+                out->value.u.string = utf8_quote_with_escape(svalue, '"');
+                changed = 2;
+            }else{
+                ONION_INFO("mpv_node missmatch. Format in: %d, Format out: %d",
+                        in->format, out->format_out );
+                out->value.format = MPV_FORMAT_STRING;
+                out->value.u.string = strdup("???");
+                changed = 2;
+            }
         }
     }
 
-    assert( out->json != NULL );
-
+    /* changed == 2: New json string is ready.
+     * changed == 1: New json string can be generated from out->value
+     */
     if (changed){
         if (out->initialized == 0 ){
             status->num_initialized += 1;
@@ -715,6 +815,9 @@ void property_update(
 
     if( status->num_updated == 0 ){
         ONION_INFO("Init: %d/%d", status->num_initialized, status->num_props);
+        // Ignore update_interval_ms (MINIMAL_TIME_BETWEEN_PROPERTY_UPDATE)
+        // during initialization, but parse directly.
+        parse_value(out);
     }
 
     if ( status->is_initialized  == 0
@@ -727,45 +830,49 @@ void property_update(
 }
 
 
-__status_t *status_init()
+__status *status_init()
 {
-    __status_t *status = calloc(sizeof(__status_t), 1);
+    __status *status = calloc(sizeof(__status), 1);
 
-    status->props = calloc(sizeof(__property_t), NUM_PROPS);
-#define ADD(NAME, TYPE, TYPE_OUT) if( pos<NUM_PROPS ) {\
-    status->props[pos++] = property_init(NAME, TYPE, TYPE_OUT, REPLY_ID_OFFSET + pos); } \
+    status->props = calloc(sizeof(__property), NUM_PROPS);
+#define ADD(NAME, TYPE, TYPE_OUT, UPDATE_INTERVAL) \
+    if( pos<NUM_PROPS ) {\
+        status->props[pos++] = property_init(\
+                NAME, TYPE, TYPE_OUT,\
+                UPDATE_INTERVAL, \
+                REPLY_ID_OFFSET + pos); } \
     else { printf("Increase NUM_PROPS"); }
     //TYPE_OUT needs to be the internal type of the property
     //in mpv if TYPE is MPV_FORMAT_NODE.
     int pos = 0;
     //ADD("filename", MPV_FORMAT_NODE, MPV_FORMAT_STRING); // encoding problem?!
-    ADD("filename", MPV_FORMAT_STRING, MPV_FORMAT_STRING);
-    ADD("duration", MPV_FORMAT_NODE, MPV_FORMAT_DOUBLE);
-    ADD("time-pos", MPV_FORMAT_NODE, MPV_FORMAT_DOUBLE);
+    ADD("filename", MPV_FORMAT_STRING, MPV_FORMAT_STRING, 0);
+    ADD("duration", MPV_FORMAT_NODE, MPV_FORMAT_DOUBLE, MINIMAL_TIME_BETWEEN_PROPERTY_UPDATE);
+    ADD("time-pos", MPV_FORMAT_NODE, MPV_FORMAT_DOUBLE, MINIMAL_TIME_BETWEEN_PROPERTY_UPDATE);
     // time-remaining = duration - time-pos
-    ADD("playtime-remaining", MPV_FORMAT_NODE, MPV_FORMAT_DOUBLE);  //scaled by speed
-    //ADD("playback-time", MPV_FORMAT_NODE, MPV_FORMAT_DOUBLE);  // redundant and scaled by speed
-    //ADD("metadata", MPV_FORMAT_NODE_MAP, MPV_FORMAT_STRING);
-    ADD("metadata", MPV_FORMAT_NODE_MAP, MPV_FORMAT_NODE_MAP);
-    ADD("volume", MPV_FORMAT_NODE,  MPV_FORMAT_DOUBLE);
-    ADD("volume-max", MPV_FORMAT_NODE,  MPV_FORMAT_DOUBLE);
-    ADD("playlist", MPV_FORMAT_NODE_MAP, MPV_FORMAT_NODE_MAP);
-    ADD("track-list", MPV_FORMAT_NODE_MAP, MPV_FORMAT_NODE_MAP);
+    ADD("playtime-remaining", MPV_FORMAT_NODE, MPV_FORMAT_DOUBLE, MINIMAL_TIME_BETWEEN_PROPERTY_UPDATE);  //scaled by speed
+    //ADD("playback-time", MPV_FORMAT_NODE, MPV_FORMAT_DOUBLE, 0);  // redundant and scaled by speed
+    //ADD("metadata", MPV_FORMAT_NODE_MAP, MPV_FORMAT_STRING, 0);
+    ADD("metadata", MPV_FORMAT_NODE_MAP, MPV_FORMAT_NODE_MAP, 0);
+    ADD("volume", MPV_FORMAT_NODE,  MPV_FORMAT_DOUBLE, MINIMAL_TIME_BETWEEN_PROPERTY_UPDATE);
+    ADD("volume-max", MPV_FORMAT_NODE,  MPV_FORMAT_DOUBLE, 0);
+    ADD("playlist", MPV_FORMAT_NODE_MAP, MPV_FORMAT_NODE_MAP, 0);
+    ADD("track-list", MPV_FORMAT_NODE_MAP, MPV_FORMAT_NODE_MAP, 0);
     // Format of chapter list: [{'title':'chapter 1', 'time': 1.0},...]
-    ADD("chapter-list", MPV_FORMAT_NODE_MAP, MPV_FORMAT_NODE_MAP)
-    ADD("loop-file", MPV_FORMAT_NODE,  MPV_FORMAT_FLAG);
-    ADD("loop-playlist", MPV_FORMAT_NODE,  MPV_FORMAT_FLAG);
-    ADD("chapters", MPV_FORMAT_NODE, MPV_FORMAT_INT64);  // no list of  chapter titles, but number
+    ADD("chapter-list", MPV_FORMAT_NODE_MAP, MPV_FORMAT_NODE_MAP, 0)
+    ADD("loop-file", MPV_FORMAT_NODE,  MPV_FORMAT_FLAG, 0);
+    ADD("loop-playlist", MPV_FORMAT_NODE,  MPV_FORMAT_FLAG, 0);
+    ADD("chapters", MPV_FORMAT_NODE, MPV_FORMAT_INT64, 0);  // no list of  chapter titles, but number
 
-    ADD("sub-delay", MPV_FORMAT_NODE, MPV_FORMAT_DOUBLE);
+    ADD("sub-delay", MPV_FORMAT_NODE, MPV_FORMAT_DOUBLE, 0);
     //ADD("sub-delay", MPV_FORMAT_DOUBLE, MPV_FORMAT_STRING); // not '[num] ms' but 0.00…
-    ADD("audio-delay", MPV_FORMAT_NODE, MPV_FORMAT_DOUBLE);
-    ADD("speed", MPV_FORMAT_NODE, MPV_FORMAT_DOUBLE);
+    ADD("audio-delay", MPV_FORMAT_NODE, MPV_FORMAT_DOUBLE, 0);
+    ADD("speed", MPV_FORMAT_NODE, MPV_FORMAT_DOUBLE, 0);
 
-    ADD("pause", MPV_FORMAT_NODE,  MPV_FORMAT_FLAG);
-    ADD("fullscreen", MPV_FORMAT_NODE,  MPV_FORMAT_FLAG);
-    ADD("chapter", MPV_FORMAT_NODE, MPV_FORMAT_INT64);
-    ADD("chapter-metadata", MPV_FORMAT_NODE_MAP, MPV_FORMAT_NODE_MAP); // like metadata, but rare. Usually chapter title only.
+    ADD("pause", MPV_FORMAT_NODE,  MPV_FORMAT_FLAG, 0);
+    ADD("fullscreen", MPV_FORMAT_NODE,  MPV_FORMAT_FLAG, 0);
+    ADD("chapter", MPV_FORMAT_NODE, MPV_FORMAT_INT64, 0);
+    ADD("chapter-metadata", MPV_FORMAT_NODE_MAP, MPV_FORMAT_NODE_MAP, 0); // like metadata, but rare. Usually chapter title only.
     // chapter-metadata redundant to chapter-list entry..
     status->num_props = pos;
 #undef ADD
@@ -783,7 +890,7 @@ __status_t *status_init()
 }
 
 void status_free(
-        __status_t *status)
+        __status *status)
 {
     int pos;
     for( pos=0; pos<status->num_props; ++pos){
@@ -798,7 +905,7 @@ void status_free(
 
 int status_observe(
         mpv_handle *mpv,
-        __status_t *status)
+        __status *status)
 {
     if (status->is_observed) {
         return 0;
@@ -807,9 +914,10 @@ int status_observe(
     pthread_mutex_lock(&status->lock);
     int pos;
     for( pos=0; pos<status->num_props; ++pos){
-        __property_t *prop = &status->props[pos];
+        __property *prop = &status->props[pos];
         prop->initialized = 0;
         prop->updated = 0;
+        prop->next_update_time = (struct timespec){.tv_sec=0, .tv_nsec=0};
         FREE(prop->json);
         __property_observe(prop);
     }
@@ -829,7 +937,7 @@ int status_observe(
 }
 
 
-int __property_observe(__property_t *prop){
+int __property_observe(__property *prop){
 #ifdef WITH_MPV
     if ( prop->node.format == MPV_FORMAT_NODE
             &&  ( prop->format_out == MPV_FORMAT_STRING
@@ -884,12 +992,12 @@ int __property_observe(__property_t *prop){
     }
     prop->initialized = 1;
     prop->updated = 0;
-    return 0;
 #endif
+    return 0;
 }
 
 // To trigger fetching of data again.
-int __property_reobserve(__property_t *prop){
+int __property_reobserve(__property *prop){
     // Remove property first to avoid multiple observation
     // of same variable.
 
@@ -907,7 +1015,7 @@ int __property_reobserve(__property_t *prop){
 
 int property_reobserve(const char *prop_name){
     for( int pos=0; pos<status->num_props; ++pos){
-        __property_t *prop = &status->props[pos];
+        __property *prop = &status->props[pos];
         if (0 == strcmp(prop->node.name, prop_name)){
             return __property_reobserve(prop);
         }
@@ -918,7 +1026,7 @@ int property_reobserve(const char *prop_name){
 
 void status_unobserve(
         mpv_handle *mpv,
-        __status_t *status)
+        __status *status)
 {
     pthread_mutex_lock(&status->lock);
     if (status->is_observed) {
@@ -926,7 +1034,7 @@ void status_unobserve(
         int pos;
         for( pos=0; pos<status->num_props; ++pos){
 #ifdef WITH_MPV
-            __property_t *prop = &status->props[pos];
+            __property *prop = &status->props[pos];
             int u = mpv_unobserve_property(mpv, prop->userdata);
             assert(u == 1); // assume that just one observation for each userdata exists
 #endif
@@ -944,7 +1052,7 @@ void status_unobserve(
 
 
 void status_update(
-        __status_t *status,
+        __status *status,
         mpv_handle *mpv,
         mpv_event *event)
 {
@@ -960,20 +1068,20 @@ void status_update(
 
     int prop_index = userdata - REPLY_ID_OFFSET;
     //ONION_INFO("update observed property '%s'", prop_in->name);
-    __property_t *prop_out = &status->props[prop_index];
+    __property *prop_out = &status->props[prop_index];
     property_update(status, prop_in, prop_out);
 }
 
 void send_to_all_clients(
-        __clients_t *pclients,
-        __property_t *prop)
+        __clients *pclients,
+        __property *prop)
 {
     int i;
 
 #if 0
     // Test PING/PONG mechanism
     for( i=0; i<MAX_ACTIVE_CLIENTS; ++i){
-        __websocket_t *pclient = &pclients->clients[i];
+        __websocket *pclient = &pclients->clients[i];
         if ( pclient->ws ){
             char pl[] = "payload";
             ONION_INFO("Send PING to client %d", i);
@@ -986,7 +1094,7 @@ void send_to_all_clients(
 #endif
 
     for( i=0; i<MAX_ACTIVE_CLIENTS; ++i){
-        __websocket_t *pclient = &pclients->clients[i];
+        __websocket *pclient = &pclients->clients[i];
         if ( pclient->ws ){
             //ONION_INFO("Send websocket msg");
             pthread_mutex_lock(&pclient->lock);
@@ -1000,7 +1108,7 @@ void send_to_all_clients(
 
 
 void status_build_full_json(
-        __status_t *status)
+        __status *status)
 {
     pthread_mutex_lock(&status->lock);
 
@@ -1038,7 +1146,7 @@ void status_build_full_json(
         char *end = json;
         end = stpcpy(end, __json_start);
         for(n=0; n<N; ++n){
-            __property_t *prop = &status->props[n];
+            __property *prop = &status->props[n];
             if (prop->initialized){
                 if( n>0) {
                     end = stpcpy(end, __json_sep);
@@ -1060,7 +1168,7 @@ void status_build_full_json(
 }
 
 void status_set_initialized(
-        __status_t *status)
+        __status *status)
 {
     ONION_INFO("Mark status as initialized.");
     pthread_mutex_lock(&status->lock);
@@ -1072,25 +1180,48 @@ void status_set_initialized(
 
 }
 
+/*
+ * Checks if proprety was updated by mpv
+ * and potential update interval restritcions are met.
+ */
+int __prop_ready(__property *prop, struct timespec *now, int force){
+    if (!prop->updated) return 0;
+    if (!force && !time_diff_reached(prop, now)) return 0;
+    return 1;
+}
+
 void status_send_update(
-        __status_t *status,
-        __clients_t *pclients)
+        __status *status,
+        __clients *pclients,
+        int force)
 {
     if (status->is_initialized == 0 ){
       ONION_INFO("Should not be reached");
       return;
     }
 
+    struct timespec now;
+    fetch_timestamp(&now);
+
     // Send updates with single properties
     int n, N=status->num_props;
     for(n=0; n<N; ++n){
-        if (status->props[n].updated){
+        __property *prop = &status->props[n];
+        if (__prop_ready(prop, &now, force)){
+
+            parse_value(prop);
+
             // send single property
 
             pthread_mutex_lock(&status->lock);
             send_to_all_clients(pclients, &status->props[n]);
+
             status->props[n].updated = 0;
             status->num_updated--;
+
+            // Update timestamp
+            update_timestamp(prop, &now);
+
             pthread_mutex_unlock(&status->lock);
         }
     }

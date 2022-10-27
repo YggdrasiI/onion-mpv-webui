@@ -68,6 +68,7 @@ SET(SOURCE_FILES
 	mpv_script_options.c
 	tools.c
 	onion_ws_status.c
+	onion_ws_time.c
 	utf8.c
 	)
 if (${TERMUX})

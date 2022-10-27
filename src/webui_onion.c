@@ -58,8 +58,8 @@ pthread_mutex_t mpv_lock;
 buffer_pool_t *path_buffers;
 
 // Websocket stuff
-__status_t *status;
-__clients_t *websockets;
+__status *status;
+__clients *websockets;
 
 int webui_onion_is_running(){
   return webui_onion_running;

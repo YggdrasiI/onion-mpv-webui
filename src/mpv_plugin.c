@@ -21,8 +21,8 @@ pthread_mutex_t mpv_lock = PTHREAD_MUTEX_INITIALIZER;
 #include "onion_ws_status.h"
 
 extern onion *o;
-extern __status_t *status;
-extern __clients_t *websockets;
+extern __status *status;
+extern __clients *websockets;
 
 int mpv_open_cplugin(mpv_handle *handle)
 {
@@ -77,26 +77,31 @@ int mpv_open_cplugin(mpv_handle *handle)
          */
         mpv_event *event = mpv_wait_event(handle, 0.5);
 
-        if (event->event_id == MPV_EVENT_NONE){
+        if (event->event_id == MPV_EVENT_NONE) {
             continue; // timeout triggered.
         }
 
         pthread_mutex_lock(&mpv_lock);
 
-        if (event->event_id == MPV_EVENT_PROPERTY_CHANGE){
+        if (event->event_id == MPV_EVENT_PROPERTY_CHANGE) {
             status_update(status, mpv, event);
 
-            if (status->num_updated > 0){ // Null bei Initialisierung
-                status_send_update(status, websockets);
+            if (status->num_updated > 0) { // Null bei Initialisierung
+                status_send_update(status, websockets, 0);
             }
-        }else{
+        } else if (event->event_id == MPV_EVENT_PAUSE) {
+            // Flush pending properties on websocket.
+            if (status->num_updated > 0) { // Null bei Initialisierung
+                status_send_update(status, websockets, 1);
+            }
+        } else {
             printf("Got event: %d\n", event->event_id);
         }
 
         // […]
         pthread_mutex_unlock(&mpv_lock);
 
-        if (event->event_id == MPV_EVENT_SHUTDOWN){
+        if (event->event_id == MPV_EVENT_SHUTDOWN) {
             webui_onion_set_running(0);
             break;
         }

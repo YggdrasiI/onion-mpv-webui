@@ -12,7 +12,7 @@ extern mpv_handle *mpv;
 
 #include "mpv_api_commands.h"
 #include "onion_ws_status.h"
-extern __status_t *status;
+extern __status *status;
 #include "tools.h"
 
 #define STR(s) ((s)?(s):"")

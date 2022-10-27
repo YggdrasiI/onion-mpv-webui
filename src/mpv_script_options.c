@@ -21,6 +21,11 @@ onion_dict *get_default_options(){
   onion_dict_add(opt, "paused", "1", 0);
   onion_dict_add(opt, "daemon", "1", 0);
 
+  //TODO
+  onion_dict_add(opt, "ws_interval", "500", 0); // minimal distance between property updates
+  //TODO
+  onion_dict_add(opt, "debug", "1", 0); // enable console output
+
   // Media shares. Names should not contain '/'.
   onion_dict_add(shared_folders, "share1", "/home/olaf/Music",
           OD_FREE_ALL|OD_DUP_ALL);
@@ -198,7 +203,7 @@ void update_options(
         FREE(key_prefix);
     }
 
-    mpv_free_node_contents(&result); // correct free variant??
+    mpv_free_node_contents(&result); // correct free'ing variant??
 
 #endif
 
