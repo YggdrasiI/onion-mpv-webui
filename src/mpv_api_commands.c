@@ -338,42 +338,21 @@ int cmd_set_audio_delay(const char *name,
     return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
 }
 
-int cmd_cycle_sub(const char *name,
+int cmd_cycle(const char *name,
         const char *param1, const char *param2,
         char **pOutput_message)
 {
-    const char *cmd[] = {"cycle", "sub", NULL};
+    const char *cmd[] = {"cycle", param1, NULL};
     int err = _mpv_command(mpv, cmd);
     check_mpv_err(err);
 
-    // Trigger update of ws status.
-    property_reobserve("track-list");
-
-    return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
-}
-
-int cmd_cycle_audio(const char *name,
-        const char *param1, const char *param2,
-        char **pOutput_message)
-{
-    const char *cmd[] = {"cycle", "audio", NULL};
-    int err = _mpv_command(mpv, cmd);
-    check_mpv_err(err);
-
-    // Trigger update of ws status.
-    property_reobserve("track-list");
-
-    return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
-}
-
-int cmd_cycle_audio_device(const char *name,
-        const char *param1, const char *param2,
-        char **pOutput_message)
-{
-    // TODO
-    const char *cmd[] = {"cycle_values", "audio-device", "", NULL};
-    int err = _mpv_command(mpv, cmd);
-    check_mpv_err(err);
+    if ( 0 == strcmp("sub", param1)
+            || 0 == strcmp("audio", param1)
+            || 0 == strcmp("video", param1))
+    {
+        // Trigger update of ws status.
+        property_reobserve("track-list");
+    }
 
     return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
 }
@@ -428,7 +407,7 @@ int cmd_increase_playback_speed(const char *name,
     }
 
     printf("New SPEED: %s\n", new_speed);
-    
+
     int err = 0;
     //const char *cmd[] = {"multiply", "speed", param1, NULL};
     //err = _mpv_command(mpv, cmd);
@@ -487,7 +466,7 @@ int cmd_playlist_add(const char *name,
         return CMD_FAIL;
     }
 
-    if( strstr(url_or_path, "://") == NULL && 
+    if( strstr(url_or_path, "://") == NULL &&
             ('1' == onion_dict_get(options, "block_non_shared_files")[0])
       ) {
         free(*pOutput_message); *pOutput_message = strdup("Input path is no url");

@@ -358,9 +358,7 @@ onion_dict *setup_commands(){
   onion_dict_add(_commands, CMD(set_sub_delay), 0);
   onion_dict_add(_commands, CMD(add_audio_delay), 0);
   onion_dict_add(_commands, CMD(set_audio_delay), 0);
-  onion_dict_add(_commands, CMD(cycle_sub), 0);
-  onion_dict_add(_commands, CMD(cycle_audio), 0);
-  onion_dict_add(_commands, CMD(cycle_audio_device), 0);
+  onion_dict_add(_commands, CMD(cycle), 0);
   onion_dict_add(_commands, CMD(add_chapter), 0);
   onion_dict_add(_commands, CMD(increase_playback_speed), 0);
   onion_dict_add(_commands, CMD(reset_playback_speed), 0);

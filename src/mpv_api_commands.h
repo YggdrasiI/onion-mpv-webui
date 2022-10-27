@@ -128,15 +128,7 @@ int cmd_set_audio_delay(const char *name,
         const char *param1, const char *param2,
         char **pOutput_message);
 
-int cmd_cycle_sub(const char *name,
-        const char *param1, const char *param2,
-        char **pOutput_message);
-
-int cmd_cycle_audio(const char *name,
-        const char *param1, const char *param2,
-        char **pOutput_message);
-
-int cmd_cycle_audio_device(const char *name,
+int cmd_cycle(const char *name,
         const char *param1, const char *param2,
         char **pOutput_message);
 
