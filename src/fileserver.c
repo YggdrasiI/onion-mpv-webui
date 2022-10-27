@@ -78,8 +78,8 @@ int fileserver_page(
     // Strip '/' to normalize 'folder/' and 'folder' paths.
     strip_slash(path);
 
-    printf("PATH: '%s'\n", path);
-    //printf("FULLPATH: '%s'\n", path);
+    ONION_DEBUG("PATH: '%s'\n", path);
+    //ONION_DEBUG("FULLPATH: '%s'\n", path);
 
     const size_t tmp_path_len = path_buffers->buf_len;
     char * const dir_path = buffer_pool_aquire(path_buffers);
@@ -93,7 +93,7 @@ int fileserver_page(
     }
 
     realp = realpath(dir_path, NULL);
-    printf("REALPATH: '%s'\n", realp);
+    ONION_DEBUG("REALPATH: '%s'\n", realp);
     if (!realp){
         ret = OCS_INTERNAL_ERROR;
         goto fileserver_page_end;

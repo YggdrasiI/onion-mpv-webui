@@ -788,7 +788,7 @@ void __share_func(
         __share_loop_t *data,
         const char *key, const void *value, int flags)
 {
-    //ONION_INFO("Share '%s' as '%s'", value, key);
+    //ONION_DEBUG("Share '%s' as '%s'", value, key);
 
     // 1. Expand environment variables
     char *expanded_value;
@@ -833,7 +833,7 @@ void __share_func(
     handler_data1->media_path = strdup(value);
 
     asprintf(&url_pattern1, "^media/html/%s([/]+|$)", key);
-    ONION_INFO("Connect url '%s' with '%s'", url_pattern1, media_folder);
+    ONION_DEBUG("Connect url '%s' with '%s'", url_pattern1, media_folder);
 
     onion_handler *list_media = onion_handler_new(
             (onion_handler_handler) media_page,
@@ -849,7 +849,7 @@ void __share_func(
 
     //asprintf(&url_pattern3, "^media/api/list/%s([/]+|$)", key);
     asprintf(&url_pattern3, "^media/api/list/%s([/]+|$)", key);
-    ONION_INFO("Connect url '%s' with '%s'", url_pattern3, media_folder);
+    ONION_DEBUG("Connect url '%s' with '%s'", url_pattern3, media_folder);
 
     onion_handler *json_media = onion_handler_new(
             (onion_handler_handler) list_share_json,

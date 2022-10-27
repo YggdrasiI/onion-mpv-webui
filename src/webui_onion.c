@@ -188,14 +188,14 @@ onion_connection_status handle_api_post_data(void *_, onion_request * req,
           char *output_message = NULL;
 
           pthread_mutex_lock(&mpv_lock);
-          printf("Locked for %s %s %s\n",
+          ONION_DEBUG("Locked for %s %s %s\n",
                   substrings[0],
                   substrings[1], substrings[2]);
           int cmd_status = (cmd)(substrings[0],
                   substrings[1], substrings[2],
                   &output_message);
           pthread_mutex_unlock(&mpv_lock);
-          printf("Unlocked for %s %s %s\n",
+          ONION_DEBUG("Unlocked for %s %s %s\n",
                   substrings[0],
                   substrings[1], substrings[2]);
 
@@ -298,14 +298,14 @@ char *handle_command_p2(
             char *output_message = NULL;
 
             pthread_mutex_lock(&mpv_lock);
-            printf("Locked for %s %s %s\n",
+            ONION_DEBUG("Locked for %s %s %s\n",
                     substrings[0],
                     substrings[1], substrings[2]);
             int cmd_status = (cmd)(substrings[0],
                     substrings[1], substrings[2],
                     &message);
             pthread_mutex_unlock(&mpv_lock);
-            printf("Unlocked for %s %s %s\n",
+            ONION_DEBUG("Unlocked for %s %s %s\n",
                     substrings[0],
                     substrings[1], substrings[2]);
 
@@ -403,6 +403,11 @@ int webui_onion_init(onion_dict *_options) {
   textdomain("C");              // Default language
   // All is configured now, now in hands of dgettext(LANG, txt);
 #endif
+
+    if ('0' == onion_dict_get(options, "debug")[0]) {
+        onion_log_flags |= OF_NODEBUG;
+        //onion_log_flags |= OF_NOINFO;
+    }
 
   /* Note that PATH_MAX does not guarantee that arbitary
    * pathst are not longer than this value. E.g. an absolute

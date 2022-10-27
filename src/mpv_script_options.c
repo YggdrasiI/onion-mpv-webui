@@ -24,7 +24,7 @@ onion_dict *get_default_options(){
   //TODO
   onion_dict_add(opt, "ws_interval", "500", 0); // minimal distance between property updates
   //TODO
-  onion_dict_add(opt, "debug", "1", 0); // enable console output
+  onion_dict_add(opt, "debug", "0", 0); // enable console output
 
   // Media shares. Names should not contain '/'.
   onion_dict_add(shared_folders, "share1", "/home/olaf/Music",
@@ -108,7 +108,7 @@ int __update_shared_folders(onion_dict *options,  const char *value,
     }
 
     option_t *opt_tuples = split_shared_folder_str(value);
-    print_options(opt_tuples);
+    //print_options(opt_tuples);
 
     option_t *opts = opt_tuples;
     int n_share = 1 + onion_dict_count(shared_folders);
@@ -159,13 +159,13 @@ void update_options(
     if (mpv_get_property(mpv, "options/script-opts",
                 MPV_FORMAT_NODE, &result) < 0)
     { 
-       printf("Option not defined?!\n");
+       ONION_ERROR("Option not defined?!\n");
        return;
     }
-    printf("format=%d\n", (int)result.format);
+    //printf("format=%d\n", (int)result.format);
 
     if (result.format != MPV_FORMAT_NODE_MAP){
-        printf("mpv property has unexpected format.\n");
+        ONION_DEBUG("mpv property has unexpected format.\n");
         return;
     }
     

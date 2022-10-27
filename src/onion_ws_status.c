@@ -91,7 +91,7 @@ void clients_close(
         __status *status,
         __clients *pclients)
 {
-    ONION_INFO("Closing websockets…");
+    ONION_DEBUG("Closing websockets…");
 
     if (status) {
         pthread_cond_signal(&status->init_done); // as fallback if mpv thread not release condition. Not required
@@ -109,7 +109,7 @@ void clients_close(
             j++;
 
 #if 1
-            ONION_INFO("Remove websocket pointer on position %d", i);
+            ONION_DEBUG("Remove websocket pointer on position %d", i);
             pthread_mutex_lock(&pclients->lock);
             pthread_mutex_lock(&pclient->lock);
             onion_websocket_set_callback(pclient->ws, NULL); // otherwise a closing reply of the client will reach the current callback
@@ -120,10 +120,10 @@ void clients_close(
 #endif
 
             int opcode = onion_websocket_get_opcode(ws);
-            ONION_INFO("   Opcode: %d", opcode);
+            //ONION_DEBUG("   Opcode: %d", opcode);
 
             if( opcode == OWS_CONNECTION_CLOSE ){
-                ONION_INFO("Hey, it was already closed!");
+                ONION_ERROR("Hey, it was already closed!");
             }else{
                 STATUS_STR(byebye, NORMAL_CLOSURE);
                 // This can block if connectios is already closed?!
@@ -131,7 +131,7 @@ void clients_close(
             }
         }
     }
-    ONION_INFO("… closed websockets: %d", j);
+    ONION_DEBUG("… closed websockets: %d", j);
 }
 
 void clients_uninit(
@@ -150,7 +150,7 @@ void clients_uninit(
             pthread_mutex_lock(&pclient->lock);
             pclient->ws = NULL;
             pclients->num_active_clients--;
-            ONION_INFO("Decrease active clients on %d",
+            ONION_DEBUG("Decrease active clients on %d",
                     pclients->num_active_clients);
             pthread_mutex_unlock(&pclient->lock);
             pthread_mutex_unlock(&pclients->lock);
@@ -185,10 +185,10 @@ __websocket *add_client(
     // Insert into clients array
     __websocket *client = &clients->clients[n];
     pthread_mutex_lock(&client->lock);
-    ONION_INFO("Save websocket pointer on position %d", n);
+    ONION_DEBUG("Save websocket pointer on position %d", n);
     client->ws = ws;
     clients->num_active_clients++;
-    ONION_INFO("New num active clients: %d", clients->num_active_clients);
+    ONION_DEBUG("New num active clients: %d", clients->num_active_clients);
     pthread_mutex_unlock(&client->lock);
 
     // Put information about index 'n' into userdata
@@ -239,7 +239,7 @@ int remove_client(
     pthread_mutex_lock(&clients->lock);
     __websocket *client = &clients->clients[index];
     pthread_mutex_lock(&client->lock);
-    ONION_INFO("Remove websocket pointer on position %d", index);
+    ONION_DEBUG("Remove websocket pointer on position %d", index);
     client->ws = NULL;
     pthread_mutex_unlock(&client->lock);
     clients->num_active_clients--;
@@ -310,7 +310,7 @@ onion_connection_status ws_status_start(
                 "{\"message\":\"Websocket url not avail with GET.\"}",
                 HTTP_BAD_REQUEST, req, res);
     }
-    ONION_INFO("Websocket started!");
+    ONION_DEBUG("Websocket started!");
 
     // Store in array of active clients
     __websocket *client = add_client(websockets, ws);
@@ -349,7 +349,7 @@ onion_connection_status ws_status_start(
             int err = pthread_cond_timedwait(&status->init_done,
                     &status->init_in_process, &abstime);
             if( err == ETIMEDOUT ){
-                ONION_INFO("MPV does not returned all observed variables.");
+                ONION_DEBUG("MPV does not returned all observed variables.");
                 // TODO: Add info which variable hangs.
             }
 #endif
@@ -358,17 +358,17 @@ onion_connection_status ws_status_start(
             pthread_mutex_unlock(&status->init_in_process);
 
         }else{
-            ONION_INFO("Multiple calls of status_observe().");
+            ONION_ERROR("Multiple calls of status_observe().");
             assert(0);
         }
     }else{
       // update json from previous client to current status
-      //ONION_INFO("Build status from existing props");
+      //ONION_DEBUG("Build status from existing props");
       status_build_full_json(status);
     }
     pthread_mutex_unlock(&websockets->lock);
 
-    //ONION_INFO("Send status to new client.");
+    //ONION_DEBUG("Send status to new client.");
     pthread_mutex_lock(&status->lock);
     assert( status->json != NULL );
     assert( client->ws != NULL );
@@ -437,12 +437,12 @@ onion_connection_status ws_status_cont(
 
     // Handle pong message
     if( opcode == OWS_PONG ){
-        ONION_INFO("Got PONG from client!");
+        ONION_DEBUG("Got PONG from client!");
 
         // Consume message payload, if needed (max 125 bytes)
         int len = __read_string(client, tmp, data_ready_len);
         if (len > 0) {
-            ONION_INFO("PONG payload: '%s'", tmp);
+            ONION_DEBUG("PONG payload: '%s'", tmp);
         }
 
         goto cleanup_and_end;
@@ -463,7 +463,7 @@ onion_connection_status ws_status_cont(
         goto cleanup_and_end;
     }
 
-    ONION_INFO("Read from websocket: %d: %s", len, tmp);
+    ONION_DEBUG("Read from websocket: %d: %s", len, tmp);
 
     // Handle input
     char *output = handle_command_p2(tmp);
@@ -672,7 +672,7 @@ void property_update(
 {
     char changed = 0;
 
-    //ONION_INFO("\nFormat in: %d\nFormat out: %d\nFormat expected:%d\n",
+    //ONION_DEBUG("\nFormat in: %d\nFormat out: %d\nFormat expected:%d\n",
     //        in->format, out->format_out, out->node.format);
 
     pthread_mutex_lock(&status->lock);
@@ -723,7 +723,7 @@ void property_update(
                 out->value.u.string = utf8_quote_with_escape(svalue, '"');
                 changed = 2;
             }else{
-                ONION_INFO("mpv_node missmatch. Format in: %d, Format out: %d",
+                ONION_ERROR("mpv_node missmatch. Format in: %d, Format out: %d",
                         result_node->format, out->format_out );
                 out->value.format = MPV_FORMAT_STRING;
                 out->value.u.string = strdup("???");
@@ -791,7 +791,7 @@ void property_update(
                 out->value.u.string = utf8_quote_with_escape(svalue, '"');
                 changed = 2;
             }else{
-                ONION_INFO("mpv_node missmatch. Format in: %d, Format out: %d",
+                ONION_ERROR("mpv_node missmatch. Format in: %d, Format out: %d",
                         in->format, out->format_out );
                 out->value.format = MPV_FORMAT_STRING;
                 out->value.u.string = strdup("???");
@@ -814,7 +814,7 @@ void property_update(
     }
 
     if( status->num_updated == 0 ){
-        ONION_INFO("Init: %d/%d", status->num_initialized, status->num_props);
+        ONION_DEBUG("Init: %d/%d", status->num_initialized, status->num_props);
         // Ignore update_interval_ms (MINIMAL_TIME_BETWEEN_PROPERTY_UPDATE)
         // during initialization, but parse directly.
         parse_value(out);
@@ -1020,7 +1020,7 @@ int property_reobserve(const char *prop_name){
             return __property_reobserve(prop);
         }
     }
-    ONION_INFO("No property '%s' observed.", prop_name);
+    ONION_ERROR("No property '%s' observed.", prop_name);
     return -1;
 }
 
@@ -1067,7 +1067,7 @@ void status_update(
     }
 
     int prop_index = userdata - REPLY_ID_OFFSET;
-    //ONION_INFO("update observed property '%s'", prop_in->name);
+    //ONION_DEBUG("update observed property '%s'", prop_in->name);
     __property *prop_out = &status->props[prop_index];
     property_update(status, prop_in, prop_out);
 }
@@ -1084,7 +1084,7 @@ void send_to_all_clients(
         __websocket *pclient = &pclients->clients[i];
         if ( pclient->ws ){
             char pl[] = "payload";
-            ONION_INFO("Send PING to client %d", i);
+            ONION_DEBUG("Send PING to client %d", i);
             onion_websocket_set_opcode(pclient->ws, OWS_PING);
             ssize_t s = onion_websocket_write(pclient->ws,
                     pl, strlen(pl));
@@ -1096,7 +1096,7 @@ void send_to_all_clients(
     for( i=0; i<MAX_ACTIVE_CLIENTS; ++i){
         __websocket *pclient = &pclients->clients[i];
         if ( pclient->ws ){
-            //ONION_INFO("Send websocket msg");
+            //ONION_DEBUG("Send websocket msg");
             pthread_mutex_lock(&pclient->lock);
             __chunked_websocket_printf(pclient->ws,
                     "{\"status_diff\": { \"%s\": %s }}",
@@ -1170,7 +1170,7 @@ void status_build_full_json(
 void status_set_initialized(
         __status *status)
 {
-    ONION_INFO("Mark status as initialized.");
+    ONION_DEBUG("Mark status as initialized.");
     pthread_mutex_lock(&status->lock);
     if (status->is_initialized == 0 ){
       status->is_initialized = 1;
@@ -1196,7 +1196,7 @@ void status_send_update(
         int force)
 {
     if (status->is_initialized == 0 ){
-      ONION_INFO("Should not be reached");
+      ONION_ERROR("Should not be reached");
       return;
     }
 

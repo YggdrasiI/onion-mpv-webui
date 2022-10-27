@@ -52,6 +52,10 @@ int mpv_open_cplugin(mpv_handle *handle)
         check_mpv_err(err);
     }
 
+    // Debug flag
+    int log_debug = ('0' != onion_dict_get(options, "debug")[0]); 
+#define LOG(...) { if (log_debug) { printf(__VA_ARGS__); } }
+
     int error;
     error = webui_onion_init(options); // also init mutex mpv_lock.
     if( error < 0){
@@ -95,7 +99,7 @@ int mpv_open_cplugin(mpv_handle *handle)
                 status_send_update(status, websockets, 1);
             }
         } else {
-            printf("Got event: %d\n", event->event_id);
+            LOG("Got event: %d\n", event->event_id);
         }
 
         // […]
@@ -108,7 +112,7 @@ int mpv_open_cplugin(mpv_handle *handle)
 
     }
 
-    printf("Stop listening (2)\n"); // Redudant in SIGINT-case
+    LOG("Stop listening (2)\n"); // Redudant in SIGINT-case
     webui_onion_end_signal(0); // includes onion_listen_stop(o);
 
     webui_onion_uninit(o);

@@ -205,7 +205,7 @@ option_t *split_shared_folder_str(const char *options){
             key = strdup(""); // no key
         }
 
-        printf("\tShared folders | Key: '%s', '%s', Value: '%s'\n", key, delim, value);
+        //printf("\tShared folders | Key: '%s', '%s', Value: '%s'\n", key, delim, value);
 
         if ( key != NULL && value != NULL ){
             parsed_opts[i_opt].key = strdup(key);
@@ -221,7 +221,7 @@ option_t *split_shared_folder_str(const char *options){
             // Probably redundant, but secures parsing
             break;
         }
-        printf("\n");
+        //printf("\n");
 
         len_options -= n2;
         options += n2;
