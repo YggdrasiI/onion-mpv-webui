@@ -480,6 +480,12 @@ int cmd_playlist_add(const char *name,
     const char *cmd[] = {"loadfile", url_or_path, flags, NULL};
     err = _mpv_command(mpv, cmd);
     check_mpv_err(err);
+
+    // Unpause in replace-case
+    if (err == MPV_ERROR_SUCCESS && 0 == strcmp("replace", flags)) {
+        cmd_play(NULL, NULL, NULL, NULL);
+    }
+
     return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
 }
 
@@ -502,7 +508,7 @@ int cmd_media_playlist_add(const char *name,
 #if 0
     // Workaround for non-working 'replace' variant in mpv:
     // It looks like replace does not differs from 'append'?!
-    int use_replace_workaround = 0 && ( 0 == strcmp("replace", flags) );
+    int use_replace_workaround = ( 0 == strcmp("replace", flags) );
     // Workorund, step 1/2
     if ( use_replace_workaround ) {
         const char *cmd_clear[] = {"playlist-clear", NULL};
@@ -521,8 +527,11 @@ int cmd_media_playlist_add(const char *name,
         cmd_play(NULL, NULL, NULL, NULL);
     }
 #endif
-    // Unpause
-    cmd_play(NULL, NULL, NULL, NULL);
+
+    // Unpause in replace-case
+    if (err == MPV_ERROR_SUCCESS && 0 == strcmp("replace", flags)) {
+        cmd_play(NULL, NULL, NULL, NULL);
+    }
 
     return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
 }

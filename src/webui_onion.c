@@ -127,6 +127,16 @@ onion_connection_status handle_api_post_data(void *_, onion_request * req,
               HTTP_BAD_REQUEST, req, res);
   }
 
+  // Active set of commands
+  onion_dict *current_commands = commands;
+  // check for 'media/{suffix}' pattern. Then,
+  // use media_commands for suffix.
+  if ( api_args == strstr(api_args, "media/")){
+      api_args = api_args + strlen("media/");
+      current_commands = media_commands;
+  }
+
+
   /* Handle data */
   onion_connection_status ret = HTTP_BAD_GATEWAY;
 
@@ -182,7 +192,7 @@ onion_connection_status handle_api_post_data(void *_, onion_request * req,
               HTTP_BAD_REQUEST, req, res);
   }else{
       CommandHandler cmd = (CommandHandler) onion_dict_get(
-              commands, substrings[0]);
+              current_commands, substrings[0]);
 
       if( cmd ){
           char *output_message = NULL;
@@ -242,6 +252,17 @@ char *handle_command_p2(
         const char *param2)
         */
 {
+
+    // Active set of commands
+    onion_dict *current_commands = commands;
+    // check for 'media/{suffix}' pattern. Then,
+    // use media_commands for suffix.
+    if ( api_args == strstr(api_args, "media/")){
+        api_args = api_args + strlen("media/");
+        current_commands = media_commands;
+    }
+
+
     char *output = NULL;
     char *message = NULL;
 
@@ -292,7 +313,7 @@ char *handle_command_p2(
         output = strdup("{\"message\":\"Api pattern not matched. Is 'cmd' empty?\"}");
     }else{
         CommandHandler cmd = (CommandHandler) onion_dict_get(
-                commands, substrings[0]);
+                current_commands, substrings[0]);
 
         if( cmd ){
             char *output_message = NULL;

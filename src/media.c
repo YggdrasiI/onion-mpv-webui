@@ -588,7 +588,7 @@ int api_playlist_add(
     char *__tmp_path = buffer_pool_aquire(path_buffers);
 
     // Get command
-    const char * const command_name = "media_playlist_add";
+    const char * const command_name = "playlist_add";
     CommandHandler cmd = (CommandHandler) onion_dict_get(
             media_commands, command_name);
 
@@ -690,7 +690,7 @@ int api_playlist_play(
     char *__tmp_path = buffer_pool_aquire(path_buffers);
 
     // Get command
-    const char * const command_name = "media_playlist_add";
+    const char * const command_name = "playlist_add";
     CommandHandler cmd = (CommandHandler) onion_dict_get(
             media_commands, command_name);
 
@@ -711,6 +711,7 @@ int api_playlist_play(
         goto api_playlist_play_end;
     }
 
+    /* Evaluate real path of share directory and file */
     int ps = snprintf(__tmp_path, __tmp_path_len,
             "%s/%s",
             share_path, uri_rel_path);
@@ -719,7 +720,6 @@ int api_playlist_play(
         goto api_playlist_play_end;
     }
 
-    /* Evaluate real path of share directory and file */
     if (NULL != strstr(__tmp_path, "/.")){
         ret = onion_shortcut_response(
                 "{\"message\":\"Invalid path.\"}",
