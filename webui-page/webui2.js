@@ -1,59 +1,59 @@
 var sortings = {
-	"alpha": {
-		// id for direction, normally just 1 for forward and -1 for backward
-		"dirs": [-1, 1],
+  "alpha": {
+    // id for direction, normally just 1 for forward and -1 for backward
+    "dirs": [-1, 1],
     "icons": ["fa-sort-alpha-up", "fa-sort-alpha-down"],
-		"active": 0 //index of above lists
-	},
-	"date": {
-		"dirs": [-1, 1],
+    "active": 0 //index of above lists
+  },
+  "date": {
+    "dirs": [-1, 1],
     "icons": ["fa-sort-numeric-up", "fa-sort-numeric-down"],
-		"active": 0 //index of above lists
-	}
+    "active": 0 //index of above lists
+  }
 }
 
 var shares = {
   list: null,
   sorting: {'sname':'alpha'},
   selected: null,
-	close_event_registered: false,
-	scroll_positions: {}
+  close_event_registered: false,
+  scroll_positions: {}
 }
 
 function toggleShares() {
   document.body.classList.toggle('noscroll')
   var el = document.getElementById("overlay2")
   el.style.visibility = (el.style.visibility === "visible") ? "hidden" : "visible"
-	if (el.style.visibility === "visible" ){
-		if (shares.list == null){
-			refresh_share_list()
-		}
-	}
+  if (el.style.visibility === "visible" ){
+    if (shares.list == null){
+      refresh_share_list()
+    }
+  }
 
-	/* Close share overlay by click on background area. */
-	if (!shares.close_event_registered ){
-		function _close_listener(evt) {
-			if( evt.target == sharelist ){
-				DEBUG && console.log("Pong")
-				toggleShares()
-			}
-		}
-		sharelist.addEventListener('click', _close_listener, false)
-		shares.close_event_registered = true
-	}
+  /* Close share overlay by click on background area. */
+  if (!shares.close_event_registered ){
+    function _close_listener(evt) {
+      if( evt.target == sharelist ){
+        DEBUG && console.log("Pong")
+        toggleShares()
+      }
+    }
+    sharelist.addEventListener('click', _close_listener, false)
+    shares.close_event_registered = true
+  }
 
 }
 
 function share_change(el){
-	/* Save current scroll position */
+  /* Save current scroll position */
   var sharelist = document.getElementById("sharelist")
-	var prev_dirname = shares.scroll_positions["active_dirname"]
-	if( prev_dirname !== undefined ){
-		var sT = sharelist.scrollTop;
-		DEBUG && console.log("Save scroll position of share " +
-			prev_dirname + " to " + sT)
-		shares.scroll_positions[prev_dirname] = sT
-	}
+  var prev_dirname = shares.scroll_positions["active_dirname"]
+  if( prev_dirname !== undefined ){
+    var sT = sharelist.scrollTop;
+    DEBUG && console.log("Save scroll position of share " +
+      prev_dirname + " to " + sT)
+    shares.scroll_positions[prev_dirname] = sT
+  }
 
   var value = el.options[el.selectedIndex].value
   var text = el.options[el.selectedIndex].text
@@ -95,7 +95,7 @@ function share_change_dir(list_link){
 function share_get_subdir(dirname){
   /* strips prefix /media/api/list/<sharename> from dirname 
    * and remove leading and trailing '/'.
-  */
+   */
 
   var root = shares.list[shares.selected].url
   if (!dirname.startsWith(root)) return false
@@ -115,9 +115,9 @@ function share_add_file(add_link, bPlay){
   //var url = shares.list[shares.selected].url + link
   DEBUG && console.log("Add file: " + add_link)
 
-	if ( bPlay ){
-		add_link = add_link.replace("playlist_add","playlist_play")
-	}
+  if ( bPlay ){
+    add_link = add_link.replace("playlist_add","playlist_play")
+  }
 
   var request = new XMLHttpRequest();
   request.open("get", add_link )
@@ -150,6 +150,8 @@ function print_share_list(json){
     var fname = document.createElement("SPAN")
     var action1 = document.createElement("I")
 
+    var play_link = decode(file.play)
+
     li.classList.add('gray')
     bullet.classList.add('share_bullet')
     if (isdir) {
@@ -160,7 +162,7 @@ function print_share_list(json){
       bullet.classList.add('fa-file')
     }
 
-    fname.textContent = basename(file.play)
+    fname.textContent = basename(play_link)
     if (isdir) {
       fname.classList.add('share_dir')
       fname.addEventListener("click", function() {
@@ -170,11 +172,11 @@ function print_share_list(json){
     }else{
       fname.classList.add('share_file')
 
-			if( idx >= 0 ){
-				fname.addEventListener("click", function() {
-					share_add_file(file.play, true)
-				})
-			}
+      if( idx >= 0 ){
+        fname.addEventListener("click", function() {
+          share_add_file(play_link, true)
+        })
+      }
     }
 
     action1.classList.add('share_action')
@@ -182,7 +184,7 @@ function print_share_list(json){
     action1.classList.add('fa-plus-square')
     //action1.textContent = "  [+]"
     action1.addEventListener("click", function() {
-      share_add_file(file.play, false)
+      share_add_file(play_link, false)
     })
 
     li.setAttribute("timestamp", file.modified)
@@ -198,14 +200,14 @@ function print_share_list(json){
   }
 
   if (shares.list[shares.selected].dir === ".current"){
-		DEBUG && console.log("Replace .current by "
-			+ share_get_subdir(json.dirname))
-		shares.list[shares.selected].dir = share_get_subdir(json.dirname)
-	}
+    DEBUG && console.log("Replace .current by "
+      + share_get_subdir(json.dirname))
+    shares.list[shares.selected].dir = share_get_subdir(json.dirname)
+  }
 
   // Add .. if not root dir of share
   if (json.dirname !== shares.list[shares.selected].url){
-		var li_dotdot = add_li(file_dotdot, -1)
+    var li_dotdot = add_li(file_dotdot, -1)
     li_dotdot.classList.add('dir_up')
     sharelist.appendChild(li_dotdot)
   }
@@ -215,19 +217,19 @@ function print_share_list(json){
     sharelist.appendChild(add_li(files[i], i))
   }
 
-	/* Reset scrollPosition on saved value, if available.
-	 * Assumes scarelist.style.overflow == "scroll"
-	 */ 
-	var sT = shares.scroll_positions[json.dirname]
-	DEBUG && console.log("Set scroll position of share " + 
-		json.dirname + " to " + sT)
-	if (sT !== undefined){
-		sharelist.scrollTop = sT
-	}else {
-		sharelist.scrollTop = 0
-	}
-	// Used name for next storage of scrollTop
-	shares.scroll_positions["active_dirname"] = json.dirname
+  /* Reset scrollPosition on saved value, if available.
+   * Assumes scarelist.style.overflow == "scroll"
+   */ 
+  var sT = shares.scroll_positions[json.dirname]
+  DEBUG && console.log("Set scroll position of share " + 
+    json.dirname + " to " + sT)
+  if (sT !== undefined){
+    sharelist.scrollTop = sT
+  }else {
+    sharelist.scrollTop = 0
+  }
+  // Used name for next storage of scrollTop
+  shares.scroll_positions["active_dirname"] = json.dirname
 
 }
 
@@ -245,7 +247,7 @@ function sortShareList() {
   pEl.removeChild(ul)
 
   var sname = shares.sorting.sname
-	var s = sortings[sname]
+  var s = sortings[sname]
   if (sname === "alpha" && s.dirs[s.active] == 1){
     // A-Z
     Array.from(ul.getElementsByTagName("LI"))
@@ -266,7 +268,7 @@ function sortShareList() {
         {
           if (Number(a.attributes.idx.value) < 0) return -1
           if (Number(b.attributes.idx.value) < 0) return 1
-          return	-(a.textContent.localeCompare(b.textContent))
+          return -(a.textContent.localeCompare(b.textContent))
         })
         .forEach(li =>
           ul.appendChild(li))
@@ -307,68 +309,68 @@ function sortShareList() {
 }
 
 function share_change_sorting(sname){
-	var s = sortings[sname]
+  var s = sortings[sname]
   if (shares.sorting.sname === sname){
-		// go to next index 
-		s.active = (s.active + 1) % s.dirs.length
+    // go to next index 
+    s.active = (s.active + 1) % s.dirs.length
   }else{
-		shares.sorting.sname = sname
+    shares.sorting.sname = sname
   }
   update_sort_buttons()
 }
 
 function update_sort_buttons()
 {
-	function get_fa_nodes(css_class1, css_class2){
-		/* Return children of class2 from elements of class1. */
-		var els = document.getElementsByClassName(css_class1)
-		var out = [];
-		[].slice.call(els).forEach(function (div) {
-			var els2 = div.getElementsByClassName(css_class2)
-			out = out.concat(Array.from(els2))
-		})
-		return out
-	}
+  function get_fa_nodes(css_class1, css_class2){
+    /* Return children of class2 from elements of class1. */
+    var els = document.getElementsByClassName(css_class1)
+    var out = [];
+    [].slice.call(els).forEach(function (div) {
+      var els2 = div.getElementsByClassName(css_class2)
+      out = out.concat(Array.from(els2))
+    })
+    return out
+  }
 
-	for (var sname in sortings ){
-		var s = sortings[sname]
-		var cur = s.active
-		var prev = (s.dirs.length + cur - 1) % s.dirs.length
-		var x = get_fa_nodes("shareSortButton_" + sname, "fas")
-		x.forEach(function (fasEl) {
-			fasEl.classList.replace(s["icons"][prev], s["icons"][cur])
-		})
-	}
+  for (var sname in sortings ){
+    var s = sortings[sname]
+    var cur = s.active
+    var prev = (s.dirs.length + cur - 1) % s.dirs.length
+    var x = get_fa_nodes("shareSortButton_" + sname, "fas")
+    x.forEach(function (fasEl) {
+      fasEl.classList.replace(s["icons"][prev], s["icons"][cur])
+    })
+  }
 }
 
 function refresh_share_list(){
   var request = new XMLHttpRequest();
   request.open("get", "/media/api/list")
 
-	function _refresh_share_list(json){
-		shares.list = []
+  function _refresh_share_list(json){
+    shares.list = []
 
-		var share_selector = document.getElementById("share_selector")
-		/*while (share_selector.childElementCount > 0){
-		share_selector.removeChild(share_selector.children[0])
-	}*/
-		share_selector.replaceChildren()
+    var share_selector = document.getElementById("share_selector")
+    /*while (share_selector.childElementCount > 0){
+    share_selector.removeChild(share_selector.children[0])
+  }*/
+    share_selector.replaceChildren()
 
-		for (var s in json.shares){
-			shares.list.push({"name": s,
-				"url": json.shares[s],
-				//"dir": "" 
-				// '.current': Server return last requested dir for this share
-				"dir": ".current"
-			})
-			var opt = document.createElement('option')
-			opt.value = json.shares[s]
-			opt.text = s
-			share_selector.appendChild(opt)
-		}
+    for (var s in json.shares){
+      shares.list.push({"name": s,
+        "url": json.shares[s],
+        //"dir": "" 
+        // '.current': Server return last requested dir for this share
+        "dir": ".current"
+      })
+      var opt = document.createElement('option')
+      opt.value = json.shares[s]
+      opt.text = s
+      share_selector.appendChild(opt)
+    }
 
-		share_change(share_selector)
-	}
+    share_change(share_selector)
+  }
 
 
   request.onreadystatechange = function() {
@@ -380,4 +382,22 @@ function refresh_share_list(){
     }
   }
   request.send(null)
+}
+
+function decode(s){
+  /* json was generated by otemplate and contains
+   * encoded html chars.
+   *
+   * Without changing otemplate tool we just
+   * can undo this by reverting onion_html_add_enc().
+   */
+
+  /*var doc = new DOMParser().parseFromString(s, "text/html");
+    return doc.documentElement.textContent;
+    */
+  // or
+  s = s.replace('&amp;', '&')
+  s = s.replace('&#39;', '\'').replace('&quot;','"')
+  s = s.replace('&lt;', '<').replace('&gt;', '>')
+  return s;
 }
