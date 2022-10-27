@@ -10,14 +10,30 @@
 #include <mpv/client.h>
 extern mpv_handle *mpv;
 
+#include "tools.h"
 #include "mpv_api_commands.h"
 #include "onion_ws_status.h"
 extern __status *status;
-#include "tools.h"
+
+// TODO: Bundle options in webui struct and include webui_onion.h
+#include <onion/dict.h>
+extern onion_dict *options;
 
 #define STR(s) ((s)?(s):"")
 #define OBJ(s) ((s)?(s):"{}")
 
+// Nesting for debugging output.
+int _mpv_command(mpv_handle *ctx, const char **args){
+    const char **parg = args;
+    LOG("mpv_command: ");
+    while (*parg != NULL) {
+        LOG("%s ", *parg);
+        ++parg;
+    }
+    LOG("\n");
+
+    return  mpv_command(mpv, args);
+}
 
 int cmd_play(const char *name,
         const char *param1, const char *param2,
@@ -82,7 +98,7 @@ int cmd_seek(const char *name,
     if( !check_int_or_float(param1, pOutput_message) ) return CMD_FAIL;
 
     const char *cmd[] = {"seek", param1, NULL};
-    int err = mpv_command(mpv, cmd);
+    int err = _mpv_command(mpv, cmd);
     check_mpv_err(err);
 
     return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
@@ -95,7 +111,7 @@ int cmd_set_position(const char *name,
     if( !check_int_or_float(param1, pOutput_message) ) return CMD_FAIL;
 
     const char *cmd[] = {"seek", param1, "absolute", NULL};
-    int err = mpv_command(mpv, cmd);
+    int err = _mpv_command(mpv, cmd);
     check_mpv_err(err);
 
     return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
@@ -112,11 +128,11 @@ int cmd_playlist_prev(const char *name,
     if (fposition > 5.0) {
         char *cmd[] = {"seek", NULL, NULL};
         asprintf(&cmd[1], "%lf", -fposition); // Negative seek
-        err = mpv_command(mpv, (const char **)cmd);
+        err = _mpv_command(mpv, (const char **)cmd);
         free(cmd[1]);
     }else{
         const char *cmd[] = {"playlist-prev", NULL};
-        err = mpv_command(mpv, cmd);
+        err = _mpv_command(mpv, cmd);
     }
     check_mpv_err(err);
 
@@ -129,7 +145,7 @@ int cmd_playlist_next(const char *name,
         char **pOutput_message)
 {
     const char *cmd[] = {"playlist-next", NULL};
-    int err = mpv_command(mpv, cmd);
+    int err = _mpv_command(mpv, cmd);
     check_mpv_err(err);
 
     return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
@@ -154,7 +170,7 @@ int cmd_playlist_remove(const char *name,
     if( !check_int_or_float(param1, pOutput_message) ) return CMD_FAIL;
 
     const char *cmd[] = {"playlist-remove", param1, NULL};
-    int err = mpv_command(mpv, cmd);
+    int err = _mpv_command(mpv, cmd);
     check_mpv_err(err);
 
     return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
@@ -168,7 +184,7 @@ int cmd_playlist_move(const char *name,
     if( !check_int_or_float(param2, pOutput_message) ) return CMD_FAIL;
 
     const char *cmd[] = {"playlist-move", param1, param2, NULL};
-    int err = mpv_command(mpv, cmd);
+    int err = _mpv_command(mpv, cmd);
     check_mpv_err(err);
 
     return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
@@ -189,7 +205,7 @@ int cmd_playlist_move_up(const char *name,
         cmd[1] = strdup(param1);
         asprintf(&cmd[2], "%d", iposition - 1);
 
-        err = mpv_command(mpv, (const char **)cmd);
+        err = _mpv_command(mpv, (const char **)cmd);
         free(cmd[1]);
         free(cmd[2]);
     }else{
@@ -205,7 +221,7 @@ int cmd_playlist_shuffle(const char *name,
         char **pOutput_message)
 {
     const char *cmd[] = {"playlist-shuffle", NULL};
-    int err = mpv_command(mpv, cmd);
+    int err = _mpv_command(mpv, cmd);
     check_mpv_err(err);
 
     return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
@@ -251,7 +267,7 @@ int cmd_add_volume(const char *name,
     if( !check_int_or_float(param1, pOutput_message) ) return CMD_FAIL;
 
     const char *cmd[] = {"add", "volume", param1, NULL};
-    int err = mpv_command(mpv, cmd);
+    int err = _mpv_command(mpv, cmd);
     check_mpv_err(err);
 
     return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
@@ -264,7 +280,7 @@ int cmd_set_volume(const char *name,
     if( !check_int_or_float(param1, pOutput_message) ) return CMD_FAIL;
 
     const char *cmd[] = {"set", "volume", param1, NULL};
-    int err = mpv_command(mpv, cmd);
+    int err = _mpv_command(mpv, cmd);
     check_mpv_err(err);
 
     return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
@@ -277,7 +293,7 @@ int cmd_add_sub_delay(const char *name,
     if( !check_int_or_float(param1, pOutput_message) ) return CMD_FAIL;
 
     const char *cmd[] = {"add", "sub-delay", param1, NULL};
-    int err = mpv_command(mpv, cmd);
+    int err = _mpv_command(mpv, cmd);
     check_mpv_err(err);
 
     return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
@@ -290,7 +306,7 @@ int cmd_set_sub_delay(const char *name,
     if( !check_int_or_float(param1, pOutput_message) ) return CMD_FAIL;
 
     const char *cmd[] = {"set", "sub-delay", param1, NULL};
-    int err = mpv_command(mpv, cmd);
+    int err = _mpv_command(mpv, cmd);
     check_mpv_err(err);
 
     return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
@@ -303,7 +319,7 @@ int cmd_add_audio_delay(const char *name,
     if( !check_int_or_float(param1, pOutput_message) ) return CMD_FAIL;
 
     const char *cmd[] = {"add", "audio-delay", param1, NULL};
-    int err = mpv_command(mpv, cmd);
+    int err = _mpv_command(mpv, cmd);
     check_mpv_err(err);
 
     return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
@@ -316,7 +332,7 @@ int cmd_set_audio_delay(const char *name,
     if( !check_int_or_float(param1, pOutput_message) ) return CMD_FAIL;
 
     const char *cmd[] = {"set", "audio-delay", param1, NULL};
-    int err = mpv_command(mpv, cmd);
+    int err = _mpv_command(mpv, cmd);
     check_mpv_err(err);
 
     return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
@@ -327,7 +343,7 @@ int cmd_cycle_sub(const char *name,
         char **pOutput_message)
 {
     const char *cmd[] = {"cycle", "sub", NULL};
-    int err = mpv_command(mpv, cmd);
+    int err = _mpv_command(mpv, cmd);
     check_mpv_err(err);
 
     // Trigger update of ws status.
@@ -341,7 +357,7 @@ int cmd_cycle_audio(const char *name,
         char **pOutput_message)
 {
     const char *cmd[] = {"cycle", "audio", NULL};
-    int err = mpv_command(mpv, cmd);
+    int err = _mpv_command(mpv, cmd);
     check_mpv_err(err);
 
     // Trigger update of ws status.
@@ -356,7 +372,7 @@ int cmd_cycle_audio_device(const char *name,
 {
     // TODO
     const char *cmd[] = {"cycle_values", "audio-device", "", NULL};
-    int err = mpv_command(mpv, cmd);
+    int err = _mpv_command(mpv, cmd);
     check_mpv_err(err);
 
     return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
@@ -369,7 +385,7 @@ int cmd_add_chapter(const char *name,
     if( !check_int_or_float(param1, pOutput_message) ) return CMD_FAIL;
 
     const char *cmd[] = {"add", "chapter", param1, NULL};
-    int err = mpv_command(mpv, cmd);
+    int err = _mpv_command(mpv, cmd);
     check_mpv_err(err);
 
     return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
@@ -415,17 +431,17 @@ int cmd_increase_playback_speed(const char *name,
     
     int err = 0;
     //const char *cmd[] = {"multiply", "speed", param1, NULL};
-    //err = mpv_command(mpv, cmd);
+    //err = _mpv_command(mpv, cmd);
     // Range check
     if (fnew_speed < 0.01) {
         const char *cmd[] = {"set", "speed", "0.01", NULL};
-        err = mpv_command(mpv, cmd);
+        err = _mpv_command(mpv, cmd);
     }else if (fnew_speed > 100.0){
         const char *cmd[] = {"set", "speed", "100.0", NULL};
-        err = mpv_command(mpv, cmd);
+        err = _mpv_command(mpv, cmd);
     }else {
         const char *cmd[] = {"set", "speed", new_speed, NULL};
-        err = mpv_command(mpv, cmd);
+        err = _mpv_command(mpv, cmd);
     }
 
 
@@ -442,7 +458,7 @@ int cmd_reset_playback_speed(const char *name,
     if( !check_int_or_float(param1, pOutput_message) ) return CMD_FAIL;
 
     const char *cmd[] = {"set", "speed", "1.0", NULL};
-    int err = mpv_command(mpv, cmd);
+    int err = _mpv_command(mpv, cmd);
     check_mpv_err(err);
 
     return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
@@ -454,21 +470,27 @@ int cmd_quit(const char *name,
         char **pOutput_message)
 {
     const char *cmd[] = {"quit", param1, NULL};
-    int err = mpv_command(mpv, cmd);
+    int err = _mpv_command(mpv, cmd);
     check_mpv_err(err);
 
     return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
 }
 
-int cmd_playlist_uri_add(const char *name,
-        const char *flags, const char *url,
+int cmd_playlist_add(const char *name,
+        const char *flags, const char *url_or_path,
         char **pOutput_message)
 {
     int err = MPV_ERROR_GENERIC;
 
-    // Avoid hidden folders/files and all paths which goes up.
-    if( strlen(url) == 0 || strstr(url, "://") == NULL ){
-        free(*pOutput_message); *pOutput_message = strdup("Wrong url?!");
+    if( strlen(url_or_path) == 0){
+        free(*pOutput_message); *pOutput_message = strdup("Empty url/path");
+        return CMD_FAIL;
+    }
+
+    if( strstr(url_or_path, "://") == NULL && 
+            ('1' == onion_dict_get(options, "block_non_shared_files")[0])
+      ) {
+        free(*pOutput_message); *pOutput_message = strdup("Input path is no url");
         return CMD_FAIL;
     }
 
@@ -476,13 +498,13 @@ int cmd_playlist_uri_add(const char *name,
         flags = "";
     }
 
-    const char *cmd[] = {"loadfile", url, flags, NULL};
-    err = mpv_command(mpv, cmd);
+    const char *cmd[] = {"loadfile", url_or_path, flags, NULL};
+    err = _mpv_command(mpv, cmd);
     check_mpv_err(err);
     return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
 }
 
-int cmd_playlist_add(const char *name,
+int cmd_media_playlist_add(const char *name,
         const char *flags, const char *fullpath,
         char **pOutput_message)
 {
@@ -498,9 +520,31 @@ int cmd_playlist_add(const char *name,
         flags = "";
     }
 
+#if 0
+    // Workaround for non-working 'replace' variant in mpv:
+    // It looks like replace does not differs from 'append'?!
+    int use_replace_workaround = 0 && ( 0 == strcmp("replace", flags) );
+    // Workorund, step 1/2
+    if ( use_replace_workaround ) {
+        const char *cmd_clear[] = {"playlist-clear", NULL};
+        err = _mpv_command(mpv, cmd_clear);
+        check_mpv_err(err);
+    }
+#endif
+
     const char *cmd[] = {"loadfile", fullpath, flags, NULL};
-    err = mpv_command(mpv, cmd);
+    err = _mpv_command(mpv, cmd);
     check_mpv_err(err);
+
+    // Workaround, step 2/2
+#if 0
+    if ( use_replace_workaround ) {
+        cmd_play(NULL, NULL, NULL, NULL);
+    }
+#endif
+    // Unpause
+    cmd_play(NULL, NULL, NULL, NULL);
+
     return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
 }
 

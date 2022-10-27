@@ -5,6 +5,8 @@
 
 #include "tools.h"
 
+int log_debug = 1;
+
 static int inline split_options_valid_key(const char *keyname,
         const char *prefix, size_t len_prefix){
     if (0 == strcmp(keyname, ""))

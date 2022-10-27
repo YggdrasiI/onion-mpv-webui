@@ -365,7 +365,7 @@ onion_dict *setup_commands(){
   onion_dict_add(_commands, CMD(increase_playback_speed), 0);
   onion_dict_add(_commands, CMD(reset_playback_speed), 0);
   onion_dict_add(_commands, CMD(quit), 0);
-  onion_dict_add(_commands, CMD(playlist_uri_add), 0);
+  onion_dict_add(_commands, CMD(playlist_add), 0);
   return _commands;
 }
 

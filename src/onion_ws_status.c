@@ -45,6 +45,7 @@ extern mpv_handle *mpv;
 #else
 mpv_handle *mpv = NULL;
 #endif
+extern int ws_interval;
 
 enum onion_websocket_status_e {
     NORMAL_CLOSURE              = 1000,
@@ -815,7 +816,7 @@ void property_update(
 
     if( status->num_updated == 0 ){
         ONION_DEBUG("Init: %d/%d", status->num_initialized, status->num_props);
-        // Ignore update_interval_ms (MINIMAL_TIME_BETWEEN_PROPERTY_UPDATE)
+        // Ignore update_interval_ms
         // during initialization, but parse directly.
         parse_value(out);
     }
@@ -845,16 +846,17 @@ __status *status_init()
     //TYPE_OUT needs to be the internal type of the property
     //in mpv if TYPE is MPV_FORMAT_NODE.
     int pos = 0;
+    int ms = ws_interval;
     //ADD("filename", MPV_FORMAT_NODE, MPV_FORMAT_STRING); // encoding problem?!
     ADD("filename", MPV_FORMAT_STRING, MPV_FORMAT_STRING, 0);
-    ADD("duration", MPV_FORMAT_NODE, MPV_FORMAT_DOUBLE, MINIMAL_TIME_BETWEEN_PROPERTY_UPDATE);
-    ADD("time-pos", MPV_FORMAT_NODE, MPV_FORMAT_DOUBLE, MINIMAL_TIME_BETWEEN_PROPERTY_UPDATE);
+    ADD("duration", MPV_FORMAT_NODE, MPV_FORMAT_DOUBLE, ms);
+    ADD("time-pos", MPV_FORMAT_NODE, MPV_FORMAT_DOUBLE, ms);
     // time-remaining = duration - time-pos
-    ADD("playtime-remaining", MPV_FORMAT_NODE, MPV_FORMAT_DOUBLE, MINIMAL_TIME_BETWEEN_PROPERTY_UPDATE);  //scaled by speed
+    ADD("playtime-remaining", MPV_FORMAT_NODE, MPV_FORMAT_DOUBLE, ms);  //scaled by speed
     //ADD("playback-time", MPV_FORMAT_NODE, MPV_FORMAT_DOUBLE, 0);  // redundant and scaled by speed
     //ADD("metadata", MPV_FORMAT_NODE_MAP, MPV_FORMAT_STRING, 0);
     ADD("metadata", MPV_FORMAT_NODE_MAP, MPV_FORMAT_NODE_MAP, 0);
-    ADD("volume", MPV_FORMAT_NODE,  MPV_FORMAT_DOUBLE, MINIMAL_TIME_BETWEEN_PROPERTY_UPDATE);
+    ADD("volume", MPV_FORMAT_NODE,  MPV_FORMAT_DOUBLE, ms);
     ADD("volume-max", MPV_FORMAT_NODE,  MPV_FORMAT_DOUBLE, 0);
     ADD("playlist", MPV_FORMAT_NODE_MAP, MPV_FORMAT_NODE_MAP, 0);
     ADD("track-list", MPV_FORMAT_NODE_MAP, MPV_FORMAT_NODE_MAP, 0);

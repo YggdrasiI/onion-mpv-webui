@@ -19,10 +19,14 @@ pthread_mutex_t mpv_lock = PTHREAD_MUTEX_INITIALIZER;
 #include "mpv_api_commands.h"
 #include "mpv_script_options.h"
 #include "onion_ws_status.h"
+#include "tools.h"
 
 extern onion *o;
 extern __status *status;
 extern __clients *websockets;
+
+int ws_interval = MINIMAL_TIME_BETWEEN_PROPERTY_UPDATE;
+
 
 int mpv_open_cplugin(mpv_handle *handle)
 {
@@ -39,6 +43,20 @@ int mpv_open_cplugin(mpv_handle *handle)
     onion_dict *options = get_default_options();
     update_options(mpv, mpv_plugin_name, options);
 
+    // Debug flag
+    log_debug = ('0' != onion_dict_get(options, "debug")[0]); 
+
+    // Websocket 
+    int ws_interval_new;
+    const char *const ws_interval_str = onion_dict_get(options, "ws_interval");
+    if ( ws_interval_str && 
+            sscanf(ws_interval_str,"%d", &ws_interval_new) == 1)
+    {
+        ws_interval = ws_interval_new;
+        LOG("Set websocket lower bound for updates on %dms\n",
+                ws_interval);
+    }
+
     if ('1' == onion_dict_get(options, "paused")[0]) {
         int pause = 1;
         err = mpv_set_property(mpv, "pause", MPV_FORMAT_FLAG, &pause);
@@ -51,10 +69,6 @@ int mpv_open_cplugin(mpv_handle *handle)
         err = mpv_set_property(mpv, "idle", MPV_FORMAT_FLAG, &daemon);
         check_mpv_err(err);
     }
-
-    // Debug flag
-    int log_debug = ('0' != onion_dict_get(options, "debug")[0]); 
-#define LOG(...) { if (log_debug) { printf(__VA_ARGS__); } }
 
     int error;
     error = webui_onion_init(options); // also init mutex mpv_lock.

@@ -8,13 +8,6 @@
 #define NUM_PROPS 50
 #define REPLY_ID_OFFSET 10000
 
-// To avoid permanent propagation of property changes
-// this value in milliseconds defines a minimal
-// time between two updates. 
-// It is set for variables known for change during play,
-// e.g. 'time-pos'
-#define MINIMAL_TIME_BETWEEN_PROPERTY_UPDATE 500
-
 // Maximal allowed size of messages from clients
 #define WS_MAX_BUFFER_SIZE (1<<12)
 

@@ -588,7 +588,7 @@ int api_playlist_add(
     char *__tmp_path = buffer_pool_aquire(path_buffers);
 
     // Get command
-    const char * const command_name = "playlist_add";
+    const char * const command_name = "media_playlist_add";
     CommandHandler cmd = (CommandHandler) onion_dict_get(
             media_commands, command_name);
 
@@ -690,7 +690,7 @@ int api_playlist_play(
     char *__tmp_path = buffer_pool_aquire(path_buffers);
 
     // Get command
-    const char * const command_name = "playlist_add";
+    const char * const command_name = "media_playlist_add";
     CommandHandler cmd = (CommandHandler) onion_dict_get(
             media_commands, command_name);
 
@@ -742,9 +742,9 @@ int api_playlist_play(
     pthread_mutex_lock(&mpv_lock);
     int cmd_status = (cmd)(command_name,
              //"append-play", __tmp_path,
-            /* Note: mpv's append-play seems not to start
-             * the file as expected...
-             * ...no difference to append */
+            /* Note: mpv's append-play just starts file
+             * if no other one is running
+             * Thus, no difference to append in most cases. */
              "replace", __tmp_path,
             &output_message);
     pthread_mutex_unlock(&mpv_lock);
@@ -772,7 +772,7 @@ api_playlist_play_end:  // cleanup allocations
 
 onion_dict *setup_media_commands(){
   onion_dict *_commands = onion_dict_new();
-  onion_dict_add(_commands, CMD(playlist_add), 0);
+  onion_dict_add(_commands, MEDIA_CMD(playlist_add), 0);
   return _commands;
 }
 
@@ -882,7 +882,7 @@ void __share_func(
     //printf("Connect pattern '%s'\n", url_pattern4);
 
     onion_handler *add_media4 = onion_handler_new(
-            (onion_handler_handler) api_playlist_add,
+            (onion_handler_handler) api_playlist_play,
             handler_data4,
             (onion_handler_private_data_free) __share_data_free);
     onion_url_add_handler(data->urls, url_pattern4, add_media4);

@@ -8,9 +8,11 @@
 
 #ifdef WITH_MPV
 #define CMD(NAME) #NAME, (void *)cmd_##NAME
+#define MEDIA_CMD(NAME) "media_" #NAME, (void *)cmd_media_##NAME
 #else
 int cmd_dummy(const char *name,
         const char *param1, const char *param2,
         char **pOutput_message);
 #define CMD(NAME) #NAME, (void *)cmd_dummy
+#define MEDIA_CMD(NAME) "media_" #NAME, (void *)cmd_dummy
 #endif

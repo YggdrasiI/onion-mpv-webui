@@ -8,6 +8,9 @@
 
 #include <mpv/client.h>
 
+extern int log_debug;
+#define LOG(...) { if (log_debug) { printf(__VA_ARGS__); } }
+
 typedef struct option_t{
   char *key;
   char *val;

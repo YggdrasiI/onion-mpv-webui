@@ -23,8 +23,13 @@ onion_dict *get_default_options(){
 
   //TODO
   onion_dict_add(opt, "ws_interval", "500", 0); // minimal distance between property updates
-  //TODO
-  onion_dict_add(opt, "debug", "0", 0); // enable console output
+
+  // Enable console output
+  onion_dict_add(opt, "debug", "0", 0);
+
+  // Restrict loading of files on local files from shares
+  // and URI's.
+  onion_dict_add(opt, "block_non_shared_files", "1", 0);
 
   // Media shares. Names should not contain '/'.
   onion_dict_add(shared_folders, "share1", "/home/olaf/Music",

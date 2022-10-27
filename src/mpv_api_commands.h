@@ -157,17 +157,35 @@ int cmd_quit(const char *name,
         const char *param1, const char *param2,
         char **pOutput_message);
 
-int cmd_playlist_uri_add(const char *name,
-        const char *flags, const char *url,
+// This can load files given by uri and,
+// local files if script options allows loading
+// As default, loading of local files is disabled for
+// security reason.
+int cmd_playlist_add(const char *name,
+        const char *flags, const char *url_or_path,
         char **pOutput_message);
 // Flags same as mpv's loadfile command, e.g
 // "replace", "append", "append-play"
 
-// Commands for /media/api/…
-int cmd_playlist_add(const char *name,
+
+/* Commands for /media/api/… 
+ * should prefixed with 'cmd_media_'
+ */
+
+// This can add arbitary (local) files to mpv's playlist.
+/* Note: I assume here that the check if this file is within a media share
+ * was already done.
+ */
+int cmd_media_playlist_add(const char *name,
         const char *flags, const char *fullpath,
         char **pOutput_message);
-// Flags same as mpv's loadfile command.
+// Flags same as mpv's loadfile command, e.g
+// "replace", "append", "append-play"
+
+
+char *json_status_response();
+
+int check_mpv_err(int status);
 
 
 char *json_status_response();
