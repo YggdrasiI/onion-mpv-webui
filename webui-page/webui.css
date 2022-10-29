@@ -90,7 +90,7 @@ h3 {
 .button .content, .button .content i, .icon-content i {
   /*line-height: 150px;*/
   /*line-height: 50px;*/
-  font-size: 4.5vw; 
+  font-size: 4.5vw;
 }
 
 .button .icon-content {
@@ -142,7 +142,7 @@ table.prop-table {
   width:100%;
   margin-right:5rem;
   margin-left:0rem;
-  margin-bottom: 40px;
+  /*margin-bottom: 40px;*/ /* Overlapping with topControls */
   font-size: 4vmin;
   /*border:1px solid red;*/
 }
@@ -155,6 +155,7 @@ table.prop-table td {
 
 .slidecontainer {
   width: 100%;
+  /*height:100%;*/ /* bad, we want keep same distance to bottom row. */
 }
 
 input[type="range"] {
@@ -166,7 +167,7 @@ input[type="range"] {
   box-sizing: border-box; /* Border respected by width. */
   border-radius: 6px;
   border: 3px solid var(--main-fg-color);
-  
+ 
   overflow: hidden;
   cursor: pointer;
   /*background: var(--main-fg-color);*/
@@ -245,7 +246,7 @@ input[type="range"] {
   /*width: 100%;*/
   text-align: center;
   font-size: 4vmin;
-  margin-bottom: 20px;
+  /*margin-bottom: 20px;*/
 }
 
 .sliderCenter {
@@ -385,16 +386,44 @@ td.playlist.playing:hover {
   /*background-color: var(--playlist-bg-hover);*/
 }
 
-#controlBox {
+#headerBox {
   position: absolute;
   top: 0px;
   left: 20px;
   right: 0rem;
-  bottom: 20px;
+  min-height:20%;
+  height:30vmax;
+}
+#controlBox {
+  position: absolute;
+  /*top: 0px;*/
+  left: 20px;
+  right: 0rem;
+  bottom: 0px;
+  max-height:80%;
+  height:70vmax; /* Lässt bei schmalen Viewports oben mehr Platz */
+
   display: grid;
   grid-template-columns: 50% 50%;
-  grid-template-rows: auto auto auto;
-  justify-content:space-between;
+  grid-template-rows:
+  /*minmax(min-content, 5em) /* header row */
+  [Ccycle]
+  1fr   /* cycleControls */
+  [CcycleEnd]
+  20px  /* free space */
+  [Ctop]
+  minmax(min-content, 1fr) /* topControls */
+  [CtopEnd]
+  20px  /* free space */
+  [Cmain1]
+  1fr   /* leftControls1 rightControls1 */
+  [Cmain1RightEnd]
+  0fr   /* Avoids different button size in rightControls1 */
+  [Cmain2]
+  2fr   /* leftControls2 rightControls2 */
+  2fr  /* |           | |            | */
+  [Cend];
+  /*justify-content:space-between;*/
   align-items:start;
   justify-items: stretch;
   grid-gap:0px 20px;
@@ -407,59 +436,148 @@ td.playlist.playing:hover {
 }
 
 #header {
-  /*background-color:#004444;*/
-  grid-column: 1/3;
-  grid-row: 1/2;
+  height:100%;
+
   /*align-self:start;*/
   overflow-y:hidden;
 
 	margin-right: 3em;
 }
 
+#cycleControls {
+  /* As subelement */
+  grid-column-start:1;
+  grid-column-end:3;
+  grid-row-start:Ccycle;
+  grid-row-end:CcycleEnd;
+  height:100%;
+  width:75%;
+  justify-self:end;
+
+  /* For subelements */
+  display:grid;
+  grid-template-columns: 50% repeat(auto, auto);
+  grid-auto-flow:column;
+  /*grid-template-rows: 50% 50% 50%;
+  grid-auto-flow:column;*/
+  /*grid-template-rows: 2fr;*/ /*skrink height of this div?! */
+  /*grid-auto-rows:120px;*/
+  justify-content:space-between;
+  /*align-items:end;*/
+  justify-items: stretch;
+  /*padding-top:20px;*/
+
+  grid-auto-rows:88%;
+  grid-auto-columns:33%;
+}
+
 #topControls {
-  /*background-color:#440000;*/
-  grid-column: 1/3;
-  grid-row: 2/3;
-  /*align-self:start;*/
+  grid-column-start:1;
+  grid-column-end:3;
+  grid-row-start:Ctop;
+  grid-row-end:CtopEnd;
+  height:100%;
+
+  /* Place content on bottom */
+  display:grid;
+  align-items:end;
 }
-#leftControls {
+#leftControls1 {
   /* As subelement */
-  /*background-color:#000044;*/
-  grid-column: 1/2;
-  grid-row: 3/4;
+  grid-column-start:1;
+  grid-column-end:2;
+  grid-row-start:Cmain1;
+  grid-row-end:Cmain2;
+  height:100%;
+
+  /* For subelements */
+  display:grid;
+  grid-template-columns: 50% 50%;
+  /*grid-template-rows: 2fr;*/ /*skrink height of this div?! */
+  /*grid-auto-rows:120px;*/
+  justify-content:space-between;
+  /*align-items:end;*/
+  justify-items: stretch;
+  /*padding-top:20px;*/
+
+  grid-auto-rows:44%;
+}
+
+#rightControls1 {
+  /* As subelement */
+  grid-column-start:2;
+  grid-column-end:3;
+  grid-row-start:Cmain1;
+  grid-row-end:Cmain1RightEnd;
+  height:100%;
+
+  /* For subelements */
+  display:grid;
+  grid-template-columns: 50% 50%;
+  /*grid-template-rows: 1fr 1fr ;*/
+  /*grid-auto-rows:120px;*/
+  justify-content:space-between;
+  align-items:start;
+  justify-items: stretch;
+
+  /* Others */
+  grid-auto-rows:88%;
+}
+#leftControls2 {
+  /* As subelement */
+  grid-column-start:1;
+  grid-column-end:2;
+  grid-row-start:Cmain2;
+  grid-row-end:Cend;
   height:100%;
 
 
   /* For subelements */
   display:grid;
   grid-template-columns: 50% 50%;
-  grid-template-rows: 2fr 1fr 1fr 1fr;
-  grid-auto-rows:120px;
+  /*grid-template-rows: 1fr 1fr repeat(2, 1fr);*/
+  /*grid-auto-rows:120px;*/
   justify-content:space-between;
-  align-items:start;
+  /*align-items:end;*/
   justify-items: stretch;
-  grid-gap:20px 0px;
+  /*padding-top:20px;*/
+
+  /* Others */
+  grid-auto-rows:22%;
 }
-#rightControls {
+#rightControls2 {
   /* As subelement */
-  /*background-color:#004400;*/
-  grid-column: 2/3;
-  grid-row: 3/4;
+  grid-column-start:2;
+  grid-column-end:3;
+  grid-row-start:Cmain2;
+  grid-row-end:Cend;
   height:100%;
+
 
   /* For subelements */
   display:grid;
   grid-template-columns: 50% 50%;
-  grid-template-rows: 1fr 1fr 1fr 1fr 1fr;
-  grid-auto-rows:120px;
+  /*grid-template-rows: 1fr 1fr 1fr 1fr repeat(0, 1fr);*/
+  /*grid-auto-rows:120px;*/
   justify-content:space-between;
   align-items:start;
-  justify-items: stretch;
-  grid-gap:20px 0px;
+  /*justify-items: stretch;*/
+
+  /*? */
+  grid-auto-rows:22%;
+}
+
+#leftControls1, #rightControls1 {
+  grid-gap:6% 0px;
+}
+#leftControls2, #rightControls2 {
+  grid-gap:3% 0px;
+}
+
+#volSliderControl {
 }
 
 .controls {
-
 }
 .control_left {
   margin-right:10px;
@@ -467,16 +585,17 @@ td.playlist.playing:hover {
 }
 .control_right {
   margin-left:10px;
-  grid-column: 2/3;
+  grid-column: 2/2;
 }
 .control_full {
-  grid-column: 1/3;
+  grid-column: 1/ span 2;
 }
 
 .button {
   height: 100%;
   /*padding-top:30%;*/
-  
+  /*max-height: 2.8em;*/
+ 
   /* Vertical allign over flexbox properties */
   display: flex;
   justify-content: center;
@@ -587,37 +706,139 @@ ul#sharelist li i.share_bullet {
 /* Smart Phones und Tablets mit mittlerer Auflösung */
 @media all and (max-width: 35em) {
   /* controls in one row */
-
-#controlBox {
-  grid-template-columns: 100%;
-  grid-template-rows: auto auto auto 1fr;
+#headerBox {
+  /*min-height:20%;
+  height:30vmax; */
 }
+
+#controlBox
+{
+  height:inherit !important;
+  max-height:inherit !important;
+
+  grid-template-columns: 100%;
+  grid-template-rows:
+  /*minmax(min-content, 5em) /* header row */
+  [Ccycle]
+  1fr   /* cycleControls */
+  [CcycleEnd]
+  20px  /* free space */
+  [Ctop]
+  minmax(min-content, 2fr) /* topControls */
+  [CtopEnd]
+  20px  /* free space */
+  [Cmain1]
+  minmax(min-content, 2fr) /* leftControls1 */
+  [Cmain2]
+  3fr   /* leftControls2 */
+  [Cmain3]
+  1fr  /* rightControls1 */
+  [Cmain4]
+  3fr  /* rightControls2 */
+  [Cend];
+  /*justify-content:space-between;*/
+  align-items:start;
+  justify-items: stretch;
+  grid-gap:0px 20px;
+
+
+
+  /*overflow:hidden;*/
+  overflow-x:hidden;
+  overflow-y:auto;
+  padding-right: 40px; /* scrollbar-space?! */
+
+}
+
 
 /*#controlBox > *{
-  border: 1px red solid;
+border: 1px red solid;
 }*/
 
-#header {
-  grid-column: 1/2;
-  grid-row: 1/2;
-  height: 8em;
-}
+  #header {
+    /*height: 8em;*/
+  }
 
-#topControls {
-  grid-column: 1/2;
-  grid-row: 2/3;
-  height: 5em;
-}
+  #cycleControls{
+    grid-column-start:1;
+    grid-column-end:2;
+    grid-row-start:Ccycle;
+    grid-row-end:Ccycle;
+  }
 
-#leftControls {
-  grid-column: 1/2;
-  grid-row: 3/4;
-  margin-bottom: 20px; 
-  height: 13em;
-}
-#rightControls {
-  grid-column: 1/2;
-  grid-row: 4/5;
-  height: 13em;
-}
+  #topControls {
+    grid-column-start:1;
+    grid-column-end:2;
+    grid-row-start:Ctop;
+    grid-row-end:CtopEnd;
+  }
+
+  #leftControls1 {
+    grid-column-start:1;
+    grid-column-end:2;
+    grid-row-start:Cmain1;
+    grid-row-end:Cmain2;
+  }
+  #leftControls2 {
+    grid-column-start:1;
+    grid-column-end:2;
+    grid-row-start:Cmain2;
+    grid-row-end:Cmain3;
+
+    /*margin-bottom: 20px; */
+    /*height: 13em;*/
+    grid-auto-rows:30%;
+  }
+
+  #rightControls1 {
+    grid-column-start:1;
+    grid-column-end:2;
+    grid-row-start:Cmain3;
+    grid-row-end:Cmain4;
+
+    /*grid-auto-rows:44%;*/
+  }
+
+  #rightControls2 {
+    grid-column-start:1;
+    grid-column-end:2;
+    grid-row-start:Cmain4;
+    grid-row-end:Cend;
+
+    grid-auto-rows:30%;
+  }
+
+  .button {
+    overflow:clip;
+    max-height:9vh;
+  }
+
 } /* end of @media  */
+
+/* For debugging */
+@media all and (max-width: 0em) {
+  #header {
+    background-color:#440000;
+  }
+  #topControls {
+    background-color:rgba(130,130,130, 0.3);
+  }
+  #leftControls1, #leftControls2 {
+    background-color:rgba(0,0,200, 0.3);
+  }
+  #rightControls1, #rightControls2 {
+    background-color:#004400;
+  }
+  .slidecontainer {
+    background-color:#333355;
+    border:1px solid black;
+  }
+
+  #controlBox > div {
+    border: 1px solid red;
+  }
+
+  .button .content{
+    background-color:green;
+  }
+}

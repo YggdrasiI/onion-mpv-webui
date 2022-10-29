@@ -2,6 +2,7 @@ var DEBUG = true,
     metadata = {},
     subs = {},
     audios = {},
+    videos = {},
     blockDoublePause = false,
     blockPosSlider = false,
     blockVolSlider = false,
@@ -56,7 +57,7 @@ function basename(path){
 }
 
 function send(command, param){
-  return send_ws(command, param)
+  if( true ) return send_ws(command, param)
 
   DEBUG && console.log('Sending command: ' + command + ' - param: ' + param)
   var path = 'api/' + command
@@ -275,7 +276,7 @@ function format_time(seconds){
 }
 
 function setFullscreenButton(fullscreen) {
-    if (fullscreen) {
+    if (fullscreen === 'yes') {
         var fullscreenText = 'Fullscreen off'
     } else {
         fullscreenText = 'Fullscreen on'
@@ -289,6 +290,8 @@ function setTrackList(tracklist) {
   window.audios.count = 0
   window.subs.selected = 0
   window.subs.count = 0
+  window.videos.selected = 0
+  window.videos.count = 0
   for (var i = 0; i < tracklist.length; i++){
     if (tracklist[i].type === 'audio') {
       window.audios.count++
@@ -300,23 +303,40 @@ function setTrackList(tracklist) {
       if (tracklist[i].selected) {
         window.subs.selected = tracklist[i].id
       }
+    } else if (tracklist[i].type === 'video') {
+      window.videos.count++
+      if (tracklist[i].selected) {
+        window.videos.selected = tracklist[i].id
+      }
     }
   }
 
   // Subtitle
   var el = document.getElementById("nextSub")
   if (window.subs.count > 0) {
-    el.innerText = 'Next sub ' + window.subs.selected + '/' + window.subs.count
+    el.innerText = 'Sub ' + window.subs.selected + '/' + window.subs.count
     displayElementClass('subtitle', true)
   }else{
     displayElementClass('subtitle', false)
     el.innerText = 'No subtitle'
   }
 
+  // Video streams
+  var el = document.getElementById("nextVideo")
+  if (window.videos.count > 1) {
+    el.innerText = 'Video ' + window.videos.selected + '/' + window.videos.count
+    displayElementClass('video', true)
+  }else{
+    displayElementClass('video', false)
+		if (window.videos.count == 0) {
+			el.innerText = 'No video'
+		}
+  }
+
   // Audio tracks
   var el = document.getElementById("nextAudio")
   if (window.audios.count > 1){
-    el.innerText = 'Next audio ' + window.audios.selected + '/' + window.audios.count
+    el.innerText = 'Audio ' + window.audios.selected + '/' + window.audios.count
     displayElementClass('audio2', true) // for #audio tracks > 1
     displayElementClass('audio1', true) // for #audio tracks > 0
   }else{
@@ -547,9 +567,11 @@ function setChapter(chapters, chapter, metadata) {
   }
   if (chapters === 0) {
     displayElementClass('chapter', false)
+    displayElementClass('no_chapter', true)
     chapterContent.innerText = "0/0"
   } else {
     displayElementClass('chapter', true)
+    displayElementClass('no_chapter', false)
     chapterContent.innerText = "" + (chapter + 1) + "/" + chapters
       + " " + chapter_title
   }

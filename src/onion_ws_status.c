@@ -856,7 +856,7 @@ __status *status_init()
     //ADD("playback-time", MPV_FORMAT_NODE, MPV_FORMAT_DOUBLE, 0);  // redundant and scaled by speed
     //ADD("metadata", MPV_FORMAT_NODE_MAP, MPV_FORMAT_STRING, 0);
     ADD("metadata", MPV_FORMAT_NODE_MAP, MPV_FORMAT_NODE_MAP, 0);
-    ADD("volume", MPV_FORMAT_NODE,  MPV_FORMAT_DOUBLE, ms);
+    ADD("volume", MPV_FORMAT_NODE,  MPV_FORMAT_DOUBLE, (ms/2>500?500:ms/2));
     ADD("volume-max", MPV_FORMAT_NODE,  MPV_FORMAT_DOUBLE, 0);
     ADD("playlist", MPV_FORMAT_NODE_MAP, MPV_FORMAT_NODE_MAP, 0);
     ADD("track-list", MPV_FORMAT_NODE_MAP, MPV_FORMAT_NODE_MAP, 0);
