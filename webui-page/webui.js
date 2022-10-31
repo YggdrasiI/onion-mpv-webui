@@ -6,6 +6,7 @@ var DEBUG = true,
     blockDoublePause = false,
     blockPosSlider = false,
     blockVolSlider = false,
+    connected = false,
     max_title_size = 60
 
 var ws = null
@@ -22,7 +23,7 @@ const REGEXS = {
  * Use 0 to update immediately. 
  */
 var mpv_outstanding_status = {
-  delay: 500,
+  delay: 300,
   updates: {},
   timer: null
 }
@@ -328,9 +329,9 @@ function setTrackList(tracklist) {
     displayElementClass('video', true)
   }else{
     displayElementClass('video', false)
-		if (window.videos.count == 0) {
-			el.innerText = 'No video'
-		}
+    if (window.videos.count == 0) {
+      el.innerText = 'No video'
+    }
   }
 
   // Audio tracks
@@ -629,7 +630,7 @@ function handleStatusResponse(json) {
 
   document.getElementById("playtime-remaining").innerHTML =
     "-" + format_time(json['playtime-remaining'])
-		+ ((json['speed'] && json['speed'] != 1.0)?` (x ${Number(json['speed']).toFixed(2)})`:'')
+    + ((json['speed'] && json['speed'] != 1.0)?` (x ${Number(json['speed']).toFixed(2)})`:'')
 
   setSubDelay(json['sub-delay'])
   setAudioDelay(json['audio-delay'])
@@ -664,7 +665,7 @@ function handleStatusUpdate(status_updates) {
   if ("playtime-remaining" in status_updates){
     document.getElementById("playtime-remaining").innerHTML =
       "-" + format_time(new_status['playtime-remaining'])
-			+ ((new_status['speed'] && new_status['speed'] != 1.0)?` (x ${Number(new_status['speed']).toFixed(2)})`:'')
+      + ((new_status['speed'] && new_status['speed'] != 1.0)?` (x ${Number(new_status['speed']).toFixed(2)})`:'')
   }
   if ("sub-delay" in status_updates){
     setSubDelay(new_status['sub-delay'])
@@ -799,9 +800,16 @@ function status_init_ws(){
     }
   }
 
+  ws.onopen = function(ev){
+    connected = true;
+    DEBUG && console.log("Websocket connected")
+  }
   ws.onclose = function(ev){ // CloseEvent
     DEBUG && console.log("Websocket closed with code " + ev.code)
-    print_disconnected()
+    if (connected) {
+      connected = false;
+      print_disconnected()
+    }
 
     mpv_outstanding_status.restart = setTimeout(function() {
       console.log("Try reconnecting websocket")
@@ -979,51 +987,51 @@ function updateNotification(mpv_status) {
  * triggered by multiple buttons, e.g. 'togglePlayPause'.
  * */
 function add_button_listener() {
-	const btnEvents = [
-		// Element id/name, event name, handler 
-		['togglePlayPause', 'click', function (evt) {togglePlayPause() }],
-		['playlistLoopCycle', 'click', function (evt) {playlist_loop_cycle() }],
-		['playlistShuffle', 'click', function (evt) {send('playlist_shuffle') }],
-		['togglePlaylist', 'click', function (evt) {togglePlaylist(); return false }],
-		['share_selector', 'change', function (evt) {share_change(evt.target) }],
-		['shareSortingAlpha', 'click', function (evt) {share_change_sorting('alpha'); sortShareList(); }],
-		['shareSortingDate', 'click', function (evt) {share_change_sorting('date'); sortShareList(); }],
-		['toggleShares', 'click', function (evt) {toggleShares(); return false; }],
-		['playlistPrev', 'mousedown', function (evt) {send('playlist_prev') }],
-		['playlistNext', 'mousedown', function (evt) {send('playlist_next') }],
-		['seekBack1', 'mousedown', function (evt) {send('seek', '-5') }],
-		['seekForward1', 'mousedown', function (evt) {send('seek', '10') }],
-		['seekBack2', 'mousedown', function (evt) {send('seek', '-60') }],
-		['seekForward2', 'mousedown', function (evt) {send('seek', '120') }],
-		['chapterBack', 'mousedown', function (evt) {send('add_chapter', '-1') }],
-		['chapterForward', 'mousedown', function (evt) {send('add_chapter', '1') }],
-		['playbackSpeed1', 'mousedown', function (evt) {send('increase_playback_speed', '0.9') }],
-		['playbackSpeed2', 'mousedown', function (evt) {send('increase_playback_speed', '1.1') }],
-		['subDelay1', 'mousedown', function (evt) {send('add_sub_delay', '-0.05') }],
-		['subDelay2', 'mousedown', function (evt) {send('add_sub_delay', '0.05') }],
-		['audioDelay1', 'mousedown', function (evt) {send('add_audio_delay', '-0.05') }],
-		['audioDelay2', 'mousedown', function (evt) {send('add_audio_delay', '0.05') }],
-		['toggleFullscreen', 'click', function (evt) {send('fullscreen') }],
-		['cycleAudioDevice', 'click', function (evt) {send('cycle', 'audio-device') }],
-		['cycleSub', 'mousedown', function (evt) {send('cycle', 'sub') }],
-		['cycleAudio', 'mousedown', function (evt) {send('cycle', 'audio') }],
-		['cycleVideo', 'mousedown', function (evt) {send('cycle', 'video') }],
-	]
+  const btnEvents = [
+    // Element id/name, event name, handler 
+    ['togglePlayPause', 'click', function (evt) {togglePlayPause() }],
+    ['playlistLoopCycle', 'click', function (evt) {playlist_loop_cycle() }],
+    ['playlistShuffle', 'click', function (evt) {send('playlist_shuffle') }],
+    ['togglePlaylist', 'click', function (evt) {togglePlaylist(); return false }],
+    ['share_selector', 'change', function (evt) {share_change(evt.target) }],
+    ['shareSortingAlpha', 'click', function (evt) {share_change_sorting('alpha'); sortShareList(); }],
+    ['shareSortingDate', 'click', function (evt) {share_change_sorting('date'); sortShareList(); }],
+    ['toggleShares', 'click', function (evt) {toggleShares(); return false; }],
+    ['playlistPrev', 'mousedown', function (evt) {send('playlist_prev') }],
+    ['playlistNext', 'mousedown', function (evt) {send('playlist_next') }],
+    ['seekBack1', 'mousedown', function (evt) {send('seek', '-5') }],
+    ['seekForward1', 'mousedown', function (evt) {send('seek', '10') }],
+    ['seekBack2', 'mousedown', function (evt) {send('seek', '-60') }],
+    ['seekForward2', 'mousedown', function (evt) {send('seek', '120') }],
+    ['chapterBack', 'mousedown', function (evt) {send('add_chapter', '-1') }],
+    ['chapterForward', 'mousedown', function (evt) {send('add_chapter', '1') }],
+    ['playbackSpeed1', 'mousedown', function (evt) {send('increase_playback_speed', '0.9') }],
+    ['playbackSpeed2', 'mousedown', function (evt) {send('increase_playback_speed', '1.1') }],
+    ['subDelay1', 'mousedown', function (evt) {send('add_sub_delay', '-0.05') }],
+    ['subDelay2', 'mousedown', function (evt) {send('add_sub_delay', '0.05') }],
+    ['audioDelay1', 'mousedown', function (evt) {send('add_audio_delay', '-0.05') }],
+    ['audioDelay2', 'mousedown', function (evt) {send('add_audio_delay', '0.05') }],
+    ['toggleFullscreen', 'click', function (evt) {send('fullscreen') }],
+    ['cycleAudioDevice', 'click', function (evt) {send('cycle', 'audio-device') }],
+    ['cycleSub', 'mousedown', function (evt) {send('cycle', 'sub') }],
+    ['cycleAudio', 'mousedown', function (evt) {send('cycle', 'audio') }],
+    ['cycleVideo', 'mousedown', function (evt) {send('cycle', 'video') }],
+  ]
 
-	btnEvents.forEach( x => {
-		let els = document.getElementsByName(x[0])
-		let count = els.length;
-		els.forEach(el => {el.addEventListener(x[1], x[2])})
+  btnEvents.forEach( x => {
+    let els = document.getElementsByName(x[0])
+    let count = els.length;
+    els.forEach(el => {el.addEventListener(x[1], x[2])})
 
-		let el = document.getElementById(x[0])
-		if (el) {
-			el.addEventListener(x[1], x[2])
-			count++;
-		}
-		if (count == 0){
-			console.log(`No button named '${x[0]}' found to add event!`)
-		}
-	})
+    let el = document.getElementById(x[0])
+    if (el) {
+      el.addEventListener(x[1], x[2])
+      count++;
+    }
+    if (count == 0){
+      console.log(`No button named '${x[0]}' found to add event!`)
+    }
+  })
 }
 
 window.addEventListener('keydown', webui_keydown, false)
