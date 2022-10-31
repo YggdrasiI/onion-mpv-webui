@@ -199,11 +199,11 @@ function populatePlaylist(json, pause) {
 
   playlist.addEventListener('click', function _listener(evt) {
     if( evt.target == playlist ){
-      playlist.removeEventListener('click', _listener)
+      //playlist.removeEventListener('click', _listener)
       togglePlaylist()
 
     }
-  }, false)
+  }, {once: true})
 }
 
 
@@ -972,8 +972,63 @@ function updateNotification(mpv_status) {
   }
 }
 
+/* To satisfy Content-Security-Policy define
+ * onClick/onTouch/etc events here.
+ *
+ * Using name instead of id is possible because some Events are
+ * triggered by multiple buttons, e.g. 'togglePlayPause'.
+ * */
+function add_button_listener() {
+	const btnEvents = [
+		// Element id/name, event name, handler 
+		['togglePlayPause', 'click', function (evt) {togglePlayPause() }],
+		['playlistLoopCycle', 'click', function (evt) {playlist_loop_cycle() }],
+		['playlistShuffle', 'click', function (evt) {send('playlist_shuffle') }],
+		['togglePlaylist', 'click', function (evt) {togglePlaylist(); return false }],
+		['share_selector', 'change', function (evt) {share_change(evt.target) }],
+		['shareSortingAlpha', 'click', function (evt) {share_change_sorting('alpha'); sortShareList(); }],
+		['shareSortingDate', 'click', function (evt) {share_change_sorting('date'); sortShareList(); }],
+		['toggleShares', 'click', function (evt) {toggleShares(); return false; }],
+		['playlistPrev', 'mousedown', function (evt) {send('playlist_prev') }],
+		['playlistNext', 'mousedown', function (evt) {send('playlist_next') }],
+		['seekBack1', 'mousedown', function (evt) {send('seek', '-5') }],
+		['seekForward1', 'mousedown', function (evt) {send('seek', '10') }],
+		['seekBack2', 'mousedown', function (evt) {send('seek', '-60') }],
+		['seekForward2', 'mousedown', function (evt) {send('seek', '120') }],
+		['chapterBack', 'mousedown', function (evt) {send('add_chapter', '-1') }],
+		['chapterForward', 'mousedown', function (evt) {send('add_chapter', '1') }],
+		['playbackSpeed1', 'mousedown', function (evt) {send('increase_playback_speed', '0.9') }],
+		['playbackSpeed2', 'mousedown', function (evt) {send('increase_playback_speed', '1.1') }],
+		['subDelay1', 'mousedown', function (evt) {send('add_sub_delay', '-0.05') }],
+		['subDelay2', 'mousedown', function (evt) {send('add_sub_delay', '0.05') }],
+		['audioDelay1', 'mousedown', function (evt) {send('add_audio_delay', '-0.05') }],
+		['audioDelay2', 'mousedown', function (evt) {send('add_audio_delay', '0.05') }],
+		['toggleFullscreen', 'click', function (evt) {send('fullscreen') }],
+		['cycleAudioDevice', 'click', function (evt) {send('cycle', 'audio-device') }],
+		['cycleSub', 'mousedown', function (evt) {send('cycle', 'sub') }],
+		['cycleAudio', 'mousedown', function (evt) {send('cycle', 'audio') }],
+		['cycleVideo', 'mousedown', function (evt) {send('cycle', 'video') }],
+	]
+
+	btnEvents.forEach( x => {
+		let els = document.getElementsByName(x[0])
+		let count = els.length;
+		els.forEach(el => {el.addEventListener(x[1], x[2])})
+
+		let el = document.getElementById(x[0])
+		if (el) {
+			el.addEventListener(x[1], x[2])
+			count++;
+		}
+		if (count == 0){
+			console.log(`No button named '${x[0]}' found to add event!`)
+		}
+	})
+}
+
 window.addEventListener('keydown', webui_keydown, false)
 window.addEventListener('load', status_init_ws, false)
+window.addEventListener('load', add_button_listener, false)
 //status_ws()
 //setInterval(function(){status();}, 1000)
 

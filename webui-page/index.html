@@ -5,7 +5,8 @@
     <!--<meta name="viewport" content="user-scalable=no">-->
     <meta name="viewport" content="user-scalable=no,width=device-width, initial-scale=1.0">
     <meta name="author" content="Fabio Ambauen, Olaf Schulz">
-    <title>simple-mpv-webui</title>
+		<meta http-equiv="Content-Security-Policy" content="default-src chrome: 'self'; img-src * chrome: moz-icon:; media-src 'self'; script-src 'self'; style-src 'self';" />
+    <title>MPV Webui</title>
     <link rel="apple-touch-icon" sizes="180x180" href="static/favicons/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="static/favicons/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="static/favicons/favicon-16x16.png">
@@ -28,22 +29,22 @@
       <table class="playlist-control">
         <tr>
           <td>
-            <div onClick="togglePlayPause()" class="button green content icon-content playPauseButton playlist-controls">
+            <div name="togglePlayPause" class="button green content icon-content playPauseButton playlist-controls">
               <i class="fas fa-play"></i><i class="fas fa-pause"></i>
             </div>
           </td>
           <td>
-            <div onClick="playlist_loop_cycle()" class="button blue content icon-content playlist-controls playlistLoopButton">
+            <div name="playlistLoopCycle" class="button blue content icon-content playlist-controls playlistLoopButton">
               <i class="fas fa-redo-alt"></i>
             </div>
           </td>
           <td>
-            <div onClick="send('playlist_shuffle')" class="button blue content icon-content playlist-controls">
+            <div name="playlistShuffle" class="button blue content icon-content playlist-controls">
               <i class="fas fa-random"></i>
             </div>
           </td>
           <td>
-            <div onClick="togglePlaylist()" class="button violet content icon-content playlist-controls">
+            <div name="togglePlaylist" class="button violet content icon-content playlist-controls">
               <i class="fas fa-times-circle"></i>
             </div>
           </td>
@@ -55,20 +56,20 @@
       <table class="playlist-control">
         <tr>
           <td>
-            <select id="share_selector" onchange="share_change(this)"></select>
+            <select id="share_selector"></select>
           </td>
           <td>
-            <div onClick="share_change_sorting('alpha'); sortShareList();" class="button blue content icon-content playlist-controls shareSortButton_alpha">
+            <div name="shareSortingAlpha" class="button blue content icon-content playlist-controls shareSortButton_alpha">
               <i class="fas fa-sort-alpha-up"></i>Name
             </div>
           </td>
           <td>
-            <div onClick="share_change_sorting('date'); sortShareList();" class="button blue content icon-content playlist-controls shareSortButton_date">
+            <div name="shareSortingDate" class="button blue content icon-content playlist-controls shareSortButton_date">
               <i class="fas fa-sort-numeric-up"></i>Date
             </div>
           </td>
           <td>
-            <div onClick="toggleShares()" class="button violet content icon-content playlist-controls">
+            <div name="toggleShares" class="button violet content icon-content playlist-controls">
               <i class="fas fa-times-circle"></i>
             </div>
           </td>
@@ -123,12 +124,12 @@
       </div>
 
       <div id="rightControls1">
-        <div onMouseDown="send('playlist_prev')" class="button blue control_left">
+        <div name="playlistPrev" class="button blue control_left">
           <div class="content icon-content">
             <i class="fas fa-fast-backward"></i> File
           </div>
         </div>
-        <div onMouseDown="send('playlist_next')" class="button blue control_right">
+        <div name="playlistNext" class="button blue control_right">
           <div class="content icon-content">
             File <i class="fas fa-fast-forward"></i>
           </div>
@@ -136,40 +137,40 @@
       </div>
 
       <div id="leftControls2">
-        <div onClick="togglePlayPause()" class="button green control_full">
+        <div name="togglePlayPause" class="button green control_full">
           <div class="content icon-content playPauseButton">
             <i class="fas fa-play"></i><i class="fas fa-pause"></i>
           </div>
         </div>
 
-        <div onMouseDown="send('seek', '-5')" class="button blue control_left">
+        <div name="seekBack1" class="button blue control_left">
           <div class="content icon-content">
             <i class="fas fa-backward"></i> -5s
           </div>
         </div>
-        <div onMouseDown="send('seek', '10')" class="button blue control_right">
+        <div name="seekForward1" class="button blue control_right">
           <div class="content icon-content"> +10s
             <i class="fas fa-forward"></i>
           </div>
         </div>
 
-        <div onMouseDown="send('add_chapter', '-1')" class="button blue chapter control_left">
+        <div name="chapterBack" class="button blue chapter control_left">
           <div class="content icon-content">
             <i class="fas fa-step-backward"></i> Chapter
           </div>
         </div>
-        <div onMouseDown="send('add_chapter', '1')" class="button blue chapter control_right">
+        <div name="chapterForward" class="button blue chapter control_right">
           <div class="content icon-content"> Chapter
             <i class="fas fa-step-forward"></i>
           </div>
         </div>
 
-        <div onMouseDown="send('seek', '-60')" class="button blue no_chapter control_left hidden">
+        <div name="seekBack2" class="button blue no_chapter control_left hidden">
           <div class="content icon-content">
             <i class="fas fa-backward"></i> -1m
           </div>
         </div>
-        <div onMouseDown="send('seek', '120')" class="button blue no_chapter control_right hidden">
+        <div name="seekForward2" class="button blue no_chapter control_right hidden">
           <div class="content icon-content"> +2m
             <i class="fas fa-forward"></i>
           </div>
@@ -178,61 +179,61 @@
       </div>
 
       <div id="rightControls2">
-        <div onMouseDown="send('increase_playback_speed', '0.9')" class="button yellow control_left audio1">
+        <div name="playbackSpeed1" class="button yellow control_left audio1">
           <div id="slowerPlayback" class="content text-content">
             Playback ÷ <!--1.1-->
           </div>
         </div>
-        <div onMouseDown="send('increase_playback_speed', '1.1')" class="button yellow control_right audio1">
+        <div name="playbackSpeed2" class="button yellow control_right audio1">
           <div id="fasterPlayback" class="content text-content">
             Playback × <!--1.1-->
           </div>
         </div>
 
 
-        <div onMouseDown="send('add_sub_delay', '-0.05')" class="button yellow control_left subtitle">
+        <div name="subDelay1" class="button yellow control_left subtitle">
           <div class="content text-content">
             Sub delay -
           </div>
         </div>
-        <div onMouseDown="send('add_sub_delay', '0.05')" class="button yellow control_right subtitle">
+        <div name="subDelay2" class="button yellow control_right subtitle">
           <div class="content text-content">
             Sub delay +
           </div>
         </div>
-        <div onMouseDown="send('add_audio_delay', '-0.05')" class="button yellow control_left audio1">
+        <div name="audioDelay1" class="button yellow control_left audio1">
           <div class="content text-content">
             Audio delay -
           </div>
         </div>
-        <div onMouseDown="send('add_audio_delay', '0.05')" class="button yellow control_right audio1">
+        <div name="audioDelay2" class="button yellow control_right audio1">
           <div class="content text-content">
             Audio delay +
           </div>
         </div>
-        <div onClick="send('fullscreen')" class="button gray control_left">
+        <div name="toggleFullscreen" class="button gray control_left">
           <div id="fullscreenButton" class="content text-content">
             Fullscreen
           </div>
         </div>
-        <div onClick="send('cycle', 'audio-device')" class="button gray control_right">
+        <div name="cycleAudioDevice" class="button gray control_right">
           <div class="content text-content">
             Audio device
           </div>
         </div>
       </div>
       <div id="cycleControls">
-        <div onMouseDown="send('cycle', 'sub')" class="button violet subtitle hidden">
+        <div name="cycleSub" class="button violet subtitle hidden">
           <div id="nextSub" class="content text-content">
             Sub
           </div>
         </div>
-        <div onMouseDown="send('cycle', 'audio')" class="button violet audio2 hidden">
+        <div name="cycleAudio" class="button violet audio2 hidden">
           <div id="nextAudio" class="content text-content">
             Audio
           </div>
         </div>
-        <div onMouseDown="send('cycle', 'video')" class="button violet video hidden">
+        <div name="cycleVideo" class="button violet video hidden">
           <div id="nextVideo" class="content text-content">
             Video
           </div>
@@ -241,8 +242,8 @@
     </div>
 
     <div class="burger">
-      <a href="#" onClick="togglePlaylist(); return false;"><i class="fas fa-list-ul"></i></a><br />
-      <a href="#" onClick="toggleShares(); return false;"><i class="fas fa-folder-open"></i></a>
+      <div name="togglePlaylist"><i class="fas fa-list-ul"></i></div><br />
+      <div name="toggleShares"><i class="fas fa-folder-open"></i></div>
     </div>
 
     <audio id="audio" loop>
@@ -252,6 +253,6 @@
     </audio>
 
   </body>
-  <script src="webui.js"></script>
-  <script src="webui2.js"></script>
+  <script src="webui.js" type="text/javascript"></script>
+  <script src="webui2.js" type="text/javascript"></script>
 </html>
