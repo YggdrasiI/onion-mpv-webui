@@ -57,11 +57,15 @@ int mpv_open_cplugin(mpv_handle *handle)
                 ws_interval);
     }
 
+    // Pause state
+    int pause;
     if ('1' == onion_dict_get(options, "paused")[0]) {
-        int pause = 1;
+        pause = 1;
         err = mpv_set_property(mpv, "pause", MPV_FORMAT_FLAG, &pause);
         check_mpv_err(err);
     }
+    err = mpv_get_property(mpv, "pause", MPV_FORMAT_FLAG, &pause);
+    check_mpv_err(err);
 
     // Daemon mode.
     if ('1' == onion_dict_get(options, "daemon")[0]) {
@@ -70,16 +74,15 @@ int mpv_open_cplugin(mpv_handle *handle)
         check_mpv_err(err);
     }
 
-    int error;
-    error = webui_onion_init(options); // also init mutex mpv_lock.
-    if( error < 0){
+    err = webui_onion_init(options); // also init mutex mpv_lock.
+    if( err < 0){
         perror("Initialization of onion object failed.\n");
         webui_onion_uninit(o);
         return EXIT_FAILURE;
     }
 
-    error = onion_listen(o);
-    if (error) {
+    err = onion_listen(o);
+    if (err) {
         perror("Cant create the server.\n");
         onion_listen_stop(o);
         webui_onion_uninit(o);
@@ -105,13 +108,17 @@ int mpv_open_cplugin(mpv_handle *handle)
             status_update(status, mpv, event);
 
             if (status->num_updated > 0) { // Null bei Initialisierung
-                status_send_update(status, websockets, 0);
+                int force_sent_immediately = pause;
+                status_send_update(status, websockets, force_sent_immediately);
             }
         } else if (event->event_id == MPV_EVENT_PAUSE) {
+            pause = 1;
             // Flush pending properties on websocket.
             if (status->num_updated > 0) { // Null bei Initialisierung
                 status_send_update(status, websockets, 1);
             }
+        } else if (event->event_id == MPV_EVENT_UNPAUSE) {
+            pause = 0;
         } else {
             LOG("Got event: %d\n", event->event_id);
         }
