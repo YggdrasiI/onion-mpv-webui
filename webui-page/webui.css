@@ -57,12 +57,9 @@ h3 {
 
 .burger {
   position:absolute;
-  /*float: right;*/
-  right:0.5rem;
+  right:3vmin;
   top:1rem;
   font-size: 5vmin;
-  /*top right bottom left*/
-  margin: 0 30px 30px 30px;
   z-index:100;
 }
 
@@ -90,7 +87,7 @@ h3 {
 .button .content, .button .content i, .icon-content i {
   /*line-height: 150px;*/
   /*line-height: 50px;*/
-  font-size: 4.5vw;
+  font-size: min(4.5vw, 5em);
 }
 
 .button .icon-content {
@@ -144,7 +141,6 @@ table.prop-table {
   margin-left:0rem;
   /*margin-bottom: 40px;*/ /* Overlapping with topControls */
   font-size: 4vmin;
-  /*border:1px solid red;*/
 }
 
 table.prop-table td {
@@ -703,7 +699,15 @@ ul#sharelist li i.share_bullet {
   flex-shrink: 0;
 }
 
-/* Smart Phones und Tablets mit mittlerer Auflösung */
+#debug {
+  position:absolute;
+  left:0px;
+  bottom:0px;
+  font-weight:bold;
+  z-index:1001;
+}
+
+/* Smartphones and tablets with middle resolution/high dpi ?!*/
 @media all and (max-width: 35em) {
   /* controls in one row */
 #headerBox {
@@ -813,12 +817,64 @@ border: 1px red solid;
     max-height:9vh;
   }
 
+  #debug::after {
+    color:navy;
+    content: "slim"
+  }
 } /* end of @media  */
+
+/* Wide screens */
+/*@media all and (min-width: 80em) */
+@media all and (min-width: 80em) and (min-width: 150vh)
+{
+  #headerBox {
+    min-height:15%;
+    height:20vmax;
+  }
+  table.prop-table {
+    max-width:50%;
+  }
+
+  #controlBox
+  {
+    max-height:90%;
+    height:80vmax;
+    width:100em;
+    margin-left:auto;
+    margin-right:auto;
+  }
+
+  #cycleControls {
+    grid-column-start:1;
+    grid-column-end:3;
+    grid-row-start:Ccycle;
+    grid-row-end:CcycleEnd;
+    height:100%;
+    width:50%;
+    justify-self:end;
+  }
+
+  .button .content, .button .content i, .icon-content i {
+    font-size: min(4.5vw, 4em);
+  }
+
+  #debug::before {
+    color:navy;
+    content: "wide"
+  }
+} /* end of @media  */
+
 
 /* For debugging */
 @media all and (max-width: 0em) {
   #header {
-    background-color:#440000;
+    background-color:darkblue;
+  }
+  #controlBox {
+    background-color:rgba(200,40,40,0.3);
+  }
+  #cycleControls {
+    background-color:red;
   }
   #topControls {
     background-color:rgba(130,130,130, 0.3);
@@ -841,4 +897,9 @@ border: 1px red solid;
   .button .content{
     background-color:green;
   }
-}
+
+  #debug::after {
+    color:navy;
+    content: "debug"
+  }
+} /* end of @media  */

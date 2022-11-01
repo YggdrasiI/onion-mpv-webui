@@ -808,7 +808,9 @@ function status_init_ws(){
     DEBUG && console.log("Websocket closed with code " + ev.code)
     if (connected) {
       connected = false;
-      print_disconnected()
+      if (ev.code != 1001 /* GOING_AWAY reply. No need for further rendering */){
+        print_disconnected()
+      }
     }
 
     mpv_outstanding_status.restart = setTimeout(function() {

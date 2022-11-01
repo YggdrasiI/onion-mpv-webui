@@ -80,21 +80,21 @@
 
     <div id="headerBox">
       <div id="header">
+        <h1 id="title"><!--Title--></h1>
         <div class="table">
           <table class="prop-table">
             <tr>
-              <td colspan="5">
-                <h1 id="title"><!--Title--></h1>
-              </td>
-            </tr>
-            <tr>
               <td class="">&nbsp;</td> <!-- Height -->
               <td>
-                <span id="artist"><!--Artist--></span><span id="album"><!--Album--></span>
+                <span id="artist"><!--Artist--></span>
+                <span id="album"><!--Album--></span>
               </td>
-              <td class="sub-delay hidden">Sub-delay: <span id="sub-delay"></span></td>
-              <td class="audio-delay hidden">Audio-delay: <span id="audio-delay"></span></td>
-              <td class="chapter hidden">Chapter: <span id="chapterContent"></span></td>
+              <td class="sub-delay hidden">
+                Sub-delay: <span id="sub-delay"></span></td>
+              <td class="audio-delay hidden">
+                Audio-delay: <span id="audio-delay"></span></td>
+              <td class="chapter hidden">
+                Chapter: <span id="chapterContent"></span></td>
             </tr>
           </table>
         </div>
@@ -252,6 +252,7 @@
       <source src="static/audio/silence.mp3" type="audio/mpeg" />
     </audio>
 
+  <div id="debug"></div>
   </body>
   <script src="webui.js" type="text/javascript"></script>
   <script src="webui2.js" type="text/javascript"></script>
