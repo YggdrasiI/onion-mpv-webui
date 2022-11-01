@@ -503,8 +503,8 @@ function __mediaSession() {
 
     navigator.mediaSession.setPositionState({
       duration: mpv_status["duration"],
-      position: mpv_status["time-pos"],
-      playbackRate: 1.0
+      position: Math.max(0, Math.min(mpv_status["time-pos"], mpv_status["duration"])),
+      playbackRate: mpv_status["speed"] //1.0
     })
 
     if ("pause" in mpv_status && mpv_status["pause"] == "yes" ){
@@ -648,7 +648,6 @@ function handleStatusResponse(json) {
 }
 
 function handleStatusUpdate(status_updates) {
-
   new_status = Object.assign({}, mpv_status, status_updates)
   if ("metadata" in status_updates 
     ||"playlist" in status_updates 
@@ -970,8 +969,8 @@ function updateNotification(mpv_status) {
 
     navigator.mediaSession.setPositionState({
       duration: mpv_status["duration"],
-      position: mpv_status["time-pos"],
-      playbackRate: 1.0
+      position: Math.max(0, Math.min(mpv_status["time-pos"], mpv_status["duration"])),
+      playbackRate: mpv_status["speed"] //1.0
     })
 
     if ("pause" in mpv_status && mpv_status["pause"] == "yes" ){
