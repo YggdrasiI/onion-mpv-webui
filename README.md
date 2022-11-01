@@ -3,13 +3,24 @@
 The code had started as fork of [simple-mpv-webui](https://github.com/open-dynaMIX/simple-mpv-webui/),
 but all LUA code was replaced by C code.
 
+## Building
+```
+cd [cloned dir]
+mkdir build
+cmake -DBUILD_ONION=TRUE ..
+make
+```
 
 ## Usage
-TODO
-Add `include="~~/script-opts/libwebui.conf"` to `mpv.conf` and start mpv like
-`mpv --profile=webui`
 
-You can access the webui when accessing [http://127.0.0.1:9000](http://127.0.0.1:9000) or
+### Enable plugin
+Add `include="~~/script-opts/libwebui.conf"` to `mpv.conf` or 
+call `make config` to copy libwebui.conf.example into `$HOME/.mpv/config/` directory.
+
+Call mpv with new profile to enable plugin, e.g. `mpv --profile=webui`
+
+
+You can use the webui by accessing [http://127.0.0.1:9000](http://127.0.0.1:9000) or
 [http://[::1]:9000](http://[::1]:9000) in your webbrowser.
 
 By default it listens on `0.0.0.0:9000` and `[::0]:9000`. As described below, this can be changed.
@@ -24,13 +35,14 @@ running multiple instances on different ports.
 
 Example:
 ```
-mpv --profile=webui --script-opts=libwebui-port=8000
+mpv --profile=webui --script-opts=libwebui-port=9000
 ```
 
 Alternativly, you can add the option to libwebui.conf, e.g.
 ```
 […]
-script-opts-add=libwebui-port=8000
+script-opts-add=libwebui-port=9000
+script-opts-add=libwebui-hostname=::
 ```
 
 
@@ -47,16 +59,17 @@ There are some keybindings available:
 | Key        | Function            |
 | ---------- | ------------------- |
 | SPACE      | Play/Pause          |
-| ArrowRight | seek +10            |
-| ArrowLeft  | seek -10            |
-| PageDown   | seek +3             |
-| PageUp     | seek -3             |
-| f          | toggle fullscreen   |
-| n          | playlist next       |
-| p          | playlist previous   |
+| ArrowRight | Seek +10            |
+| ArrowLeft  | Seek -10            |
+| PageDown   | Seek +3             |
+| PageUp     | Seek -3             |
+| f          | Toggle fullscreen   |
+| n          | Playlist next       |
+| p          | Playlist previous   |
+| BACKSPACE  | Reset playback speed|
 
 ## Media Session API
-When using a browser that supports it, simple-mpv-webui uses the Media Session
+When using a browser that supports it, onion-mpv-webui uses the Media Session
 API to provide a notification with some metadata and controls:
 
 In order to have the notification work properly you need to at least once trigger play from the webui.
@@ -162,11 +175,13 @@ information about the error.
             "playing": true
         }
     ]
+    , […]
 }
 ```
 
 ## Differences to simple-mpv-webui
  - C-Plugin
  - Websocket protocol used for status updates
- - Added shared_folder option to extend playlist over GUI
+ - Added shared_folder option. Allows adding local files to playlist over GUI
+ - Better button layout on slim screens.
 
