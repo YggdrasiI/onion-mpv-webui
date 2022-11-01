@@ -58,7 +58,7 @@ h3 {
 .burger {
   position:absolute;
   right:3vmin;
-  top:1rem;
+  top:3vmin;
   font-size: 5vmin;
   z-index:100;
 }
@@ -76,6 +76,10 @@ h3 {
   visibility: hidden !important;
 }
 
+.button {
+  overflow:clip;
+}
+
 .button:hover {
   /*filter: brightness(50%);*/
 }
@@ -84,14 +88,17 @@ h3 {
   /*filter: brightness(30%);*/
 }
 
-.button .content, .button .content i, .icon-content i {
-  /*line-height: 150px;*/
-  /*line-height: 50px;*/
-  font-size: min(4.5vw, 5em);
+.button .content, .button .content i{
+  /*font-size: min(4.5vw, 150%);*/
 }
 
-.button .icon-content {
-  font-size: 50%;
+.icon-content {
+  padding-left:0.2em;
+  padding-right:0.2em;
+}
+
+.button .icon-content i{
+  font-size: 4.5vh;
 }
 
 .button .text-content {
@@ -276,8 +283,8 @@ input[type="range"] {
   overflow-y: scroll;
   overflow-x: hidden;
   position: absolute;
-  top:6rem;
-  bottom: 0rem;
+  top:10vmin;
+  bottom: 1vmin;
   left: 0px;
   right:0px;
 }
@@ -297,17 +304,16 @@ input[type="range"] {
 .playlist-controls {
   width: 100%;
   /*font-size: 75px;*/
-  font-size: 2rem;
-  margin-bottom: 10px;
-  margin-top: 4px;
-  height:2em !important;
+  font-size: 4vmin;
+  padding-top:0.5vmin;
+  margin-bottom: 2vmin;
+  margin-top: 1vmin;
+
+  height:5vmin !important; /* overwrites .button value */
 }
 
 table.playlist-control {
   width: 100%;
-}
-
-table.playlist-control tr {
 }
 
 table.playlist-control td {
@@ -607,9 +613,7 @@ td.playlist.playing:hover {
 
 #share_selector {
   width: 80%;
-  /*font-size: 4vmin;*/
-  padding:0.5em;
-  margin-right:20px;
+  font-size: 3vmin; /* smaler than playlist button font to prevent clip of text, but got same button height. */
   background-color: var(--main-bg-color);
   color: var(--main-fg-color);
   box-sizing: border-box; /* Border respected by width. */
@@ -708,12 +712,8 @@ ul#sharelist li i.share_bullet {
 }
 
 /* Smartphones and tablets with middle resolution/high dpi ?!*/
+/* Slim design with controls in one column. */
 @media all and (max-width: 35em) {
-  /* controls in one row */
-#headerBox {
-  /*min-height:20%;
-  height:30vmax; */
-}
 
 #controlBox
 {
@@ -728,11 +728,11 @@ ul#sharelist li i.share_bullet {
   [CcycleEnd]
   20px  /* free space */
   [Ctop]
-  minmax(min-content, 2fr) /* topControls */
+  minmax(min-content, 1.5fr) /* topControls */
   [CtopEnd]
   20px  /* free space */
   [Cmain1]
-  minmax(min-content, 2fr) /* leftControls1 */
+  minmax(min-content, 1.5fr) /* leftControls1 */
   [Cmain2]
   3fr   /* leftControls2 */
   [Cmain3]
@@ -745,23 +745,12 @@ ul#sharelist li i.share_bullet {
   justify-items: stretch;
   grid-gap:0px 20px;
 
-
-
   /*overflow:hidden;*/
   overflow-x:hidden;
   overflow-y:auto;
   padding-right: 40px; /* scrollbar-space?! */
 
 }
-
-
-/*#controlBox > *{
-border: 1px red solid;
-}*/
-
-  #header {
-    /*height: 8em;*/
-  }
 
   #cycleControls{
     grid-column-start:1;
@@ -813,8 +802,13 @@ border: 1px red solid;
   }
 
   .button {
-    overflow:clip;
-    max-height:9vh;
+    max-height:6vh;
+  }
+
+  .button .icon-content{
+    font-size: 5vh;
+    padding-top:0.1em;
+    /*padding-bottom:0.1em;*/
   }
 
   #debug::after {
@@ -823,7 +817,7 @@ border: 1px red solid;
   }
 } /* end of @media  */
 
-/* Wide screens */
+/* Design for wide screens */
 /*@media all and (min-width: 80em) */
 @media all and (min-width: 80em) and (min-width: 150vh)
 {
@@ -896,6 +890,10 @@ border: 1px red solid;
 
   .button .content{
     background-color:green;
+  }
+
+  .icon-content {
+    background-color:navy;
   }
 
   #debug::after {
