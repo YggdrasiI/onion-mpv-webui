@@ -72,6 +72,9 @@ enum onion_websocket_status_e {
 // Helper function
 int __property_observe(__property *prop);
 int __property_reobserve(__property *prop);
+void __reset_ready_props(__status *status);
+void __search_ready_props(__status *status, int force);
+int __prop_ready(__property *prop, struct timespec *now, int force);
 
 
 __clients *clients_init()
@@ -881,6 +884,7 @@ __status *status_init()
 
     status->num_initialized = 0;
     status->num_updated = 0;
+    status->num_ready = 0;
     status->is_initialized = 0;
     status->is_observed = 0;
     status->json = NULL;
@@ -926,6 +930,7 @@ int status_observe(
 
     status->is_observed = 1;
     status->num_updated = 0;
+    status->num_ready = 0;
 #ifdef WITH_MPV
     status->is_initialized = 0;
     status->num_initialized = 0;
@@ -1041,6 +1046,7 @@ void status_unobserve(
             assert(u == 1); // assume that just one observation for each userdata exists
 #endif
         }
+        status->num_ready = 0;
         status->num_updated = 0;
         status->num_initialized = 0;
         status->is_observed = 0;
@@ -1074,38 +1080,55 @@ void status_update(
     property_update(status, prop_in, prop_out);
 }
 
-void send_to_all_clients(
-        __clients *pclients,
-        __property *prop)
+void send_to_all_clients1(
+        __clients *pclients)
 {
-    int i;
+    pthread_mutex_lock(&status->lock);
 
-#if 0
-    // Test PING/PONG mechanism
-    for( i=0; i<MAX_ACTIVE_CLIENTS; ++i){
-        __websocket *pclient = &pclients->clients[i];
-        if ( pclient->ws ){
-            char pl[] = "payload";
-            ONION_DEBUG("Send PING to client %d", i);
-            onion_websocket_set_opcode(pclient->ws, OWS_PING);
-            ssize_t s = onion_websocket_write(pclient->ws,
-                    pl, strlen(pl));
+    int i, n, N=status->num_props;
+    for(n=0; n<N; ++n){
+        __property *prop = &status->props[n];
+        if (prop->ready){
+            // send single property
+            for( i=0; i<MAX_ACTIVE_CLIENTS; ++i){
+                __websocket *pclient = &pclients->clients[i];
+                if ( pclient->ws ){
+                    //ONION_DEBUG("Send websocket msg");
+                    pthread_mutex_lock(&pclient->lock);
+                    __chunked_websocket_printf(pclient->ws,
+                            "{\"status_diff\": { \"%s\": %s }}",
+                            prop->node.name, prop->json);
+                    pthread_mutex_unlock(&pclient->lock);
+                }
+            }
         }
     }
-    return;
-#endif
 
+    pthread_mutex_unlock(&status->lock);
+}
+
+void send_to_all_clients2(
+        __clients *pclients,
+        __status *status)
+{
+    pthread_mutex_lock(&status->lock);
+    char *status_diff = status_build_update_json(status);
+
+    int i;
     for( i=0; i<MAX_ACTIVE_CLIENTS; ++i){
         __websocket *pclient = &pclients->clients[i];
         if ( pclient->ws ){
             //ONION_DEBUG("Send websocket msg");
             pthread_mutex_lock(&pclient->lock);
             __chunked_websocket_printf(pclient->ws,
-                    "{\"status_diff\": { \"%s\": %s }}",
-                    prop->node.name, prop->json);
+                    "{\"status_diff\": %s }",
+                    status_diff);
             pthread_mutex_unlock(&pclient->lock);
         }
     }
+
+    free(status_diff);
+    pthread_mutex_unlock(&status->lock);
 }
 
 
@@ -1169,6 +1192,65 @@ void status_build_full_json(
     pthread_mutex_unlock(&status->lock);
 }
 
+/* Like status_build_full_json but just
+ * collects updated properties which are ready to take off.
+ */
+char *status_build_update_json(
+        __status *status)
+{
+    const char __json_start[] = "{\n";
+    const char __json_end[] = "}";
+    const char __json_sep[] = ", \n";
+
+    const char __prop_pre[] = "\"";
+    const char __prop_mid[] = "\": ";
+    const char __prop_post[] = "";
+
+    size_t len = 0;
+    int n, N=status->num_props;
+
+    len += sizeof(__json_start) + sizeof(__json_end) - 2;
+    len += N * (sizeof(__json_sep)-1);
+    for(n=0; n<N; ++n){
+        __property *prop = &status->props[n];
+        if (prop->ready){
+            parse_value(prop); // re-evaluates prop->json.
+
+            len += (sizeof(__prop_pre) + sizeof(__prop_mid)
+                    + sizeof(__prop_post) - 3);
+            len += strlen(prop->node.name);
+            len += strlen(prop->json);
+        }
+    }
+
+    //printf("LEN……………: %lu\n", len);
+    char *json = malloc(len * sizeof(char) + 1);
+    char * const END = json + len;
+    char add_seperator = 0;
+
+    if (json != NULL ){
+        char *end = json;
+        end = stpcpy(end, __json_start);
+        for(n=0; n<N; ++n){
+            __property *prop = &status->props[n];
+            if (prop->ready){
+                if(add_seperator) {
+                    end = stpcpy(end, __json_sep);
+                }
+                add_seperator = 1;
+                /* Prefix with '"prop-name": ' */
+                *end++ = '"';
+                end = stpcpy(end, prop->node.name);
+                *end++ = '"'; *end++ = ':'; *end++ = ' ';
+                end = stpcpy(end, prop->json);
+            }
+        }
+        end = stpcpy(end, __json_end);
+    }
+
+    return json;
+}
+
 void status_set_initialized(
         __status *status)
 {
@@ -1182,11 +1264,46 @@ void status_set_initialized(
 
 }
 
+void __reset_ready_props(__status *status){
+    struct timespec now;
+    fetch_timestamp(&now);
+
+    pthread_mutex_lock(&status->lock);
+    int n, N=status->num_props;
+    for(n=0; n<N; ++n){
+        __property *prop = &status->props[n];
+        prop->updated = 0;
+        prop->ready = 0;
+        update_timestamp(prop, &now);
+    }
+    status->num_updated = 0;
+    status->num_ready = 0;
+    pthread_mutex_unlock(&status->lock);
+}
+
+void __search_ready_props(__status *status, int force){
+    struct timespec now;
+    fetch_timestamp(&now);
+
+    pthread_mutex_lock(&status->lock);
+    int n, N=status->num_props;
+    for(n=0; n<N; ++n){
+        __property *prop = &status->props[n];
+        if (__prop_ready(prop, &now, force)){
+            parse_value(prop);
+            prop->ready = 1;
+            status->num_ready++;
+        }
+    }
+    pthread_mutex_unlock(&status->lock);
+}
+
 /*
  * Checks if proprety was updated by mpv
  * and potential update interval restritcions are met.
  */
 int __prop_ready(__property *prop, struct timespec *now, int force){
+    if (prop->ready) return 1;
     if (!prop->updated) return 0;
     if (!force && !time_diff_reached(prop, now)) return 0;
     return 1;
@@ -1198,36 +1315,23 @@ void status_send_update(
         int force)
 {
     if (status->is_initialized == 0 ){
-      ONION_ERROR("Should not be reached");
-      return;
+        ONION_ERROR("Should not be reached");
+        return;
     }
 
-    struct timespec now;
-    fetch_timestamp(&now);
+    __search_ready_props(status, force); // search and parse all ready props.
 
-    // Send updates with single properties
-    int n, N=status->num_props;
-    for(n=0; n<N; ++n){
-        __property *prop = &status->props[n];
-        if (__prop_ready(prop, &now, force)){
-
-            parse_value(prop);
-
-            // send single property
-
-            pthread_mutex_lock(&status->lock);
-            send_to_all_clients(pclients, &status->props[n]);
-
-            status->props[n].updated = 0;
-            status->num_updated--;
-
-            // Update timestamp
-            update_timestamp(prop, &now);
-
-            pthread_mutex_unlock(&status->lock);
-        }
+    if (status->num_ready == 0) return;
+    if (status->num_ready == 1) {
+        // Sends each ready property as new json.
+        send_to_all_clients1(pclients);
+    } else {
+        // Collect changed properties and send collection
+        // Sending collections may reduce number of redraws in GUI.
+        send_to_all_clients2(pclients, status);
     }
 
+    __reset_ready_props(status);
 }
 
 // ================== END mpv releated part ===============

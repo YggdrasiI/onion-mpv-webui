@@ -107,15 +107,17 @@ int mpv_open_cplugin(mpv_handle *handle)
         if (event->event_id == MPV_EVENT_PROPERTY_CHANGE) {
             status_update(status, mpv, event);
 
-            if (status->num_updated > 0) { // Null bei Initialisierung
+            if (status->num_updated > 0) {
                 int force_sent_immediately = pause;
                 status_send_update(status, websockets, force_sent_immediately);
             }
         } else if (event->event_id == MPV_EVENT_PAUSE) {
-            pause = 1;
-            // Flush pending properties on websocket.
-            if (status->num_updated > 0) { // Null bei Initialisierung
-                status_send_update(status, websockets, 1);
+            pause = 1; // Triggers flush of pending properties on websocket.
+            if (status->num_updated > 0) {
+                /* Commented out because MPV_EVENT_PROPERTY_CHANGE for pause
+                 * will be triggered, too.
+                 */
+                //status_send_update(status, websockets, 1);
             }
         } else if (event->event_id == MPV_EVENT_UNPAUSE) {
             pause = 0;
@@ -123,7 +125,6 @@ int mpv_open_cplugin(mpv_handle *handle)
             LOG("Got event: %d\n", event->event_id);
         }
 
-        // […]
         pthread_mutex_unlock(&mpv_lock);
 
         if (event->event_id == MPV_EVENT_SHUTDOWN) {

@@ -95,8 +95,9 @@ typedef struct __property_t {
     // extra elements
     mpv_format format_out;
     uint64_t userdata;
-    char initialized;
-    char updated;
+    char initialized; // got initial data
+    char updated;     // got new data
+    char ready;       // new data is X ms old
     struct timespec last_update_time;
     struct timespec next_update_time;
     struct timespec minimal_update_diff;
@@ -112,6 +113,7 @@ typedef struct __status {
 
   int num_initialized;
   int num_updated;
+  int num_ready;
 
   int is_initialized;
   int is_observed;
@@ -176,6 +178,9 @@ void status_send_update(
 
 // intern
 void status_build_full_json(
+        __status *status);
+
+char *status_build_update_json(
         __status *status);
 
 void clients_close(
