@@ -33,12 +33,13 @@ function toggleShares() {
   /* Close share overlay by click on background area. */
   if (!shares.close_event_registered ){
     function _close_listener(evt) {
-      if( evt.target == sharelist ){
-        DEBUG && console.log("Pong")
+      console.log(evt.target)
+      if( evt.target == el ){
         toggleShares()
       }
+      evt.stopPropagation();
     }
-    sharelist.addEventListener('click', _close_listener, false)
+    el.addEventListener('click', _close_listener, false)
     shares.close_event_registered = true
   }
 

@@ -287,6 +287,10 @@ input[type="range"] {
   bottom: 1vmin;
   left: 0px;
   right:0px;
+  padding-right:1em; /* for scrollbar in #playlist */
+
+  width:min(90vw, 40em); /* Space nearby window border to close overlay, if possible. */
+  margin: 0px auto;
 }
 
 #playlist::-webkit-scrollbar {
@@ -331,12 +335,13 @@ table.playlist-control td:last-child {
 }
 
 table.playlist {
-  width: 90%;
+  width: 100%;
   table-layout: fixed;
   color: var(--main-bg-color);
   font-size: 4vmin;
-  margin-left: auto;
-  margin-right: auto;
+  /*margin-left: auto;
+  margin-right: auto;*/
+  margin-right:20vmin;
   border-collapse: collapse;
   margin-bottom: 10px;
   font-weight: bold;
@@ -627,9 +632,6 @@ ul#sharelist {
   list-style-type: none; /* Remove bullets */
   padding: 0px;
   /*vertical-align:top;*/
-
-  width:90%;
-  margin: 0px auto;
 }
 
 #sharelist li {

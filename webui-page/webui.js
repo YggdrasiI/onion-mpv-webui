@@ -145,13 +145,15 @@ function createPlaylistTable(entry, position, pause, first) {
     first || td_3.classList.add('gray')
     td_right.classList.add('gray')
 
-    td_left.onclick = td_2.onclick = function(arg) {
-        return function() {
-            send("playlist_jump", arg)
-            send("play");  // remove pause
-            return false
-        }
-    }(position)
+    function _playlist_jump(arg) {
+      return function() {
+        send("playlist_jump", arg)
+        send("play");  // remove pause
+        // evt.stopPropagation();
+      }
+    }
+    td_left.addEventListener('click', _playlist_jump(position)) 
+    td_2.addEventListener('click', _playlist_jump(position)) 
 
     td_left.addEventListener("mouseover", function() {setActive(true)})
     td_left.addEventListener("mouseout", function() {setActive(false)})
@@ -163,20 +165,22 @@ function createPlaylistTable(entry, position, pause, first) {
   }
 
   if (first === false) {
-    td_3.onclick = function (arg) {
-      return function () {
-        send("playlist_move_up", arg)
-        return false
-      }
-    }(position)
+    td_3.addEventListener('click',
+      function (arg) {
+        return function () {
+          send("playlist_move_up", arg)
+        }
+      }(position)
+    )
   }
 
-  td_right.onclick = function(arg) {
+  td_right.addEventListener('click',
+    function(arg) {
       return function() {
-          send("playlist_remove", arg)
-          return false
+        send("playlist_remove", arg)
       }
-  }(position)
+    }(position)
+  )
 
   tr.appendChild(td_left)
   tr.appendChild(td_2)
@@ -197,14 +201,6 @@ function populatePlaylist(json, pause) {
       first = false
     }
   }
-
-  playlist.addEventListener('click', function _listener(evt) {
-    if( evt.target == playlist ){
-      //playlist.removeEventListener('click', _listener)
-      togglePlaylist()
-
-    }
-  }, {once: true})
 }
 
 
@@ -1023,11 +1019,11 @@ function add_button_listener() {
     ['togglePlayPause', 'click', function (evt) {togglePlayPause() }],
     ['playlistLoopCycle', 'click', function (evt) {playlist_loop_cycle() }],
     ['playlistShuffle', 'click', function (evt) {send('playlist_shuffle') }],
-    ['togglePlaylist', 'click', function (evt) {togglePlaylist(); return false }],
+    ['togglePlaylist', 'click', function (evt) {togglePlaylist() }],
     ['share_selector', 'change', function (evt) {share_change(evt.target) }],
     ['shareSortingAlpha', 'click', function (evt) {share_change_sorting('alpha'); sortShareList(); }],
     ['shareSortingDate', 'click', function (evt) {share_change_sorting('date'); sortShareList(); }],
-    ['toggleShares', 'click', function (evt) {toggleShares(); return false; }],
+    ['toggleShares', 'click', function (evt) {toggleShares() }],
     ['playlistPrev', 'mousedown', function (evt) {send('playlist_prev') }],
     ['playlistNext', 'mousedown', function (evt) {send('playlist_next') }],
     ['seekBack1', 'mousedown', function (evt) {send('seek', '-5') }],
@@ -1048,6 +1044,12 @@ function add_button_listener() {
     ['cycleAudio', 'mousedown', function (evt) {send('cycle', 'audio') }],
     ['cycleVideo', 'mousedown', function (evt) {send('cycle', 'video') }],
     ['quitMpv', 'click', function (evt) {send('quit') }],
+    ['overlay', 'click', function (evt) {
+      if(evt.target == this) togglePlaylist();
+      evt.stopPropagation();
+      console.log(evt.target)
+    }],
+    //['overlay2', 'click', function (evt) {if (evt.target == this) toggleShares(); stopPropagation() }], //->webui2.js
   ]
 
   btnEvents.forEach( x => {
