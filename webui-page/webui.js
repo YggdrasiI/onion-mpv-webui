@@ -195,12 +195,22 @@ function populatePlaylist(json, pause) {
   playlist.innerHTML = ""
 
   var first = true
+  var playedRow = null
   for(var i = 0; i < json.length; ++i) {
-    playlist.appendChild(createPlaylistTable(json[i], i, pause, first))
+    row = createPlaylistTable(json[i], i, pause, first);
+    playlist.appendChild(row)
     if (first === true) {
       first = false
     }
+
+    if (json[i].hasOwnProperty('playing')) {
+      playedRow = row;
+    }
   }
+
+  // Scroll played entry into view
+  if (playedRow) playedRow.scrollIntoView({block: 'center'});
+
 }
 
 
@@ -1047,7 +1057,6 @@ function add_button_listener() {
     ['overlay', 'click', function (evt) {
       if(evt.target == this) togglePlaylist();
       evt.stopPropagation();
-      console.log(evt.target)
     }],
     //['overlay2', 'click', function (evt) {if (evt.target == this) toggleShares(); stopPropagation() }], //->webui2.js
   ]
