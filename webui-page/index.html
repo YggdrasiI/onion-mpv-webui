@@ -29,6 +29,11 @@
       <table class="playlist-control">
         <tr>
           <td>
+            <div id="quitMpv" class="button red content icon-content playlist-controls">
+              Mpv <i class="fas fa-window-close"></i>
+            </div>
+          </td>
+          <td>
             <div name="togglePlayPause" class="button green content icon-content playPauseButton playlist-controls">
               <i class="fas fa-play"></i><i class="fas fa-pause"></i>
             </div>
@@ -89,12 +94,10 @@
                 <span id="artist"><!--Artist--></span>
                 <span id="album"><!--Album--></span>
               </td>
-              <td class="sub-delay hidden">
-                Sub-delay: <span id="sub-delay"></span></td>
-              <td class="audio-delay hidden">
-                Audio-delay: <span id="audio-delay"></span></td>
               <td class="chapter hidden">
                 Chapter: <span id="chapterContent"></span></td>
+              <td class="hidden"></td>
+              <td class="hidden"></td>
             </tr>
           </table>
         </div>
@@ -112,7 +115,7 @@
           </div>
         </div>
       </div>
-      <div id="leftControls1">
+      <div id="leftControls1" class="button_grid">
         <div id="volSliderControl" class="slidecontainer control_full">
           <input type="range" min="0" max="130" value="100" step="1" class="slider" id="mediaVolume" title="volSlider">
           <div class="sliderInfoContainer sliderVolume">
@@ -123,7 +126,7 @@
         </div>
       </div>
 
-      <div id="rightControls1">
+      <div id="rightControls1" class="button_grid">
         <div name="playlistPrev" class="button blue control_left">
           <div class="content icon-content"><i class="fas fa-fast-backward"></i></div>
           File
@@ -134,7 +137,7 @@
         </div>
       </div>
 
-      <div id="leftControls2">
+      <div id="leftControls2" class="button_grid">
         <div name="togglePlayPause" class="button green control_full">
           <div class="content icon-content playPauseButton">
             <i class="fas fa-play"></i><i class="fas fa-pause"></i>
@@ -169,7 +172,7 @@
 
       </div>
 
-      <div id="rightControls2">
+      <div id="rightControls2" class="button_grid">
         <div name="playbackSpeed1" class="button yellow control_left audio1">
           <div id="slowerPlayback" class="content text-content">
             Playback ÷ <!--1.1-->
@@ -187,6 +190,7 @@
             Sub delay -
           </div>
         </div>
+        <div id="subDelayInfo" class="control_info hidden">Info</div>
         <div name="subDelay2" class="button yellow control_right subtitle">
           <div class="content text-content">
             Sub delay +
@@ -197,6 +201,7 @@
             Audio delay -
           </div>
         </div>
+        <div id="audioDelayInfo" class="control_info hidden">Info</div>
         <div name="audioDelay2" class="button yellow control_right audio1">
           <div class="content text-content">
             Audio delay +
@@ -213,20 +218,20 @@
           </div>
         </div>
       </div>
-      <div id="cycleControls">
-        <div name="cycleSub" class="button violet subtitle hidden">
-          <div id="nextSub" class="content text-content">
-            Sub
+      <div id="cycleControls" class="button_grid">
+        <div name="cycleVideo" class="button violet video hidden control_left with_mid">
+          <div id="nextVideo" class="content text-content">
+            Video
           </div>
         </div>
-        <div name="cycleAudio" class="button violet audio2 hidden">
+        <div name="cycleAudio" class="button violet audio2 hidden control_mid">
           <div id="nextAudio" class="content text-content">
             Audio
           </div>
         </div>
-        <div name="cycleVideo" class="button violet video hidden">
-          <div id="nextVideo" class="content text-content">
-            Video
+        <div name="cycleSub" class="button violet subtitle hidden control_right with_mid">
+          <div id="nextSub" class="content text-content">
+            Sub
           </div>
         </div>
       </div>

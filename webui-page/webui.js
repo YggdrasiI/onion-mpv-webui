@@ -579,22 +579,24 @@ function setChapter(chapters, chapter, metadata) {
 }
 
 function setSubDelay(fDelay) {
-  var subContent = document.getElementById('sub-delay')
+  var subContent = document.getElementById('subDelayInfo')
   if ( fDelay == 0 ){
-    displayElementClass('sub-delay', false)
+    showInfoForControls(subContent, ['subDelay1', 'subDelay2'] , false)
   }else{
-    subContent.innerHTML = parseInt(1000*fDelay) + ' ms';
-    displayElementClass('sub-delay', true)
+    const iDelay = parseInt(1000*fDelay)
+    subContent.innerHTML = (iDelay>0?'+':'') + iDelay + 'ms';
+    showInfoForControls(subContent, ['subDelay1', 'subDelay2'] , true)
   }
 }
 
 function setAudioDelay(fDelay) {
-  var audioContent = document.getElementById('audio-delay')
+  var audioContent = document.getElementById('audioDelayInfo')
   if ( fDelay == 0 ){
-    displayElementClass('audio-delay', false)
+    showInfoForControls(audioContent, ['audioDelay1', 'audioDelay2'] , false)
   }else{
-    audioContent.innerHTML = parseInt(1000*fDelay) + ' ms';
-    displayElementClass('audio-delay', true)
+    const iDelay = parseInt(1000*fDelay)
+    audioContent.innerHTML = (iDelay>0?'+':'') + iDelay + 'ms';
+    showInfoForControls(audioContent, ['audioDelay1', 'audioDelay2'] , true)
   }
 }
 
@@ -935,25 +937,53 @@ function trim_title_string(s, max_len, sub_char, end_char){
   return s;
 }
 
+/* To get one-liner... */
+function setClass(el, bDisplay, classname){
+  if (arguments.length < 3) classname = 'hidden';
+  if (bDisplay == true ){
+    el.classList.remove(classname)
+  }else{
+    el.classList.add(classname)
+  }
+}
+
 function displayElementClass(cls_of_elements, bDisplay, classname){
   // Note: We didn't change the css class property, but add/remove
   // class '.hidden'
   // So be careful if this is called twice for the same element
   // (one adds 'hidden' and one removes…)
   //
-  if (arguments.length < 3) classname = 'hidden';
+  if (arguments.length < 3)
+    classname = 'hidden'
 
-  var classElements = document.getElementsByClassName(cls_of_elements)
-  if (bDisplay == true ){
-    [].slice.call(classElements).forEach(function (div) {
-      div.classList.remove(classname)
-    })
-  }else{
-    [].slice.call(classElements).forEach(function (div) {
-      div.classList.add(classname)
-    })
-  }
+  let classElements = document.getElementsByClassName(cls_of_elements);
+  [].slice.call(classElements).forEach(function(div) {
+    setClass(div, bDisplay, classname)
+  })
 }
+
+function __changeControls(el, nearby_element_names, bDisplay, classname){
+  /* Show/hide elInfo
+   * and add/remove 'with_info' class to all elements of nearby_element_names */
+  setClass(el, bDisplay, 'hidden')
+
+  nearby_element_names.forEach( nearby_names => {
+    document.getElementsByName(nearby_names).forEach( div => {
+      setClass(div, !bDisplay, classname)
+    })
+  })
+}
+function showMiddleControl(elMiddle, nearby_element_names, bDisplay){
+  /* Show/hide middle button
+   * and add/remove 'with_mid' class to all elements of nearby_element_names */
+  __changeControls(elMidle, nearby_element_names, bDisplay, 'with_mid')
+}
+function showInfoForControls(elInfo, nearby_element_names, bDisplay){
+  /* Show/hide elInfo
+   * and add/remove 'with_info' class to all elements of nearby_element_names */
+  __changeControls(elInfo, nearby_element_names, bDisplay, 'with_info')
+}
+
 
 function updateNotification(mpv_status) {
   if ('mediaSession' in navigator) {
@@ -1017,6 +1047,7 @@ function add_button_listener() {
     ['cycleSub', 'mousedown', function (evt) {send('cycle', 'sub') }],
     ['cycleAudio', 'mousedown', function (evt) {send('cycle', 'audio') }],
     ['cycleVideo', 'mousedown', function (evt) {send('cycle', 'video') }],
+    ['quitMpv', 'click', function (evt) {send('quit') }],
   ]
 
   btnEvents.forEach( x => {

@@ -448,6 +448,8 @@ int cmd_quit(const char *name,
         const char *param1, const char *param2,
         char **pOutput_message)
 {
+    if (param1[0] == '\0') { param1 = "0";
+    }
     const char *cmd[] = {"quit", param1, NULL};
     int err = _mpv_command(mpv, cmd);
     check_mpv_err(err);

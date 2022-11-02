@@ -322,8 +322,8 @@ table.playlist-control td {
   padding-right: 2px;
 }
 
-table.playlist-control td:first-child {
-  width: 50%;
+table.playlist-control td:nth-child(2) {
+  width: 30%;
 }
 
 table.playlist-control td:last-child {
@@ -396,6 +396,7 @@ td.playlist.playing:hover {
   min-height:20%;
   height:30vmax;
 }
+
 #controlBox {
   position: absolute;
   /*top: 0px;*/
@@ -406,7 +407,7 @@ td.playlist.playing:hover {
   height:70vmax; /* Lässt bei schmalen Viewports oben mehr Platz */
 
   display: grid;
-  grid-template-columns: 50% 50%;
+  grid-template-columns: [Cleft] repeat(5, 1fr) [Cmid] repeat(5, 1fr) [Cright];
   grid-template-rows:
   /*minmax(min-content, 5em) /* header row */
   [Ccycle]
@@ -448,34 +449,20 @@ td.playlist.playing:hover {
 
 #cycleControls {
   /* As subelement */
-  grid-column-start:1;
-  grid-column-end:3;
+  grid-column-start:Cmid;
+  grid-column-end:Cright;
   grid-row-start:Ccycle;
   grid-row-end:CcycleEnd;
   height:100%;
-  width:75%;
+  width:100%;
   justify-self:end;
 
-  /* For subelements */
-  display:grid;
-  grid-template-columns: 50% repeat(auto, auto);
-  grid-auto-flow:column;
-  /*grid-template-rows: 50% 50% 50%;
-  grid-auto-flow:column;*/
-  /*grid-template-rows: 2fr;*/ /*skrink height of this div?! */
-  /*grid-auto-rows:120px;*/
-  justify-content:space-between;
-  /*align-items:end;*/
-  justify-items: stretch;
-  /*padding-top:20px;*/
-
   grid-auto-rows:88%;
-  grid-auto-columns:33%;
 }
 
 #topControls {
-  grid-column-start:1;
-  grid-column-end:3;
+  grid-column-start:Cleft;
+  grid-column-end:Cright;
   grid-row-start:Ctop;
   grid-row-end:CtopEnd;
   height:100%;
@@ -486,17 +473,12 @@ td.playlist.playing:hover {
 }
 #leftControls1 {
   /* As subelement */
-  grid-column-start:1;
-  grid-column-end:2;
+  grid-column-start:Cleft;
+  grid-column-end:Cmid;
   grid-row-start:Cmain1;
   grid-row-end:Cmain2;
   height:100%;
 
-  /* For subelements */
-  display:grid;
-  grid-template-columns: 50% 50%;
-  /*grid-template-rows: 2fr;*/ /*skrink height of this div?! */
-  /*grid-auto-rows:120px;*/
   justify-content:space-between;
   /*align-items:end;*/
   justify-items: stretch;
@@ -507,18 +489,12 @@ td.playlist.playing:hover {
 
 #rightControls1 {
   /* As subelement */
-  grid-column-start:2;
-  grid-column-end:3;
+  grid-column-start:Cmid;
+  grid-column-end:Cright;
   grid-row-start:Cmain1;
   grid-row-end:Cmain1RightEnd;
   height:100%;
 
-  /* For subelements */
-  display:grid;
-  grid-template-columns: 50% 50%;
-  /*grid-template-rows: 1fr 1fr ;*/
-  /*grid-auto-rows:120px;*/
-  justify-content:space-between;
   align-items:start;
   justify-items: stretch;
 
@@ -527,41 +503,42 @@ td.playlist.playing:hover {
 }
 #leftControls2 {
   /* As subelement */
-  grid-column-start:1;
-  grid-column-end:2;
+  grid-column-start:Cleft;
+  grid-column-end:Cmid;
   grid-row-start:Cmain2;
   grid-row-end:Cend;
   height:100%;
 
-
-  /* For subelements */
-  display:grid;
-  grid-template-columns: 50% 50%;
-  /*grid-template-rows: 1fr 1fr repeat(2, 1fr);*/
-  /*grid-auto-rows:120px;*/
-  justify-content:space-between;
-  /*align-items:end;*/
-  justify-items: stretch;
-  /*padding-top:20px;*/
 
   /* Others */
   grid-auto-rows:22%;
 }
+
+/* shared props from #[name]Controls */
+.button_grid {
+  display:grid;
+  grid-template-columns: /* 18 = 3*3*2 */
+  [Bleft]
+  repeat(6, 1fr)
+  [Bmid]
+  1fr 0.5fr [Binfo] 1.5fr [Bcenter] 1.5fr [BinfoEnd] 0.5fr 1fr
+  [BmidEnd]
+  repeat(6, 1fr)
+  [Bright];
+  /*grid-template-rows: 1fr 1fr 1fr 1fr repeat(0, 1fr);*/
+  /*grid-auto-rows:120px;*/
+  justify-content:space-between;
+}
+
 #rightControls2 {
   /* As subelement */
-  grid-column-start:2;
-  grid-column-end:3;
+  grid-column-start:Cmid;
+  grid-column-end:Cright;
   grid-row-start:Cmain2;
   grid-row-end:Cend;
   height:100%;
 
 
-  /* For subelements */
-  display:grid;
-  grid-template-columns: 50% 50%;
-  /*grid-template-rows: 1fr 1fr 1fr 1fr repeat(0, 1fr);*/
-  /*grid-auto-rows:120px;*/
-  justify-content:space-between;
   align-items:start;
   /*justify-items: stretch;*/
 
@@ -581,16 +558,40 @@ td.playlist.playing:hover {
 
 .controls {
 }
+.control_full {
+  grid-column: Bleft / span 18;
+}
 .control_left {
   margin-right:10px;
-  grid-column: 1/2;
+  grid-column: Bleft / span 9;
 }
 .control_right {
   margin-left:10px;
-  grid-column: 2/2;
+  grid-column: Bcenter / span 9;
 }
-.control_full {
-  grid-column: 1/ span 2;
+.control_mid {
+  grid-column: Bmid / span 6;
+}
+.control_info {
+  grid-column: Binfo / span 2;
+  text-align: center;
+  font-size:50%;
+  width:100%;
+  margin:auto 0px;
+}
+
+/* Adapt sizes of left/right buttons */
+.control_left.with_mid {
+  grid-column: Bleft / span 6;
+}
+.control_right.with_mid {
+  grid-column: BmidEnd / span 6;
+}
+.control_left.with_info {
+  grid-column: Bleft / span 8;
+}
+.control_right.with_info {
+  grid-column: BinfoEnd / span 8;
 }
 
 .button {
@@ -721,6 +722,8 @@ ul#sharelist li i.share_bullet {
   max-height:inherit !important;
 
   grid-template-columns: 100%;
+  grid-template-columns: [Cleft] repeat(5, 1fr) [Cright];
+
   grid-template-rows:
   /*minmax(min-content, 5em) /* header row */
   [Ccycle]
@@ -753,28 +756,28 @@ ul#sharelist li i.share_bullet {
 }
 
   #cycleControls{
-    grid-column-start:1;
-    grid-column-end:2;
+    grid-column-start:Cleft;
+    grid-column-end:Cright;
     grid-row-start:Ccycle;
     grid-row-end:Ccycle;
   }
 
   #topControls {
-    grid-column-start:1;
-    grid-column-end:2;
+    grid-column-start:Cleft;
+    grid-column-end:Cright;
     grid-row-start:Ctop;
     grid-row-end:CtopEnd;
   }
 
   #leftControls1 {
-    grid-column-start:1;
-    grid-column-end:2;
+    grid-column-start:Cleft;
+    grid-column-end:Cright;
     grid-row-start:Cmain1;
     grid-row-end:Cmain2;
   }
   #leftControls2 {
-    grid-column-start:1;
-    grid-column-end:2;
+    grid-column-start:Cleft;
+    grid-column-end:Cright;
     grid-row-start:Cmain2;
     grid-row-end:Cmain3;
 
@@ -784,8 +787,8 @@ ul#sharelist li i.share_bullet {
   }
 
   #rightControls1 {
-    grid-column-start:1;
-    grid-column-end:2;
+    grid-column-start:Cleft;
+    grid-column-end:Cright;
     grid-row-start:Cmain3;
     grid-row-end:Cmain4;
 
@@ -793,8 +796,8 @@ ul#sharelist li i.share_bullet {
   }
 
   #rightControls2 {
-    grid-column-start:1;
-    grid-column-end:2;
+    grid-column-start:Cleft;
+    grid-column-end:Cright;
     grid-row-start:Cmain4;
     grid-row-end:Cend;
 
@@ -839,11 +842,6 @@ ul#sharelist li i.share_bullet {
   }
 
   #cycleControls {
-    grid-column-start:1;
-    grid-column-end:3;
-    grid-row-start:Ccycle;
-    grid-row-end:CcycleEnd;
-    height:100%;
     width:50%;
     justify-self:end;
   }
