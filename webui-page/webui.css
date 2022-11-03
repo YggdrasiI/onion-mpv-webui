@@ -63,10 +63,10 @@ h3 {
   z-index:100;
 }
 
-.burger a {
+.burger div {
+  cursor: pointer;
   color: var(--main-fg-color);
 }
-
 
 .hidden {
   display: none !important;
