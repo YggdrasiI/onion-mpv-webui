@@ -352,6 +352,10 @@ td.playlist.playing {
   cursor: auto;
 }
 
+#playlist table:first-child td:nth-child(3){
+  display:none;
+}
+
 td.playlist:first-child {
   border-bottom-left-radius: 6px;
   border-top-left-radius: 6px;
@@ -449,7 +453,7 @@ td.playlist.playing:hover {
   /*align-self:start;*/
   overflow-y:hidden;
 
-	margin-right: 3em;
+  margin-right: 3em;
 }
 
 #cycleControls {
@@ -635,7 +639,7 @@ ul#sharelist {
 }
 
 #sharelist li {
-	display: flex;
+  display: flex;
 
   border-radius: 6px;
   /*border: 3px solid #999;*/
@@ -643,7 +647,7 @@ ul#sharelist {
   margin-bottom:0.5em;
   margin-right: 20px;
 
-	min-height:2.5em;
+  min-height:2.5em;
 
   border-collapse: collapse;
 }
@@ -655,8 +659,8 @@ ul#sharelist {
 }
 
 #sharelist li.dir_up:first-child { /* ".." do not scrolls off screen */
-	position: sticky;
-	top: 0px;
+  position: sticky;
+  top: 0px;
 }
 
 
@@ -665,11 +669,11 @@ ul#sharelist {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-	/*margin-right:auto;*/ /* not required with flex-property */
+  /*margin-right:auto;*/ /* not required with flex-property */
   flex: 1 1 auto;
   text-align: left;
 
-	font-weight: bold;
+  font-weight: bold;
 }
 
 #sharelist li *.share_dir,
@@ -718,41 +722,41 @@ ul#sharelist li i.share_bullet {
 /* Slim design with controls in one column. */
 @media all and (max-width: 35em) {
 
-	#controlBox
-	{
-		grid-template-columns: 100%;
-		grid-template-columns: [Cleft] repeat(5, 1fr) [Cright];
+  #controlBox
+  {
+    grid-template-columns: 100%;
+    grid-template-columns: [Cleft] repeat(5, 1fr) [Cright];
 
-		grid-template-rows:
-		/*minmax(min-content, 5em) /* header row */
-		[Ccycle]
-		1fr   /* cycleControls */
-		[CcycleEnd]
-		20px  /* free space */
-		[Ctop]
-		minmax(min-content, 1.5fr) /* topControls */
-		[CtopEnd]
-		20px  /* free space */
-		[Cmain1]
-		minmax(min-content, 1.5fr) /* leftControls1 */
-		[Cmain2]
-		3fr   /* leftControls2 */
-		[Cmain3]
-		1fr  /* rightControls1 */
-		[Cmain4]
-		3fr  /* rightControls2 */
-		[Cend];
-		/*justify-content:space-between;*/
-		align-items:start;
-		justify-items: stretch;
-		grid-gap:0px 20px;
+    grid-template-rows:
+    /*minmax(min-content, 5em) /* header row */
+    [Ccycle]
+    1fr   /* cycleControls */
+    [CcycleEnd]
+    20px  /* free space */
+    [Ctop]
+    minmax(min-content, 1.5fr) /* topControls */
+    [CtopEnd]
+    20px  /* free space */
+    [Cmain1]
+    minmax(min-content, 1.5fr) /* leftControls1 */
+    [Cmain2]
+    3fr   /* leftControls2 */
+    [Cmain3]
+    1fr  /* rightControls1 */
+    [Cmain4]
+    3fr  /* rightControls2 */
+    [Cend];
+    /*justify-content:space-between;*/
+    align-items:start;
+    justify-items: stretch;
+    grid-gap:0px 20px;
 
-		/*overflow:hidden;*/
-		overflow-x:hidden;
-		overflow-y:auto;
-		padding-right: 40px; /* scrollbar-space?! */
+    /*overflow:hidden;*/
+    overflow-x:hidden;
+    overflow-y:auto;
+    padding-right: 40px; /* scrollbar-space?! */
 
-	}
+  }
 
   #cycleControls{
     grid-column-start:Cleft;

@@ -1,4 +1,5 @@
 var DEBUG = true,
+  use_dummy_audio_element = false, /* for controls on lock screen. */
     metadata = {},
     subs = {},
     audios = {},
@@ -16,7 +17,7 @@ const REGEXS = {
   'brackets': new RegExp('\\[[^\\]]*\\]', 'g'), // [...]
   'extension': new RegExp('[.][A-z]{3,10}$', ''),   // .ext
   'checksumBeforeExtension': new RegExp('-[A-z0-9-]{10,12}([.][A-z]+)$', ''), // -AbCdEXFGL.
-	'cleanup_dots': new RegExp('[.…]*…[.…]*','g'),
+  'cleanup_dots': new RegExp('[.…]*…[.…]*','g'),
 }
 
 /* Collect [num] milliseconds status updates before 
@@ -34,8 +35,9 @@ function send_ws(command, ...params){
 
   api = {
     command: command,
-    param1: params[0] || "",
-    param2: params[1] || ""
+    // Note: Syntax 'params[0] || ""', is wrong for param '0'
+    param1: (params[0] == undefined?"":params[0]),
+    param2: (params[1] == undefined?"":params[1]),
   }
 
   //DEBUG && console.log('Sending command: ' + api.command + ' - param1: ' + api.param1 + ' - param2: ' + api.param2)
@@ -113,21 +115,22 @@ function createPlaylistTable(entry, position, pause, first) {
   var td_2 = document.createElement('td')
   var td_right = document.createElement('td')
   table.className = 'playlist'
+  table.playlist_id = position // Read by some function handler
   tr.className = 'playlist'
   td_2.className = 'playlist'
   td_left.className = 'playlist'
   td_right.className = 'playlist'
   td_2.innerText = title_trimmed
   td_2.setAttribute('title', title)
-  if (first === false) {
-    var td_3 = document.createElement('td')
-    td_3.innerHTML = '<i class="fas fa-arrow-up"></i>'
-    td_3.className = 'playlist'
-  }
+
+  var td_3 = document.createElement('td')
+  td_3.innerHTML = '<i class="fas fa-arrow-up"></i>'
+  td_3.className = 'playlist'
+
   td_right.innerHTML = '<i class="fas fa-trash"></i>'
 
   if (entry.hasOwnProperty('playing')) {
-    if (pause) {
+    if (pause === "yes") {
       td_left.innerHTML = '<i class="fas fa-pause"></i>'
     } else {
       td_left.innerHTML = '<i class="fas fa-play"></i>'
@@ -137,24 +140,24 @@ function createPlaylistTable(entry, position, pause, first) {
     td_left.classList.add('violet')
     td_2.classList.add('playing')
     td_2.classList.add('violet')
-      first || td_3.classList.add('violet')
+    td_3.classList.add('violet')
     td_right.classList.add('violet')
 
   } else {
     td_left.classList.add('gray')
     td_2.classList.add('gray')
-    first || td_3.classList.add('gray')
+    td_3.classList.add('gray')
     td_right.classList.add('gray')
 
-    function _playlist_jump(arg) {
-      return function() {
-        send("playlist_jump", arg)
-        send("play");  // remove pause
-        // evt.stopPropagation();
-      }
+    function playlist_jump(table) {
+      arg = table.playlist_id
+      send("playlist_jump", arg)
+      send("play");  // remove pause
+      // evt.stopPropagation();
     }
-    td_left.addEventListener('click', _playlist_jump(position)) 
-    td_2.addEventListener('click', _playlist_jump(position)) 
+
+    td_left.addEventListener('click', () => { playlist_jump(table) }) 
+    td_2.addEventListener('click', () => { playlist_jump(table) }) 
 
     td_left.addEventListener("mouseover", function() {setActive(true)})
     td_left.addEventListener("mouseout", function() {setActive(false)})
@@ -165,27 +168,26 @@ function createPlaylistTable(entry, position, pause, first) {
     td_2.addEventListener("click", blink)
   }
 
-  if (first === false) {
-    td_3.addEventListener('click',
-      function (arg) {
-        return function () {
-          send("playlist_move_up", arg)
-        }
-      }(position)
-    )
-  }
+  td_3.addEventListener('click',
+    function (table) {
+      return function () {
+        arg = table.playlist_id
+        send("playlist_move_up", arg)
+      }
+    }(table))
 
   td_right.addEventListener('click',
-    function(arg) {
+    function(table) {
       return function() {
+        arg = table.playlist_id
         send("playlist_remove", arg)
       }
-    }(position)
+    }(table)
   )
 
   tr.appendChild(td_left)
   tr.appendChild(td_2)
-  first || tr.appendChild(td_3)
+  tr.appendChild(td_3)
   tr.appendChild(td_right)
   table.appendChild(tr)
   return table
@@ -214,9 +216,70 @@ function populatePlaylist(json, pause) {
 
 }
 
+function updatePlaylistOnPause(current_playlist, new_pause, old_pause) {
+  if (new_pause == old_pause) return;
+  var playlist = document.getElementById('playlist')
+
+  for (i=0; i<current_playlist.length; ++i){
+    if (current_playlist[i].current && current_playlist[i].current == true){
+
+      row = createPlaylistTable(current_playlist[i], i, new_pause, (i==0));
+      playlist.replaceChild(row, playlist.children[i])
+      break;
+    }
+  }
+}
+
+function updatePlaylist(new_playlist, old_playlist, new_pause) {
+  /* Compare both lists and just update changed rows.
+   * It works well if just one element is removed/inserted
+   * or some Elements are swapped.
+   *
+   * Inserts of multiple elements can not be detected and 
+   * will handled like a complete new (part of a) list.
+   */
+
+  var compare_handler = function(new_entry, old_entry){
+    if (new_entry.filename == old_entry.filename
+      && (new_entry.current == old_entry.current))
+      return true;
+  }
+
+  var operations = get_diff(new_playlist, old_playlist, compare_handler)
+  DEBUG && console.log(operations)
+
+  var playlist = document.getElementById('playlist')
+  // children Index of playlist matches with above index.
+
+  var offset = 0
+  operations.forEach( x => {
+    if (x['op'] == 'replace' /* || x['op'] == 'changed'*/) {
+      row = createPlaylistTable(
+        new_playlist[x['new']],
+        x['old'], new_pause, (x['new']==0));
+      playlist.replaceChild( row,
+        playlist.children[x['old'] + offset])
+    }else if (x['op'] == 'add') {
+      row = createPlaylistTable(
+        new_playlist[x['new']],
+        x['old'], new_pause, (x['new']==0));
+      playlist.insertBefore( row,
+        playlist.children[x['old'] + offset])//.nextElementSilbing)
+      offset++
+    }else if (x['op'] == 'remove') {
+      playlist.removeChild(
+        playlist.children[x['old'] + offset])
+      offset--
+    }
+  })
+
+  // Update playlist indizes for event handlers.
+  var id = 0;
+  playlist.childNodes.forEach(n => { n.playlist_id = id++; })
+}
 
 
-function webui_keydown(e) {
+function webui_keydown(evt) {
   var bindings = [
     {
       "key": " ",
@@ -269,12 +332,12 @@ function webui_keydown(e) {
     },
   ]
   for (var i = 0; i < bindings.length; i++) {
-    if (e.keyCode === bindings[i].code || e.key === bindings[i].key) {
+    if (evt.keyCode === bindings[i].code || evt.key === bindings[i].key) {
       send(bindings[i].command, bindings[i].param1, bindings[i].param2)
-      return false
+      evt.stopPropagation()//return false
     }
   }
-  //console.log("Key pressed: " + e.keyCode + " " + e.key )
+  //console.log("Key pressed: " + evt.keyCode + " " + evt.key )
 }
 
 function format_time(seconds){
@@ -681,10 +744,6 @@ function handleStatusUpdate(status_updates) {
   if ("audio-delay" in status_updates){
     setAudioDelay(new_status['audio-delay'])
   }
-
-  if ("pause" in status_updates){
-    setPlayPause(new_status['pause'])
-  }
   if ("time-pos" in status_updates
     ||"duration" in status_updates){
     setPosSlider(new_status['time-pos'], new_status['duration'])
@@ -705,14 +764,19 @@ function handleStatusUpdate(status_updates) {
     ||"chapter-metadata" in status_updates){
     setChapter(new_status['chapters'], new_status['chapter'], new_status['chapter-metadata'])
   }
-  if ("playlist" in status_updates
-    ||"pause" in status_updates){
-    populatePlaylist(new_status['playlist'], new_status['pause'])
+  if ("playlist" in status_updates){
+    updateNotification(new_status)
+    updatePlaylist(new_status['playlist'],
+      mpv_status['playlist'], new_status['pause'])
+  }
+  if ("pause" in status_updates){
+    setPlayPause(new_status['pause'])
+    updateNotification(new_status)
+    updatePlaylistOnPause(new_status['playlist'],
+      new_status['pause'], mpv_status['pause'])
   }
   if ("metadata" in status_updates
-    ||"playlist" in status_updates 
-    ||"filename" in status_updates 
-    ||"pause" in status_updates){
+    ||"filename" in status_updates){
     updateNotification(new_status)
   }
 
@@ -858,6 +922,8 @@ function status(){
 */
 
 function audioLoad() {
+  if (!use_dummy_audio_element) return;
+
   DEBUG && console.log('Loading dummy audio')
   var audio = document.getElementById("audio")
   audio.load()
@@ -894,6 +960,8 @@ function audioLoad() {
 window.addEventListener('load', audioLoad, false)
 
 function audioPlay() {
+  if (!use_dummy_audio_element) return;
+
   var audio = document.getElementById("audio")
   if (audio.paused) {
     blockDoublePause = true
@@ -907,6 +975,8 @@ function audioPlay() {
 }
 
 function audioPause() {
+  if (!use_dummy_audio_element) return;
+
   var audio = document.getElementById("audio")
   if (!audio.paused) {
     blockDoublePause = true;
@@ -933,17 +1003,17 @@ function trim_title_string(s, max_len, sub_char, end_char){
   s = s.replace(REGEXS['brackets'], sub_char)
   s = s.replace(REGEXS['checksumBeforeExtension'], RegExp.$1)
 
-	if (s.length > max_len ){
-		s = s.replace(REGEXS['extension'], end_char)
-	}
+  if (s.length > max_len ){
+    s = s.replace(REGEXS['extension'], end_char)
+  }
 
-	if (s.length > max_len ){
-		s = s.substr(0, max_len)
-		if (s.charAt(s.length-1) != end_char)
-			s = s.concat(end_char)
-	}
+  if (s.length > max_len ){
+    s = s.substr(0, max_len)
+    if (s.charAt(s.length-1) != end_char)
+      s = s.concat(end_char)
+  }
 
-	// Cleanup
+  // Cleanup
   s = s.replace(REGEXS['cleanup_dots'], sub_char)
 
   return s;
@@ -1083,7 +1153,7 @@ function add_button_listener() {
   })
 }
 
-window.addEventListener('keydown', webui_keydown, false)
+window.addEventListener('keydown', webui_keydown, true) /* capture to skip scrolling on overlays*/
 window.addEventListener('load', status_init_ws, false)
 window.addEventListener('load', add_button_listener, false)
 //status_ws()
