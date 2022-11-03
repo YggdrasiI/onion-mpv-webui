@@ -38,7 +38,7 @@ int mpv_open_cplugin(mpv_handle *handle)
     int err=0;
     mpv = handle;
     const char *mpv_plugin_name = mpv_client_name(handle);
-    printf("Webui C plugin loaded as '%s'!\n", mpv_plugin_name);
+    printf("Webui plugin loaded as '%s'!\n", mpv_plugin_name);
 
     onion_dict *options = get_default_options();
     update_options(mpv, mpv_plugin_name, options);

@@ -69,12 +69,21 @@ enum onion_websocket_status_e {
 #define STATUS_STR(NAME, NUM) char NAME[2] \
     = {((NUM>>8)&0xFF) , ((NUM)&0xFF)};
 
-// Helper function
+/*  Helper functions */
 int __property_observe(__property *prop);
 int __property_reobserve(__property *prop);
-void __reset_ready_props(__status *status);
+
+// Search and parse all ready props. Will set prop->ready flags
 void __search_ready_props(__status *status, int force);
-int __prop_ready(__property *prop, struct timespec *now, int force);
+
+// Undo changes of __search_ready_props
+void __reset_ready_props(__status *status, int force);
+
+/* True if property was updated and enough time is lapsed. */
+int __prop_ready(__property *prop, struct timespec *now);
+
+/* Like __prop_ready but ignores timestamp if forces is true */
+int __prop_weak_ready(__property *prop, struct timespec *now, int force);
 
 
 __clients *clients_init()
@@ -516,6 +525,7 @@ __property property_init(
     ret.format_out = format_out;
     ret.userdata = userdata;
     ret.updated = 0;
+    ret.ready = 0;
     ret.last_update_time = (struct timespec){.tv_sec=0, .tv_nsec=0};
     ret.next_update_time = (struct timespec){.tv_sec=0, .tv_nsec=0};
     ret.minimal_update_diff = (struct timespec){
@@ -1081,7 +1091,8 @@ void status_update(
 }
 
 void send_to_all_clients1(
-        __clients *pclients)
+        __clients *pclients,
+        __status *status)
 {
     pthread_mutex_lock(&status->lock);
 
@@ -1090,6 +1101,7 @@ void send_to_all_clients1(
         __property *prop = &status->props[n];
         if (prop->ready){
             // send single property
+            parse_value(prop);
             for( i=0; i<MAX_ACTIVE_CLIENTS; ++i){
                 __websocket *pclient = &pclients->clients[i];
                 if ( pclient->ws ){
@@ -1113,6 +1125,7 @@ void send_to_all_clients2(
 {
     pthread_mutex_lock(&status->lock);
     char *status_diff = status_build_update_json(status);
+    pthread_mutex_unlock(&status->lock);
 
     int i;
     for( i=0; i<MAX_ACTIVE_CLIENTS; ++i){
@@ -1128,7 +1141,6 @@ void send_to_all_clients2(
     }
 
     free(status_diff);
-    pthread_mutex_unlock(&status->lock);
 }
 
 
@@ -1264,23 +1276,6 @@ void status_set_initialized(
 
 }
 
-void __reset_ready_props(__status *status){
-    struct timespec now;
-    fetch_timestamp(&now);
-
-    pthread_mutex_lock(&status->lock);
-    int n, N=status->num_props;
-    for(n=0; n<N; ++n){
-        __property *prop = &status->props[n];
-        prop->updated = 0;
-        prop->ready = 0;
-        update_timestamp(prop, &now);
-    }
-    status->num_updated = 0;
-    status->num_ready = 0;
-    pthread_mutex_unlock(&status->lock);
-}
-
 void __search_ready_props(__status *status, int force){
     struct timespec now;
     fetch_timestamp(&now);
@@ -1289,8 +1284,8 @@ void __search_ready_props(__status *status, int force){
     int n, N=status->num_props;
     for(n=0; n<N; ++n){
         __property *prop = &status->props[n];
-        if (__prop_ready(prop, &now, force)){
-            parse_value(prop);
+        if (__prop_weak_ready(prop, &now, force)){
+            assert(prop->updated);
             prop->ready = 1;
             status->num_ready++;
         }
@@ -1298,15 +1293,38 @@ void __search_ready_props(__status *status, int force){
     pthread_mutex_unlock(&status->lock);
 }
 
-/*
- * Checks if proprety was updated by mpv
- * and potential update interval restritcions are met.
- */
-int __prop_ready(__property *prop, struct timespec *now, int force){
-    if (prop->ready) return 1;
+void __reset_ready_props(__status *status, int force){
+    struct timespec now;
+    fetch_timestamp(&now);
+
+    pthread_mutex_lock(&status->lock);
+    int n, N=status->num_props;
+    for(n=0; n<N; ++n){
+        __property *prop = &status->props[n];
+        if ((force?prop->updated:prop->ready)) {
+            assert(prop->updated);
+            prop->ready = 0;
+            prop->updated = 0;
+            status->num_updated--;
+            update_timestamp(prop, &now);
+        }
+    }
+    status->num_ready = 0;
+    pthread_mutex_unlock(&status->lock);
+}
+
+int __prop_ready(__property *prop, struct timespec *now){
     if (!prop->updated) return 0;
-    if (!force && !time_diff_reached(prop, now)) return 0;
+    if (!time_diff_reached(prop, now)) return 0;
     return 1;
+}
+
+int __prop_weak_ready(__property *prop, struct timespec *now, int force){
+    //if (prop->ready) return 1;
+    if (force) {
+        return prop->updated;
+    }
+    return __prop_ready(prop, now);
 }
 
 void status_send_update(
@@ -1318,20 +1336,21 @@ void status_send_update(
         ONION_ERROR("Should not be reached");
         return;
     }
-
-    __search_ready_props(status, force); // search and parse all ready props.
+    __search_ready_props(status, force);
 
     if (status->num_ready == 0) return;
+
     if (status->num_ready == 1) {
-        // Sends each ready property as new json.
-        send_to_all_clients1(pclients);
+        // Sends each ready property as status_diff message
+        send_to_all_clients1(pclients, status);
     } else {
         // Collect changed properties and send collection
         // Sending collections may reduce number of redraws in GUI.
         send_to_all_clients2(pclients, status);
     }
 
-    __reset_ready_props(status);
+    // Undo changes made by __search_ready_props
+    __reset_ready_props(status, force);
 }
 
 // ================== END mpv releated part ===============
