@@ -16,6 +16,7 @@ const REGEXS = {
   'brackets': new RegExp('\\[[^\\]]*\\]', 'g'), // [...]
   'extension': new RegExp('[.][A-z]{3,10}$', ''),   // .ext
   'checksumBeforeExtension': new RegExp('-[A-z0-9-]{10,12}([.][A-z]+)$', ''), // -AbCdEXFGL.
+	'cleanup_dots': new RegExp('[.…]*…[.…]*','g'),
 }
 
 /* Collect [num] milliseconds status updates before 
@@ -931,14 +932,19 @@ function trim_title_string(s, max_len, sub_char, end_char){
 
   s = s.replace(REGEXS['brackets'], sub_char)
   s = s.replace(REGEXS['checksumBeforeExtension'], RegExp.$1)
-  if (s.length <= max_len ) return s;
 
-  s = s.replace(REGEXS['extension'], end_char)
-  if (s.length <= max_len ) return s;
+	if (s.length > max_len ){
+		s = s.replace(REGEXS['extension'], end_char)
+	}
 
-  s = s.substr(0, max_len)
-  if (s.charAt(s.length-1) != end_char)
-    s = s.concat(end_char)
+	if (s.length > max_len ){
+		s = s.substr(0, max_len)
+		if (s.charAt(s.length-1) != end_char)
+			s = s.concat(end_char)
+	}
+
+	// Cleanup
+  s = s.replace(REGEXS['cleanup_dots'], sub_char)
 
   return s;
 }
