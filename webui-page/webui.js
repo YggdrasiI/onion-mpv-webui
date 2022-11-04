@@ -1,17 +1,44 @@
 var DEBUG = true,
-  use_dummy_audio_element = false, /* for controls on lock screen. */
+    use_dummy_audio_element = false, /* for controls on lock screen. */
     metadata = {},
     subs = {},
     audios = {},
     videos = {},
-    blockDoublePause = false,
-    blockPosSlider = false,
-    blockVolSlider = false,
     connected = false,
     max_title_size = 60
 
 var ws = null
 var mpv_status = {}
+
+// For touchmenu
+var longpress = {
+  ms: 400,
+  done: null,
+  timer: null}
+
+var block = {
+      posSlider: null, // null, false or Timeout-ID during user interaction
+      volSlider: null,
+
+      active: function (name){
+        return (this[name] !== null)  // Returns even true for 'false'!
+      },
+      enable: function (name){
+        if (this[name]) { // Remove running timeout
+          clearTimeout(this[name])
+        }
+        this[name] = false
+      },
+      disable: function (name){ // Resets value after timeout
+        if (this[name] === false) {
+          this[name] = setTimeout(function(){
+            this[name] = null
+          }, this.timeout_ms)
+        }
+      },
+      timeout_ms: 300,
+      doublePause: false, // flag used without timeout
+    }
 
 const REGEXS = {
   'brackets': new RegExp('\\[[^\\]]*\\]', 'g'), // [...]
@@ -20,16 +47,15 @@ const REGEXS = {
   'cleanup_dots': new RegExp('[.…]*…[.…]*','g'),
 }
 
-/* Collect [num] milliseconds status updates before 
+/* Collect [num] milliseconds status updates before
  * they will be used to update the page.
- * Use 0 to update immediately. 
+ * Use 0 to update immediately.
  */
 var mpv_outstanding_status = {
   delay: 300,
   updates: {},
   timer: null
 }
-
 
 function send_ws(command, ...params){
 
@@ -156,8 +182,8 @@ function createPlaylistTable(entry, position, pause, first) {
       // evt.stopPropagation();
     }
 
-    td_left.addEventListener('click', () => { playlist_jump(table) }) 
-    td_2.addEventListener('click', () => { playlist_jump(table) }) 
+    td_left.addEventListener('click', () => { playlist_jump(table) })
+    td_2.addEventListener('click', () => { playlist_jump(table) })
 
     td_left.addEventListener("mouseover", function() {setActive(true)})
     td_left.addEventListener("mouseout", function() {setActive(false)})
@@ -235,7 +261,7 @@ function updatePlaylist(new_playlist, old_playlist, new_pause) {
    * It works well if just one element is removed/inserted
    * or some Elements are swapped.
    *
-   * Inserts of multiple elements can not be detected and 
+   * Inserts of multiple elements can not be detected and
    * will handled like a complete new (part of a) list.
    */
 
@@ -422,6 +448,24 @@ function setTrackList(tracklist) {
   }
 }
 
+function current_playlist_index(playlist){
+  for (var i = 0; i < playlist.length; i++){
+    if (playlist[i].hasOwnProperty('current' /* or 'playing' ?!*/)) {
+      return i
+    }
+  }
+  console.log("Can not detect playlist entry!")
+  return null
+}
+
+function playlist_get_title(entry){
+  if (entry.hasOwnProperty('title'))
+    return entry['title']
+
+  //Fallback on filename
+  return basename(entry['filename'])
+}
+
 function setMetadata(metadata, playlist, filename) {
   // try to gather the track number
   metadata = metadata?metadata:{}; // null to {}
@@ -431,25 +475,21 @@ function setMetadata(metadata, playlist, filename) {
   }
 
   // try to gather the playing playlist element
-  var pl_title = null
-  for (var i = 0; i < playlist.length; i++){
-    if (playlist[i].hasOwnProperty('current' /* or 'playing' ?!*/)) {
-       pl_title = playlist[i].title
-    }
-  }
+  var pl_index = current_playlist_index(playlist);
+
   // set the title. Try values in this order:
   // 1. title set in playlist
   // 2. metadata['title']
   // 3. metadata['TITLE']
   // 4. filename
-  if (pl_title) {
-    var title = track + pl_title
+  if (pl_index && playlist[pl_index].title) {
+    var title = playlist[pl_index].title
   } else if (metadata['title']) {
     var title = track + metadata['title']
   } else if (metadata['TITLE']) {
     var title = track + metadata['TITLE']
   } else {
-    var title = track + filename
+    var title = track + basename(filename)
   }
   window.metadata.title = trim_title_string(title, max_title_size)
 
@@ -478,45 +518,19 @@ function setPosSlider(position, duration) {
   var slider = document.getElementById("mediaPosition")
   var pos = document.getElementById("position")
   slider.max = duration
-  if (!window.blockPosSlider) {
+  if (!window.block.active('posSlider')) {
     slider.value = position
   }
-  pos.innerHTML = format_time(slider.value)
-}
-
-document.getElementById("mediaPosition").onchange = function() {
-  var slider = document.getElementById("mediaPosition")
-  send("set_position", slider.value)
-  window.blockPosSlider = false
-}
-
-document.getElementById("mediaPosition").oninput = function() {
-  window.blockPosSlider = true
-  var slider = document.getElementById("mediaPosition")
-  var pos = document.getElementById("position")
   pos.innerHTML = format_time(slider.value)
 }
 
 function setVolumeSlider(volume, volumeMax) {
   var slider = document.getElementById("mediaVolume")
   var vol = document.getElementById("volume")
-  if (!window.blockVolSlider) {
+  if (!window.block.active('volSlider')) {
     slider.value = volume
     slider.max = volumeMax
   }
-  vol.innerHTML = slider.value + "%"
-}
-
-document.getElementById("mediaVolume").onchange = function() {
-  var slider = document.getElementById("mediaVolume")
-  send("set_volume", slider.value)
-  window.blockVolSlider = false
-}
-
-document.getElementById("mediaVolume").oninput = function() {
-  window.blockVolSlider = true
-  var slider = document.getElementById("mediaVolume")
-  var vol = document.getElementById("volume")
   vol.innerHTML = slider.value + "%"
 }
 
@@ -721,8 +735,8 @@ function handleStatusResponse(json) {
 
 function handleStatusUpdate(status_updates) {
   new_status = Object.assign({}, mpv_status, status_updates)
-  if ("metadata" in status_updates 
-    ||"playlist" in status_updates 
+  if ("metadata" in status_updates
+    ||"playlist" in status_updates
     ||"filename" in status_updates){
     setMetadata(new_status['metadata'], new_status['playlist'], new_status['filename'])
   }
@@ -890,7 +904,7 @@ function status_init_ws(){
       status_init_ws()
     }, 5000)
   }
-  //ws.onerror = ws.onclose; // not required for reconnections 
+  //ws.onerror = ws.onclose; // not required for reconnections
 
 }
 
@@ -943,18 +957,18 @@ function audioLoad() {
    * to send a api call.
    */
   audio.addEventListener('play', ()=> {
-    if (!blockDoublePause){
+    if (!block.doublePause){
       updatePlayPauseButton("no")
       send("play")
     }
-    blockDoublePause = false
+    block.doublePause = false
   }, false)
   audio.addEventListener('pause', ()=> {
-    if (!blockDoublePause){
+    if (!block.doublePause){
       updatePlayPauseButton("yes")
       send("pause")
     }
-    blockDoublePause = false
+    block.doublePause = false
   }, false)
 }
 window.addEventListener('load', audioLoad, false)
@@ -964,7 +978,7 @@ function audioPlay() {
 
   var audio = document.getElementById("audio")
   if (audio.paused) {
-    blockDoublePause = true
+    block.doublePause = true
     audio.play()
       .then(_ => { __mediaSession();
         DEBUG && console.log('Playing dummy audio'); })
@@ -979,7 +993,7 @@ function audioPause() {
 
   var audio = document.getElementById("audio")
   if (!audio.paused) {
-    blockDoublePause = true;
+    block.doublePause = true;
     DEBUG && console.log('Pausing dummy audio')
     audio.pause()
     navigator.mediaSession.playbackState = "paused"
@@ -1098,10 +1112,13 @@ function updateNotification(mpv_status) {
  *
  * Using name instead of id is possible because some Events are
  * triggered by multiple buttons, e.g. 'togglePlayPause'.
+ *
+ * If longpress handler is used, use 'mouseup' instead of
+ * 'mousedown' events. Otherwise the shortclick event will always trigger.
  * */
 function add_button_listener() {
   const btnEvents = [
-    // Element id/name, event name, handler 
+    // Element id/name, event name, handler, optional longpress handler
     ['togglePlayPause', 'click', function (evt) {togglePlayPause() }],
     ['playlistLoopCycle', 'click', function (evt) {playlist_loop_cycle() }],
     ['playlistShuffle', 'click', function (evt) {send('playlist_shuffle') }],
@@ -1110,25 +1127,51 @@ function add_button_listener() {
     ['shareSortingAlpha', 'click', function (evt) {share_change_sorting('alpha'); sortShareList(); }],
     ['shareSortingDate', 'click', function (evt) {share_change_sorting('date'); sortShareList(); }],
     ['toggleShares', 'click', function (evt) {toggleShares() }],
-    ['playlistPrev', 'mousedown', function (evt) {send('playlist_prev') }],
-    ['playlistNext', 'mousedown', function (evt) {send('playlist_next') }],
-    ['seekBack1', 'mousedown', function (evt) {send('seek', '-5') }],
-    ['seekForward1', 'mousedown', function (evt) {send('seek', '10') }],
-    ['seekBack2', 'mousedown', function (evt) {send('seek', '-60') }],
-    ['seekForward2', 'mousedown', function (evt) {send('seek', '120') }],
-    ['chapterBack', 'mousedown', function (evt) {send('add_chapter', '-1') }],
-    ['chapterForward', 'mousedown', function (evt) {send('add_chapter', '1') }],
-    ['playbackSpeed1', 'mousedown', function (evt) {send('increase_playback_speed', '0.9') }],
-    ['playbackSpeed2', 'mousedown', function (evt) {send('increase_playback_speed', '1.1') }],
-    ['subDelay1', 'mousedown', function (evt) {send('add_sub_delay', '-0.05') }],
-    ['subDelay2', 'mousedown', function (evt) {send('add_sub_delay', '0.05') }],
-    ['audioDelay1', 'mousedown', function (evt) {send('add_audio_delay', '-0.05') }],
-    ['audioDelay2', 'mousedown', function (evt) {send('add_audio_delay', '0.05') }],
+    ['playlistPrev', 'mouseup', function (evt) {send('playlist_prev') },
+      function(evt) {touchmenu.prev_files_menu(evt)} ],
+    ['playlistNext', 'mouseup', function (evt) {send('playlist_next') },
+      function(evt) {touchmenu.next_files_menu(evt)} ],
+    ['seekBack1', 'mouseup', function (evt) {send('seek', '-5') }],
+    ['seekForward1', 'mouseup', function (evt) {send('seek', '10') }],
+    ['seekBack2', 'mouseup', function (evt) {send('seek', '-60') }],
+    ['seekForward2', 'mouseup', function (evt) {send('seek', '120') }],
+    ['chapterBack', 'mouseup', function (evt) {send('add_chapter', '-1') }],
+    ['chapterForward', 'mouseup', function (evt) {send('add_chapter', '1') }],
+    ['playbackSpeed1', 'mouseup', function (evt) {send('increase_playback_speed', '0.9') }],
+    ['playbackSpeed2', 'mouseup', function (evt) {send('increase_playback_speed', '1.1') }],
+    ['subDelay1', 'mouseup', function (evt) {send('add_sub_delay', '-0.05') }],
+    ['subDelay2', 'mouseup', function (evt) {send('add_sub_delay', '0.05') }],
+    ['audioDelay1', 'mouseup', function (evt) {send('add_audio_delay', '-0.05') }],
+    ['audioDelay2', 'mouseup', function (evt) {send('add_audio_delay', '0.05') }],
     ['toggleFullscreen', 'click', function (evt) {send('fullscreen') }],
     ['cycleAudioDevice', 'click', function (evt) {send('cycle', 'audio-device') }],
-    ['cycleSub', 'mousedown', function (evt) {send('cycle', 'sub') }],
-    ['cycleAudio', 'mousedown', function (evt) {send('cycle', 'audio') }],
-    ['cycleVideo', 'mousedown', function (evt) {send('cycle', 'video') }],
+    ['cycleSub', 'mouseup', function (evt) {send('cycle', 'sub') }],
+    ['cycleAudio', 'mouseup', function (evt) {send('cycle', 'audio') }],
+    ['cycleVideo', 'mouseup', function (evt) {send('cycle', 'video') }],
+    ['mediaPosition', 'change', function (evt) {
+      var slider = evt.currentTarget
+      send("set_position", slider.value)
+      window.block.disable('posSlider')
+    }],
+    ['mediaPosition', 'input', function (evt) {
+      window.block.enable('posSlider')
+      var slider = evt.currentTarget
+      var pos = document.getElementById("position")
+      pos.innerHTML = format_time(slider.value)
+    }],
+    ['mediaVolume', 'change', function (evt) {
+      var slider = evt.currentTarget
+      send("set_volume", slider.value)
+      window.block.disable('volSlider')
+    }],
+    ['mediaVolume', 'input', function (evt) {
+      window.block.enable('volSlider')
+      var slider = evt.currentTarget
+      var vol = document.getElementById("volume")
+      vol.innerHTML = slider.value + "%"
+    }],
+
+
     ['quitMpv', 'click', function (evt) {send('quit') }],
     ['overlay', 'click', function (evt) {
       if(evt.target == this) togglePlaylist();
@@ -1140,17 +1183,207 @@ function add_button_listener() {
   btnEvents.forEach( x => {
     let els = document.getElementsByName(x[0])
     let count = els.length;
-    els.forEach(el => {el.addEventListener(x[1], x[2])})
+
+    /* Wrap shortpress event if longpress event handler is defined */
+    if (x[3] ) {
+      fshort = function (evt) {
+        if (!window.longpress.done){ /* null or false */
+          x[2](evt)
+        }
+      }
+    }else{
+      fshort = x[2]
+    }
+
+    els.forEach(el => {el.addEventListener(x[1], fshort)})
 
     let el = document.getElementById(x[0])
     if (el) {
-      el.addEventListener(x[1], x[2])
+      el.addEventListener(x[1], fshort)
       count++;
     }
     if (count == 0){
       console.log(`No button named '${x[0]}' found to add event!`)
     }
+
+    /* Add handlers for longpresses */
+    if (x[3]) {
+      flong = function (evt) {
+        window.longpress.done = false;
+        window.longpress.timer = setTimeout(
+          function(target) {
+            return function() {
+              window.longpress.done = true;
+              x[3](target)
+            }
+          }(evt.currentTarget), window.longpress.ms);
+      }
+
+      flongAbort = function (evt) {
+        if (window.longpress.timer){
+          clearTimeout(window.longpress.timer);
+          window.longpress.timer = null
+        }
+      }
+
+      els.forEach(el => {
+        el.addEventListener('touchstart', flong)
+        el.addEventListener('mousedown', flong)
+      })
+      els.forEach(el => {
+        el.addEventListener('touchend', flongAbort)
+        el.addEventListener('mouseup', flongAbort)
+      })
+
+      if (el) {
+        el.addEventListener('touchstart', flong)
+        el.addEventListener('mousedown', flong)
+        el.addEventListener('touchend', flongAbort)
+        el.addEventListener('mouseup', flongAbort)
+      }
+    }
+
   })
+}
+
+
+touchmenu = {
+  _prepare: function (menu, currentTarget, preferBottomOffset){
+    /* Shifts 'menu' below or top of 'currentTarget'.
+     *
+     * • If viewports vertical space above 'currentTarget' is bigger
+     *   it selects the top position. This switch can be shifted by
+     *   'preferBottomOffset'
+     * • The 'menu' got the same width as 'currentTarget'
+     * • The maximal 'menu' height is set by CSS.
+     *
+     * Returns: True if top position was selected.
+     */
+
+    if (arguments.length < 3) preferBottomOffset = 0;
+    const rect = currentTarget.getBoundingClientRect();
+    let above = false
+
+    menu.style.setProperty('display', 'none')  // TODO: Take element temp. out of DOM flow?!
+    menu.replaceChildren()
+
+    menu.style.setProperty('left', Math.round(rect.left)+'px')
+    menu.style.setProperty('right', Math.round(window.innerWidth - rect.right)+'px')
+    if (rect.top > window.innerHeight - rect.bottom  + preferBottomOffset) {
+      above = true
+      menu.style.removeProperty('top')
+      menu.style.setProperty('bottom', Math.round(window.innerHeight - rect.top)+'px')
+      menu.style.removeProperty('border-top-width')
+      menu.style.setProperty('border-bottom-width', '0.5em')
+    }else{
+      menu.style.setProperty('top', Math.round(rect.bottom)+'px')
+      menu.style.removeProperty('bottom')
+      menu.style.setProperty('border-top-width', '0.5em')
+      menu.style.removeProperty('border-bottom-width')
+    }
+    menu.style.setProperty('display', 'block')
+
+    return above
+  },
+
+  _add_entry: function (ul, title, handler, playlist_idx, playlist_range) {
+    var el = document.createElement('li')
+    el.classname = "button content playlist-controls touch-entry"
+    el.innerText = `#${playlist_idx+1} ${title}`
+    el.addEventListener("click", handler)
+    ul.appendChild(el)
+  },
+
+  _add_info: function (menu, text) {
+    var el = document.createElement('li')
+    el.classname = "touch-info"
+    el.innerText = text
+    menu.appendChild(el)
+  },
+
+  next_files_menu: function show_next_files_menu(currentTarget){
+    var menu = document.getElementById("touchmenu")
+    const reverse = this._prepare(menu, currentTarget, 100)
+
+    // Search next M files
+    const M=5
+    const playlist = mpv_status['playlist']
+
+    // Range [A,B)
+    const A = current_playlist_index(playlist)+1;
+    const B = Math.min(A+M, playlist.length)
+    if (A == playlist.length){
+      this._add_info(menu, "No further entries") // TODO: Did not respect looping
+    }else{
+
+      var ul = document.createElement('ul')
+      if (reverse) {
+        ul.style.setProperty('flex-direction', 'column-reverse')
+      }else{
+        ul.style.setProperty('flex-direction', 'column')
+      }
+
+      for(var n=A; n<B; ++n){
+        this._add_entry(ul, playlist_get_title(playlist[n]),
+          function (arg) {
+            return function (evt) {
+              send("playlist_jump", arg)
+              send("play")
+            }
+          }(n),
+          n, [A, B])
+      }
+
+      menu.appendChild(ul)
+      if (reverse) {
+        ul.children[0].scrollIntoView({alignToTop: false});
+      }else{
+        ul.children[0].scrollIntoView({alignToTop: true});
+      }
+    }
+  },
+
+  prev_files_menu: function (currentTarget){
+    var menu = document.getElementById("touchmenu")
+    const reverse = this._prepare(menu, currentTarget, 0)
+
+    // Search prev M files
+    const M=5
+    const playlist = mpv_status['playlist']
+
+    // Range [A,B)
+    const B = current_playlist_index(playlist)
+    const A = Math.max(0, B-5);
+    if (A >= B){
+      this._add_info(menu, "No previous entries") // TODO: Did not respect looping
+    }else{
+
+      var ul = document.createElement('ul')
+      if (reverse) {
+        ul.style.setProperty('flex-direction', 'column-reverse')
+      }else{
+        ul.style.setProperty('flex-direction', 'column')
+      }
+
+      for(var n=B-1; n>=A; --n){
+        this._add_entry(ul, playlist_get_title(playlist[n]),
+          function (arg) {
+            return function (evt) {
+              send("playlist_jump", arg)
+              send("play")
+            }
+          }(n),
+          n, [A, B])
+      }
+
+      menu.appendChild(ul)
+      if (reverse) {
+        ul.children[0].scrollIntoView({alignToTop: false});
+      }else{
+        ul.children[0].scrollIntoView({alignToTop: true});
+      }
+    }
+  }
 }
 
 window.addEventListener('keydown', webui_keydown, true) /* capture to skip scrolling on overlays*/
@@ -1160,13 +1393,40 @@ window.addEventListener('load', add_button_listener, false)
 //setInterval(function(){status();}, 1000)
 
 
+function hideTouchMenu(evt) {
+  if (evt.type == 'resize') {
+    // Always hide menu on resize event.
+    longpress.done = false
+  }
+
+  if (longpress.done) { // Skip hide on first click after long touch
+    longpress.done = false
+    return;
+  }
+
+  if (longpress.done !== null) {
+    longpress.done = null
+    console.log("Hide touch menu")
+    var menu = document.getElementById("touchmenu")
+    if (menu){
+      menu.style.setProperty('display', 'none')
+    }
+  }
+}
+
+window.addEventListener('click', hideTouchMenu);
+window.addEventListener('touchend', hideTouchMenu);
+// Hide touch menu if position/dimension went unclear.
+window.addEventListener('resize', hideTouchMenu);
+
+
 // prevent zoom-in on double-click
 // https://stackoverflow.com/questions/37808180/disable-viewport-zooming-ios-10-safari/38573198#38573198
 var lastTouchEnd = 0
-document.addEventListener('touchend', function (event) {
+document.addEventListener('touchend', function (evt) {
   var now = (new Date()).getTime();
   if (now - lastTouchEnd <= 300) {
-    event.preventDefault()
+    evt.preventDefault()
   }
   lastTouchEnd = now
 }, false)

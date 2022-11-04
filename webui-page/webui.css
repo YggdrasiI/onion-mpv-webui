@@ -4,6 +4,11 @@
 
   --playlist-bg-hover: #333333;
   --playlist-bg-active: #9135bc; /* violet */
+  
+  --touchmenu-bg-red: rgba(150, 0, 0, 0.85);
+  --touchmenu-bg-blue: rgba(90, 90, 240, 0.5);
+  --touchmenu-bg-yellow: rgba(204, 171, 41, 0.47);
+  --touchmenu-bg: rgb(66, 4, 83);
 }
 
 body {
@@ -78,6 +83,7 @@ h3 {
 
 .button {
   overflow:clip;
+  user-select:none; /* Avoids text selection on long button press */
 }
 
 .button:hover {
@@ -718,13 +724,65 @@ ul#sharelist li i.share_bullet {
   z-index:1001;
 }
 
+/* Touchmenu */
+#touchmenu {
+  /*top: 0; left: 0; right: 0; bottom: 0;*/
+  /* Do not set here top,left,right,bottom values because
+   * javascript's removeProperty won't work as expected */
+  z-index: 1001;
+  position: absolute;
+  display:none;
+
+  /*max-height:38vh; /* shifts position ?! */
+  max-height:38vh;
+  /*margin-top: 3vh; margin-bottom: 3vh; /* distance to invoker button */
+  border: 0.3em solid var(--main-bg-color);
+  background-color: var(--main-bg-color);
+  /*margin-bottom:0.5em;*/
+  border-collapse: collapse; /* ?! */
+}
+
+#touchmenu ul {
+  display:flex;
+  /* flex-direction can be adapted by JS */
+  padding:0px;
+  margin:0px;
+
+  padding-top:1em; padding-bottom:1em; /* For border-radius */
+  border-radius:1em;
+
+  height:200%;
+  overflow-x:hidden;
+  overflow-y:auto;
+
+  background-color: var(--touchmenu-bg);
+}
+
+#touchmenu li {
+  flex: 2em; /* difficult to vertical center */
+  flex: 1;
+  list-style-type: none; /* Remove bullets */
+  cursor: pointer;
+  margin:0px;
+  padding:0.3em;
+
+  
+  overflow:hidden;
+  white-space:nowrap; /* single line */
+  /*border: 1px solid red;*/
+}
+
+#touchmenu li:hover {
+  background-color: var(--playlist-bg-hover);
+}
+/* Touchmenu END */
+
 /* Smartphones and tablets with middle resolution/high dpi ?!*/
 /* Slim design with controls in one column. */
 @media all and (max-width: 35em) {
 
   #controlBox
   {
-    grid-template-columns: 100%;
     grid-template-columns: [Cleft] repeat(5, 1fr) [Cright];
 
     grid-template-rows:
