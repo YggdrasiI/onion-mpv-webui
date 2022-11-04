@@ -662,6 +662,18 @@ function setChapter(chapters, chapter, metadata) {
   }
 }
 
+function setPlaybackSpeedButtons(speed){
+  if (window.metadata['speed'] == speed) return;
+
+  window.metadata['speed'] = speed;
+  var resetButton = document.getElementById('playbackSpeedReset')
+  if (speed && speed != 1.0) {
+    showInfoForControls(resetButton, ['playbackSpeed1', 'playbackSpeed2'] , true)
+  }else{
+    showInfoForControls(resetButton, ['playbackSpeed1', 'playbackSpeed2'] , false)
+  }
+}
+
 function setSubDelay(fDelay) {
   var subContent = document.getElementById('subDelayInfo')
   if ( fDelay == 0 ){
@@ -717,6 +729,7 @@ function handleStatusResponse(json) {
   document.getElementById("playtime-remaining").innerHTML =
     "-" + format_time(json['playtime-remaining'])
     + ((json['speed'] && json['speed'] != 1.0)?` (x ${Number(json['speed']).toFixed(2)})`:'')
+  setPlaybackSpeedButtons(json['speed'])
 
   setSubDelay(json['sub-delay'])
   setAudioDelay(json['audio-delay'])
@@ -746,6 +759,9 @@ function handleStatusUpdate(status_updates) {
   if ("duration" in status_updates){
     document.getElementById("duration").innerHTML =
       '&nbsp;'+ format_time(new_status['duration'])
+  }
+  if ("speed" in status_updates){
+    setPlaybackSpeedButtons(new_status['speed'])
   }
   if ("playtime-remaining" in status_updates){
     document.getElementById("playtime-remaining").innerHTML =
@@ -1139,6 +1155,9 @@ function add_button_listener() {
     ['chapterForward', 'mouseup', function (evt) {send('add_chapter', '1') }],
     ['playbackSpeed1', 'mouseup', function (evt) {send('increase_playback_speed', '0.9') }],
     ['playbackSpeed2', 'mouseup', function (evt) {send('increase_playback_speed', '1.1') }],
+    ['playbackSpeedReset', 'mouseup', function (evt) {
+      setPlaybackSpeedButtons(1.0); // anticipate reply of reset_playback_speed for fast gui reaction.
+      send('reset_playback_speed') }],
     ['subDelay1', 'mouseup', function (evt) {send('add_sub_delay', '-0.05') }],
     ['subDelay2', 'mouseup', function (evt) {send('add_sub_delay', '0.05') }],
     ['audioDelay1', 'mouseup', function (evt) {send('add_audio_delay', '-0.05') }],
