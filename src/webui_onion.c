@@ -20,7 +20,7 @@
 #include <onion/url.h>
 #include <onion/mime.h>
 #include <onion/shortcuts.h>
-#ifdef BUILD_ONION
+#ifdef ONION_BUILD
 #include <onion/handlers/exportlocal.h>
 #include <onion/handlers/static.h>
 #else

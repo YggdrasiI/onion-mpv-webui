@@ -8,7 +8,7 @@ main: configure_build build
 
 configure_build:
 	test -e build || mkdir build
-	cd build && cmake -DBUILD_ONION=TRUE ..
+	cd build && cmake -DONION_BUILD=TRUE ..
 
 build:
 	cd build && make

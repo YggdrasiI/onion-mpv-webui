@@ -7,11 +7,11 @@ SET(CMAKE_C_STANDARD 11)
 # SET(INSTALL_PATH "${HOME}.config/mpv/scripts" CACHE STRING "Install path of plugin")
 # SET(INSTALL_PATH "${PROJECT_SOURCE_DIR}/mpv/scripts" CACHE STRING "Install path of plugin")
 # SET(INSTALL_PATH "/dev/shm/mpv/scripts" CACHE STRING "Install path of plugin")
-SET(BUILD_ONION FALSE CACHE BOOL 
+SET(ONION_BUILD FALSE CACHE BOOL 
 	"Do not search installed onion lib but build in 3rdparty/onion.")
 
 # == Serach dependencies ==
-if(NOT ${BUILD_ONION})
+if(NOT ${ONION_BUILD})
 	find_path(ONION_INCLUDE_DIR "onion/exportlocal.h")
 	find_library(ONION_STATIC_LIB_DIR onion.a)
 	find_program(OTEMPLATE otemplate)
@@ -19,7 +19,7 @@ if(NOT ${BUILD_ONION})
 	message("Found ONION_INCLUDE_DIR path: ${ONION_INCLUDE_DIR}")
 	message("Found ONION_STATIC_LIB_DIR path: ${ONION_STATIC_LIB_DIR}")
 	message("Found OTEMPLATE path: ${OTEMPLATE}")
-endif(NOT ${BUILD_ONION})
+endif(NOT ${ONION_BUILD})
 
 find_package(ZLIB)
 

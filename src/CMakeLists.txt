@@ -27,14 +27,14 @@ MACRO (compile_localization _lang)
 ENDMACRO()
 
 
-if(${BUILD_ONION})
+if(${ONION_BUILD})
 	include_directories ("${ONION_DIR}/src/")
 	link_directories("${ONION_BUILD_DIR}/src/onion")
-else(${BUILD_ONION})
+else(${ONION_BUILD})
 	# Use variables defined by find_* commands of target CMakeLists.txt
 	include_directories ("${ONION_INCLUDE_DIR}")
 	link_directories("${ONION_STATIC_LIB}")
-endif(${BUILD_ONION})
+endif(${ONION_BUILD})
 
 
 # For Android/Termux
@@ -169,7 +169,7 @@ target_link_libraries(webui ${WS_LIBS})
 # target_link_libraries(onion-webui.bin ${WS_LIBS})
 
 
-if(${BUILD_ONION})
+if(${ONION_BUILD})
 
 	# Fetch source
 	execute_process(
@@ -279,8 +279,8 @@ if(${BUILD_ONION})
 	message("Update path of otemplate to native binary: '${OTEMPLATE}'")
 	endif(NATIVE_TOOLS)
 
-else(${BUILD_ONION})
-endif(${BUILD_ONION})
+else(${ONION_BUILD})
+endif(${ONION_BUILD})
 
 
 
