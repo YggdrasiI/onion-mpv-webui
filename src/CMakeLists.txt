@@ -1,12 +1,4 @@
-SET(ONION_DIR "${PROJECT_SOURCE_DIR}/3rdparty/onion" CACHE STRING "Git folder of onion lib")
-# SET(ONION_BUILD_DIR "${ONION_DIR}/build" CACHE STRING "build dir of onion lib")
-SET(ONION_BUILD_DIR "${CMAKE_BINARY_DIR}/3rdparty/onion" CACHE STRING "build dir of onion lib")
-SET(OTEMPLATE "${ONION_BUILD_DIR}/tools/otemplate/otemplate" CACHE STRING "binary compiled by onion lib")
-SET(NATIVE_TOOLS false CACHE BOOL "Compile tools (otemplate, etc) native")
-# TODO: Set path for installed 'libonion package'-case.
-SET(OTEMPLATE_TAGSDIR "${ONION_BUILD_DIR}/tools/otemplate/templatetags" CACHE STRING "Path to libi18n.so")
-
-MACRO (compile_template _name)
+MACRO(compile_template _name)
 	STRING(REPLACE "." "_" _name2 "${_name}")
 	add_custom_command(
 		OUTPUT ${_name2}.c
@@ -16,7 +8,7 @@ MACRO (compile_template _name)
 		)
 ENDMACRO()
 
-MACRO (compile_localization _lang)
+MACRO(compile_localization _lang)
 	add_custom_target(
 		fo_${_lang} ALL
 		COMMAND mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/locale/LC_MESSAGES/
@@ -27,14 +19,14 @@ MACRO (compile_localization _lang)
 ENDMACRO()
 
 
-if(${ONION_BUILD})
+if(ONION_BUILD)
 	include_directories ("${ONION_DIR}/src/")
 	link_directories("${ONION_BUILD_DIR}/src/onion")
-else(${ONION_BUILD})
+else()
 	# Use variables defined by find_* commands of target CMakeLists.txt
 	include_directories ("${ONION_INCLUDE_DIR}")
 	link_directories("${ONION_STATIC_LIB}")
-endif(${ONION_BUILD})
+endif()
 
 
 # For Android/Termux
@@ -43,16 +35,16 @@ if(NOT DEFINED TERMUX)  # Skips autodetection if manually set
 	if("${CMAKE_SYSTEM_NAME}" STREQUAL "Android")  # True in Termux
 		message("Set TERMUX flag")
 		SET(TERMUX TRUE CACHE BOOL "Termux flag")
-	else("${CMAKE_SYSTEM_NAME}" STREQUAL "Android")
+	else()
 		SET(TERMUX FALSE CACHE BOOL "Termux flag")
-	endif("${CMAKE_SYSTEM_NAME}" STREQUAL "Android")
-endif(NOT DEFINED TERMUX)
+	endif()
+endif()
 
-if (${TERMUX})
+if(TERMUX)
 	SET(TERMUX_EXTRA_OPTIONS "-DTERMUX=true" CACHE STRING "")
-else (${TERMUX})
+else()
 	SET(TERMUX_EXTRA_OPTIONS "" CACHE STRING "")
-endif (${TERMUX})
+endif()
 
 
 #############################################################################
@@ -71,10 +63,10 @@ SET(SOURCE_FILES
 	onion_ws_time.c
 	utf8.c
 	)
-if (${TERMUX})
-SET(SOURCE_FILES ${SOURCE_FILES}
-	"include/wordexp.c")
-endif (${TERMUX})
+if(TERMUX)
+	SET(SOURCE_FILES ${SOURCE_FILES}
+		"include/wordexp.c")
+endif()
 
 # Plugin for mpv
 add_library(webui SHARED mpv_plugin.c mpv_api_commands.c ${SOURCE_FILES} )
@@ -99,7 +91,7 @@ target_compile_options(simple PUBLIC -fPIC)
 
 
 #############################################################################
-if (${TERMUX})
+if(TERMUX)
 	target_include_directories(webui PUBLIC "include")
 	# target_include_directories(onion-webui.bin PUBLIC "include")
 
@@ -108,93 +100,102 @@ if (${TERMUX})
 	target_link_libraries(simple log)
 	# In this case, no linking on pthread.
 	# Thread functions are buildin in Bionic libc
-else (${TERMUX})
+else()
 	target_link_libraries(webui pthread )
 	# target_link_libraries(onion-webui.bin pthread )
-endif (${TERMUX})
+endif()
 
 
 #############################################################################
-if (${ZLIB_FOUND})
+if(ZLIB_FOUND)
 	# target_link_libraries(onion-webui.bin ${ZLIB_LIBRARIES})
-endif(${ZLIB_FOUND})
+endif()
 
 # This libs are required for websockets support
-if (${TERMUX})
+if(TERMUX)
 	# Here, we linking the static libs because we want
 	# share the file into a non-Termux environment later.
 	# Grouping is required to resolve interleaving dependencies.
 
-if("${CMAKE_SYSTEM_NAME}" STREQUAL "Android")
-	SET(WS_LIBS
-		-Wl,--start-group
-		${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libgcrypt.a
-		${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libgnutls.a
-		${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libgnutlsxx.a
-		${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libgpg-error.a
-		${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libhogweed.a
-		${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libnettle.a
-		${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libgmp.a
-		${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libgmpxx.a
-		${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libiconv.a
-		${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libunistring.a
-		${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libidn2.a
-		-Wl,--end-group
-		)
+	if("${CMAKE_SYSTEM_NAME}" STREQUAL "Android")
+		SET(WS_LIBS
+			-Wl,--start-group
+			${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libgcrypt.a
+			${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libgnutls.a
+			${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libgnutlsxx.a
+			${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libgpg-error.a
+			${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libhogweed.a
+			${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libnettle.a
+			${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libgmp.a
+			${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libgmpxx.a
+			${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libiconv.a
+			${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libunistring.a
+			${CMAKE_SOURCE_DIR}/3rdparty/static_libs/libidn2.a
+			-Wl,--end-group
+			)
 
-	# This doesn't work due(?) security of androids library loading
-	# target_link_libraries(webui "/data/app/is.xyz.mpv-xmZJB3QOZUmylqAcpwBIcA==/lib/arm64/libmpv.so")
-else("${CMAKE_SYSTEM_NAME}" STREQUAL "Android")
-	SET(WS_LIBS
-		-Wl,--start-group
-		/data/data/com.termux/files/usr/lib/libgcrypt.a
-		/data/data/com.termux/files/usr/lib/libgnutls.a
-		/data/data/com.termux/files/usr/lib/libgnutlsxx.a
-		/data/data/com.termux/files/usr/lib/libgpg-error.a
-		/data/data/com.termux/files/usr/lib/libhogweed.a
-		/data/data/com.termux/files/usr/lib/libnettle.a
-		/data/data/com.termux/files/usr/lib/libgmp.a
-		/data/data/com.termux/files/usr/lib/libgmpxx.a
-		/data/data/com.termux/files/usr/lib/libiconv.a
-		/data/data/com.termux/files/usr/lib/libunistring.a
-		/data/data/com.termux/files/usr/lib/libidn2.a
-		-Wl,--end-group
-		)
-endif("${CMAKE_SYSTEM_NAME}" STREQUAL "Android")
+		# This doesn't work due(?) security of androids library loading
+		# target_link_libraries(webui "/data/app/is.xyz.mpv-xmZJB3QOZUmylqAcpwBIcA==/lib/arm64/libmpv.so")
+	else()
+		SET(WS_LIBS
+			-Wl,--start-group
+			/data/data/com.termux/files/usr/lib/libgcrypt.a
+			/data/data/com.termux/files/usr/lib/libgnutls.a
+			/data/data/com.termux/files/usr/lib/libgnutlsxx.a
+			/data/data/com.termux/files/usr/lib/libgpg-error.a
+			/data/data/com.termux/files/usr/lib/libhogweed.a
+			/data/data/com.termux/files/usr/lib/libnettle.a
+			/data/data/com.termux/files/usr/lib/libgmp.a
+			/data/data/com.termux/files/usr/lib/libgmpxx.a
+			/data/data/com.termux/files/usr/lib/libiconv.a
+			/data/data/com.termux/files/usr/lib/libunistring.a
+			/data/data/com.termux/files/usr/lib/libidn2.a
+			-Wl,--end-group
+			)
+	endif()
 
-else (${TERMUX})
+else()
 	SET(WS_LIBS gnutls gcrypt)
-endif (${TERMUX})
+endif()
 target_link_libraries(webui ${WS_LIBS})
 # target_link_libraries(onion-webui.bin ${WS_LIBS})
 
 
-if(${ONION_BUILD})
+if(ONION_BUILD)
 
-	# Fetch source
-	execute_process(
-		COMMAND git clone --depth=1 "https://github.com/davidmoreno/onion.git"
-		"${ONION_DIR}"
-		)
-	# git clone --depth=1 --branch=unstable "https://github.com/YggdrasiI/onion.git"
+	# Check if onion source code is already downloaded and patched
+	if(NOT EXISTS "${ONION_DIR}/.onion_patched")
 
-	# Patch source of libonion
-	execute_process(
-		COMMAND git checkout -b onion-mpv-webui
-		COMMAND git pull ../onion-mpv-webui_0001-0008.bundle HEAD
-		WORKING_DIRECTORY "${ONION_DIR}"
-		)
+		# Fetch source code of libonion (during configuration time)
+		execute_process(
+			COMMAND git clone --depth=1 "https://github.com/davidmoreno/onion.git"
+			"${ONION_DIR}"
+			)
 
-	# FILE(GLOB ONION_PATCH_FILES "${CMAKE_SOURCE_DIR}/3rdparty/*.patch")
-	# (Note: files seperated by ';')
+		# Patch source of libonion (during configuration time)
+		execute_process(
+			COMMAND git checkout -b onion-mpv-webui
+			COMMAND git pull ../onion-mpv-webui_0001-0008.bundle HEAD
+			COMMAND cmake -E touch .onion_patched
+			WORKING_DIRECTORY "${ONION_DIR}"
+			)
 
-	#foreach(ONION_PATCH_FILE ${ONION_PATCH_FILES})
-	#	message("Patch file: \n ${ONION_PATCH_FILE}")
-	#	execute_process(
-	#		COMMAND git am ${ONION_PATCH_FILE}
-	#		WORKING_DIRECTORY "${ONION_DIR}"
-	#		)
-	#endforeach()
+			# FILE(GLOB ONION_PATCH_FILES "${CMAKE_SOURCE_DIR}/3rdparty/*.patch")
+			# (Note: files seperated by ';')
+
+			#foreach(ONION_PATCH_FILE ${ONION_PATCH_FILES})
+			#	message("Patch file: \n ${ONION_PATCH_FILE}")
+			#	execute_process(
+			#		COMMAND git am ${ONION_PATCH_FILE}
+			#		WORKING_DIRECTORY "${ONION_DIR}"
+			#		)
+			#endforeach()
+
+		message("libonion repo cloned in '${ONION_DIR}' and patched.")
+	else()
+		message("libonion repo in '${ONION_DIR}' already downloaded.")
+	endif()
+
 
 	# Setup (minimal) onion lib
 	execute_process(
@@ -223,7 +224,12 @@ if(${ONION_BUILD})
 		WORKING_DIRECTORY "${ONION_BUILD_DIR}"
 		)
 
-		# Compile onion lib (at build time)
+	message("libonion repo configured in '${ONION_BUILD_DIR}'.")
+	#else()
+	#	message("libonion in '${ONION_BUILD_DIR}' already configured.")
+	#endif()
+
+	# Compile onion lib (at build time)
 	add_custom_command(
 		OUTPUT .onion_build
 		COMMAND make
@@ -234,8 +240,8 @@ if(${ONION_BUILD})
 	add_custom_target(compile_onion ALL DEPENDS .onion_build )
 
 	# Set flag for slightly different header file path
-	target_compile_options(webui PUBLIC -DBUILD_ONION=1)
-	# target_compile_options(onion-webui.bin PUBLIC -DBUILD_ONION=1)
+	target_compile_options(webui PUBLIC -DONION_BUILD=1)
+	# target_compile_options(onion-webui.bin PUBLIC -DONION_BUILD=1)
 
 	add_dependencies(webui compile_onion)
 	# add_dependencies(onion-webui.bin compile_onion)
@@ -279,8 +285,8 @@ if(${ONION_BUILD})
 	message("Update path of otemplate to native binary: '${OTEMPLATE}'")
 	endif(NATIVE_TOOLS)
 
-else(${ONION_BUILD})
-endif(${ONION_BUILD})
+else()
+endif()
 
 
 
@@ -306,7 +312,7 @@ if(HAVE_MSGFMT)
 	# compile_localization(pl)
 	#install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/locale" DESTINATION ${INSTALL_PATH})
 	#	install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/locale/*" DESTINATION "${CMAKE_INSTALL_LOCALEDIR}/onion-mpv-webui")
-endif(HAVE_MSGFMT)
+endif()
 
 
 #############################################################################

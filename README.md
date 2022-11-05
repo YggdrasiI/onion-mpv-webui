@@ -7,7 +7,7 @@ but all LUA code was replaced by C code.
 ```
 cd [cloned dir]
 mkdir build
-cmake -DONION_BUILD=TRUE ..
+cmake ..
 make
 ```
 
