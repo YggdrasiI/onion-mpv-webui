@@ -74,7 +74,7 @@ void __share_data_free (
 
 
 
-int media_page(
+onion_connection_status media_page(
         __share_data_t *privdata,
         onion_request * req,
         onion_response * res)
@@ -289,7 +289,7 @@ media_page_end:  // cleanup allocations
     return ret;
 }
 
-int list_share_json(
+onion_connection_status list_share_json(
         __share_data_t *privdata,
         onion_request * req,
         onion_response * res)
@@ -565,10 +565,11 @@ media_json_end:  // cleanup allocations
     return ret;
 }
 
-int api_playlist_add(
+onion_connection_status api_playlist_add(
         __share_data_t *privdata,
         onion_request * req,
-        onion_response * res) {
+        onion_response * res)
+{
 
     onion_connection_status ret = OCS_NOT_PROCESSED;
 
@@ -593,10 +594,11 @@ int api_playlist_add(
             media_commands, command_name);
 
     if (!cmd){
+        onion_response_set_code(res, HTTP_BAD_REQUEST);
         onion_response_printf(res,
                 "{\"message\": \"Command '%s' not defined.\"}",
                 command_name);
-        ret = HTTP_BAD_REQUEST;
+				ret = OCS_PROCESSED;
         goto api_playlist_add_end;
     }
 
@@ -648,14 +650,16 @@ int api_playlist_add(
     pthread_mutex_unlock(&mpv_lock);
 
     if (cmd_status > 0){
+        //onion_response_set_code(res, HTTP_OK); // default
         onion_response_printf(res,
                 "{\"message\": \"success\"}");
-        ret = HTTP_OK;
+        ret = OCS_PROCESSED;
     }else{
+        onion_response_set_code(res, HTTP_BAD_REQUEST);
         onion_response_printf(res,
                 "{\"message\": \"%s\"}",
                 output_message);
-        ret = HTTP_BAD_REQUEST;
+        ret = OCS_PROCESSED;
     }
     FREE(output_message);
 
@@ -667,10 +671,11 @@ api_playlist_add_end:  // cleanup allocations
     return ret;
 }
 
-int api_playlist_play(
+onion_connection_status api_playlist_play(
         __share_data_t *privdata,
         onion_request * req,
-        onion_response * res) {
+        onion_response * res)
+{
 
     onion_connection_status ret = OCS_NOT_PROCESSED;
 
@@ -695,10 +700,10 @@ int api_playlist_play(
             media_commands, command_name);
 
     if (!cmd){
+        onion_response_set_code(res, HTTP_BAD_REQUEST);
         onion_response_printf(res,
                 "{\"message\": \"Command '%s' not defined.\"}",
                 command_name);
-        ret = HTTP_BAD_REQUEST;
         goto api_playlist_play_end;
     }
 
@@ -717,6 +722,7 @@ int api_playlist_play(
             share_path, uri_rel_path);
     if (ps < 0 || ps >= __tmp_path_len){
         ret = OCS_INTERNAL_ERROR;  // snprintf failed
+        onion_response_set_code(res, HTTP_BAD_REQUEST);
         goto api_playlist_play_end;
     }
 
@@ -750,14 +756,16 @@ int api_playlist_play(
     pthread_mutex_unlock(&mpv_lock);
 
     if (cmd_status > 0){
+        //onion_response_set_code(res, HTTP_OK); // default
         onion_response_printf(res,
                 "{\"message\": \"success\"}");
-        ret = HTTP_OK;
+        ret = OCS_PROCESSED;
     }else{
+        onion_response_set_code(res, HTTP_BAD_REQUEST);
         onion_response_printf(res,
                 "{\"message\": \"%s\"}",
                 output_message);
-        ret = HTTP_BAD_REQUEST;
+        ret = OCS_PROCESSED;
     }
     FREE(output_message);
 

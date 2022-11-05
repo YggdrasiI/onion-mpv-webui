@@ -79,12 +79,12 @@ void webui_onion_end_signal(int unused) {
 }
 
 
-int handle_status_get(void *d, onion_request * req, onion_response * res){
+onion_connection_status handle_status_get(void *d, onion_request * req, onion_response * res){
 #ifdef WITH_MPV
     char *json = json_status_response();
 
     onion_response_set_header(res, "Content-Type", onion_mime_get("_.json"));
-    int ret = onion_shortcut_response(json, 200, req, res);
+    onion_connection_status ret = onion_shortcut_response(json, 200, req, res);
     free(json);
     return ret;
 #else
@@ -138,7 +138,7 @@ onion_connection_status handle_api_post_data(void *_, onion_request * req,
 
 
   /* Handle data */
-  onion_connection_status ret = HTTP_BAD_GATEWAY;
+  onion_connection_status ret = OCS_NOT_PROCESSED;
 
   // split url into command/param1/param2/[...]
 
@@ -210,21 +210,24 @@ onion_connection_status handle_api_post_data(void *_, onion_request * req,
                   substrings[1], substrings[2]);
 
           if (cmd_status > 0){
+							//onion_response_set_code(res, HTTP_OK); // default
               onion_response_printf(res,
                       "{\"message\": \"success\"}");
-              ret = HTTP_OK;
+              ret = OCS_PROCESSED;
           }else{
+							onion_response_set_code(res, HTTP_BAD_REQUEST);
               onion_response_printf(res,
                       "{\"message\": \"%s\"}",
                       output_message);
-              ret = HTTP_BAD_REQUEST;
+              ret = OCS_PROCESSED;
           }
           FREE(output_message);
       }else{
+					onion_response_set_code(res, HTTP_BAD_REQUEST);
           onion_response_printf(res,
                   "{\"message\": \"Command '%s' not defined.\"}",
                   substrings[0]);
-          ret = HTTP_BAD_REQUEST;
+					ret = OCS_PROCESSED;
       }
   }
 
@@ -510,11 +513,11 @@ int webui_onion_init(onion_dict *_options) {
 
   // Check if threaded
   int flags = onion_flags(o);
-  if (flags & O_THREADS_AVAILABLE == 0){
+  if ((flags & O_THREADS_AVAILABLE) == 0){
       perror("No thread support available. Onion server listening will block.\n");
       return -2;
   }
-  if (flags & O_THREADS_ENABLED == 0){
+  if ((flags & O_THREADS_ENABLED) == 0){
       perror("Thread support not enabled. Onion server listening will block.\n");
       return -1;
   }

@@ -18,17 +18,17 @@ void __fileserver_page_data_free (
 
 // Generated from 'otemplate'
 // Print folder content. Just for debugging required.
-int fileserver_html_template(onion_dict * context, onion_request * req,
+onion_connection_status fileserver_html_template(onion_dict * context, onion_request * req,
                              onion_response * res);
 
 // Return static files
-int fileserver_page(
+onion_connection_status fileserver_page(
         __fileserver_page_data_t *privdata,
         onion_request * req,
         onion_response * res);
 
 /* Handling of static files and directory listing */
-int webui_onion_static_files(
+void webui_onion_static_files(
         const char *root_dir,
         const char *pattern,
         onion_url *urls);

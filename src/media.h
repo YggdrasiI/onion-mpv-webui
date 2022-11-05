@@ -27,27 +27,27 @@ int media_json_template(onion_dict * context, onion_request * req,
 
 /* Handlers for '/media' section */
 // Return list of filenames, but not allow downloading them
-int media_page(
+onion_connection_status media_page(
         __share_data_t *privdata,
         onion_request * req,
         onion_response * res);
 
 /* Handlers for '/media' section */
 // Return list of filenames, but not allow downloading them
-int list_json(
+onion_connection_status list_json(
         __share_data_t *privdata,
         onion_request * req,
         onion_response * res);
 
 // Fetch from url argument for playlist_add command
-int api_playlist_add(
+onion_connection_status api_playlist_add(
         __share_data_t *privdata,
         onion_request * req,
         onion_response * res);
 
 // Fetch from url argument for playlist_add command
 // similar to api_playlist_add, but switch playback to new file.
-int api_playlist_play(
+onion_connection_status api_playlist_play(
         __share_data_t *privdata,
         onion_request * req,
         onion_response * res);
@@ -58,6 +58,6 @@ onion_dict *setup_media_commands();
 /* Creates for each share (sub-dict of options)
  * an onion uri listener.
  */
-int webui_onion_share_media_folders(
+onion_connection_status webui_onion_share_media_folders(
         onion_dict *options,
         onion_url *urls);

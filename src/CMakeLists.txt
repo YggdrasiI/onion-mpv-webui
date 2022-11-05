@@ -80,7 +80,8 @@ endif (${TERMUX})
 add_library(webui SHARED mpv_plugin.c mpv_api_commands.c ${SOURCE_FILES} )
 target_include_directories(webui PUBLIC "include")
 target_link_libraries(webui onion_static m)
-target_compile_options(webui PUBLIC -shared -fPIC)
+# target_compile_options(webui PUBLIC -shared -fPIC)
+target_compile_options(webui PUBLIC -fPIC)
 target_compile_options(webui PUBLIC -DWITH_MPV=1)
 target_compile_options(webui PUBLIC -DMPV_PLUGIN_NAME=libwebui)  # mpv option prefix
 
@@ -93,7 +94,8 @@ target_compile_options(webui PUBLIC -DMPV_PLUGIN_NAME=libwebui)  # mpv option pr
 # Android dlopen test
 add_library(simple SHARED simple.c)
 target_include_directories(simple PUBLIC "include")
-target_compile_options(simple PUBLIC -shared -fPIC)
+# target_compile_options(simple PUBLIC -shared -fPIC)
+target_compile_options(simple PUBLIC -fPIC)
 
 
 #############################################################################

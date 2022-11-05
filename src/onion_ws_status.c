@@ -319,9 +319,12 @@ onion_connection_status ws_status_start(
 
         return OCS_PROCESSED;
 
-        return onion_shortcut_response(
-                "{\"message\":\"Websocket url not avail with GET.\"}",
-                HTTP_BAD_REQUEST, req, res);
+        // Or…
+        /*
+         * return onion_shortcut_response(
+         *       "{\"message\":\"Websocket url not avail with GET.\"}",
+         *       HTTP_BAD_REQUEST, req, res);
+         */
     }
     ONION_DEBUG("Websocket started!");
 
@@ -634,6 +637,19 @@ void parse_value(
                         out->json = out->value.u.string;
                         break;
                     }
+								case MPV_FORMAT_NONE:
+								case MPV_FORMAT_OSD_STRING:
+								case MPV_FORMAT_NODE:
+								case MPV_FORMAT_NODE_ARRAY:
+								case MPV_FORMAT_NODE_MAP: 
+								case MPV_FORMAT_BYTE_ARRAY:
+										{
+												ONION_ERROR("Unexpected/Unsupported format"
+																"Parsing for this node type not defined.\n"
+																"Output format: %d",
+																out->value.format);
+												break;
+										}
             }
         }else{
             // case already handled in property_update
@@ -668,6 +684,19 @@ void parse_value(
                         out->json = out->value.u.string;
                         break;
                     }
+								case MPV_FORMAT_NONE:
+								case MPV_FORMAT_OSD_STRING:
+								case MPV_FORMAT_NODE:
+								case MPV_FORMAT_NODE_ARRAY:
+								case MPV_FORMAT_NODE_MAP: 
+								case MPV_FORMAT_BYTE_ARRAY:
+										{
+												ONION_ERROR("Unexpected/Unsupported format"
+																"Parsing for this node type not defined.\n"
+																"Output format: %d",
+																out->value.format);
+												break;
+										}
             }
         }else{
             // case already handled in property_update
@@ -726,6 +755,21 @@ void property_update(
                         changed = 2;
                         break;
                     }
+								case MPV_FORMAT_NONE:
+								case MPV_FORMAT_OSD_STRING:
+								case MPV_FORMAT_NODE:
+								case MPV_FORMAT_NODE_ARRAY:
+								case MPV_FORMAT_NODE_MAP: 
+								case MPV_FORMAT_BYTE_ARRAY:
+										{
+												ONION_ERROR("Unexpected/Unsupported format combination"
+																"Maybe a wrong definition of observed property\n"
+																"Input format: %d\n"
+																"Output format: %d",
+																in->format,
+																out->format_out);
+												break;
+										}
             }
         }else{
             if ( result_node->format == MPV_FORMAT_STRING &&
@@ -794,6 +838,21 @@ void property_update(
                         changed = 2;
                         break;
                     }
+								case MPV_FORMAT_NONE:
+								case MPV_FORMAT_OSD_STRING:
+								case MPV_FORMAT_NODE:
+								case MPV_FORMAT_NODE_ARRAY:
+								case MPV_FORMAT_NODE_MAP: 
+								case MPV_FORMAT_BYTE_ARRAY:
+										{
+												ONION_ERROR("Unexpected/Unsupported format combination"
+																"Maybe a wrong definition of observed property\n"
+																"Input format: %d\n"
+																"Output format: %d",
+																in->format,
+																out->format_out);
+												break;
+										}
             }
         }else{
             if ( in->format == MPV_FORMAT_STRING &&
@@ -851,11 +910,12 @@ __status *status_init()
     status->props = calloc(sizeof(__property), NUM_PROPS);
 #define ADD(NAME, TYPE, TYPE_OUT, UPDATE_INTERVAL) \
     if( pos<NUM_PROPS ) {\
-        status->props[pos++] = property_init(\
+        status->props[pos] = property_init(\
                 NAME, TYPE, TYPE_OUT,\
                 UPDATE_INTERVAL, \
-                REPLY_ID_OFFSET + pos); } \
-    else { printf("Increase NUM_PROPS"); }
+                REPLY_ID_OFFSET + pos);\
+        pos++; \
+    } else { printf("Increase NUM_PROPS"); }
     //TYPE_OUT needs to be the internal type of the property
     //in mpv if TYPE is MPV_FORMAT_NODE.
     int pos = 0;

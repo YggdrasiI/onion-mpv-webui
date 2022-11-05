@@ -60,7 +60,7 @@ void __fileserver_page_data_free (
 /**
  * Serves a directory listing or return file.
  */
-int fileserver_page(
+onion_connection_status fileserver_page(
         __fileserver_page_data_t *privdata,
         onion_request * req,
         onion_response * res)
@@ -70,7 +70,7 @@ int fileserver_page(
         return OCS_NOT_PROCESSED;
     }
 
-    int ret = OCS_NOT_PROCESSED;
+    onion_connection_status ret = OCS_NOT_PROCESSED;
 
     const char * const basepath = privdata->root_dir;
 
@@ -157,7 +157,7 @@ int fileserver_page(
 
         onion_response_set_header(res, "Content-Type",
                 onion_mime_get("fileserver.html"));
-        int ret = fileserver_html_template(d, req, res); // this frees d!
+        ret = fileserver_html_template(d, req, res); // this frees d!
         goto fileserver_page_end;
     }
 
@@ -174,7 +174,7 @@ fileserver_page_end:  // cleanup allocations
 }
 
 
-int webui_onion_static_files(
+void webui_onion_static_files(
         const char *root_dir,
         const char *pattern,
         onion_url *urls)
