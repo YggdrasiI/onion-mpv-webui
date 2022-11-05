@@ -342,7 +342,11 @@ int cmd_cycle(const char *name,
         const char *param1, const char *param2,
         char **pOutput_message)
 {
-    const char *cmd[] = {"cycle", param1, NULL};
+    //param2: Optional 'up' or 'down', but empty string ""
+    //would fail. => Remove param2.
+    if (param2[0] == '\0') param2 = NULL;
+
+    const char *cmd[] = {"cycle", param1, param2, NULL};
     int err = _mpv_command(mpv, cmd);
     check_mpv_err(err);
 
@@ -443,6 +447,55 @@ int cmd_reset_playback_speed(const char *name,
     return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
 }
 
+// General set not allowed on webinterface.
+int _cmd_set_int(const char *name,
+        const char *param1, const char *param2,
+        char **pOutput_message)
+{
+    if( 1 != check_int_or_float(param2, NULL )) {
+        if( pOutput_message != NULL ){
+            free(*pOutput_message);
+            *pOutput_message = strdup("Parameter needs to be an integer");
+        }
+        return CMD_FAIL;
+    }
+
+    const char *cmd[] = {"set", param1, param2, NULL};
+    int err = _mpv_command(mpv, cmd);
+    check_mpv_err(err);
+
+    return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
+}
+
+int cmd_set_subtitle(const char *name,
+        const char *param1, const char *param2,
+        char **pOutput_message)
+{
+  int  ret = _cmd_set_int(name, "sub", param1, pOutput_message);
+  // Trigger update of ws status.
+  property_reobserve("track-list");
+  return ret;
+}
+
+int cmd_set_audio(const char *name,
+        const char *param1, const char *param2,
+        char **pOutput_message)
+{
+  int  ret = _cmd_set_int(name, "audio", param1, pOutput_message);
+  // Trigger update of ws status.
+  property_reobserve("track-list");
+  return ret;
+}
+
+int cmd_set_video(const char *name,
+        const char *param1, const char *param2,
+        char **pOutput_message)
+{
+  int  ret = _cmd_set_int(name, "video", param1, pOutput_message);
+  // Trigger update of ws status.
+  property_reobserve("track-list");
+  return ret;
+}
 
 int cmd_quit(const char *name,
         const char *param1, const char *param2,

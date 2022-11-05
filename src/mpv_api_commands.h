@@ -144,6 +144,19 @@ int cmd_reset_playback_speed(const char *name,
         const char *param1, const char *param2,
         char **pOutput_message);
 
+// Select track-list entries
+int cmd_set_subtitle(const char *name,
+        const char *param1, const char *param2,
+        char **pOutput_message);
+
+int cmd_set_audio(const char *name,
+        const char *param1, const char *param2,
+        char **pOutput_message);
+
+int cmd_set_video(const char *name,
+        const char *param1, const char *param2,
+        char **pOutput_message);
+
 // quit [<code>]
 int cmd_quit(const char *name,
         const char *param1, const char *param2,

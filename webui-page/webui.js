@@ -302,6 +302,10 @@ function updatePlaylist(new_playlist, old_playlist, new_pause) {
   // Update playlist indizes for event handlers.
   var id = 0;
   playlist.childNodes.forEach(n => { n.playlist_id = id++; })
+
+  // TODO: Scroll played entry into view?!
+  // This could be anoying...
+  // Maybe a button to scroll to active entry is a better solution.
 }
 
 
@@ -455,7 +459,6 @@ function current_playlist_index(playlist){
     }
   }
   console.log("Can not detect playlist entry!")
-  return null
 }
 
 function playlist_get_title(entry){
@@ -1144,9 +1147,9 @@ function add_button_listener() {
     ['shareSortingDate', 'click', function (evt) {share_change_sorting('date'); sortShareList(); }],
     ['toggleShares', 'click', function (evt) {toggleShares() }],
     ['playlistPrev', 'mouseup', function (evt) {send('playlist_prev') },
-      function(evt) {touchmenu.prev_files_menu(evt)} ],
+      function(evt) {touchmenu.prev_files(evt)} ],
     ['playlistNext', 'mouseup', function (evt) {send('playlist_next') },
-      function(evt) {touchmenu.next_files_menu(evt)} ],
+      function(evt) {touchmenu.next_files(evt)} ],
     ['seekBack1', 'mouseup', function (evt) {send('seek', '-5') }],
     ['seekForward1', 'mouseup', function (evt) {send('seek', '10') }],
     ['seekBack2', 'mouseup', function (evt) {send('seek', '-60') }],
@@ -1164,9 +1167,12 @@ function add_button_listener() {
     ['audioDelay2', 'mouseup', function (evt) {send('add_audio_delay', '0.05') }],
     ['toggleFullscreen', 'click', function (evt) {send('fullscreen') }],
     ['cycleAudioDevice', 'click', function (evt) {send('cycle', 'audio-device') }],
-    ['cycleSub', 'mouseup', function (evt) {send('cycle', 'sub') }],
-    ['cycleAudio', 'mouseup', function (evt) {send('cycle', 'audio') }],
-    ['cycleVideo', 'mouseup', function (evt) {send('cycle', 'video') }],
+    ['cycleSub', 'mouseup', function (evt) {send('cycle', 'sub') },
+      function(evt) {touchmenu.list_subtitle(evt)} ],
+    ['cycleAudio', 'mouseup', function (evt) {send('cycle', 'audio') },
+      function(evt) {touchmenu.list_audio(evt)} ],
+    ['cycleVideo', 'mouseup', function (evt) {send('cycle', 'video') },
+      function(evt) {touchmenu.list_video(evt)} ],
     ['mediaPosition', 'change', function (evt) {
       var slider = evt.currentTarget
       send("set_position", slider.value)
@@ -1283,32 +1289,32 @@ touchmenu = {
     const rect = currentTarget.getBoundingClientRect();
     let above = false
 
-    menu.style.setProperty('display', 'none')  // TODO: Take element temp. out of DOM flow?!
+    menu.style.setProperty('display', 'none')
     menu.replaceChildren()
 
-    menu.style.setProperty('left', Math.round(rect.left)+'px')
-    menu.style.setProperty('right', Math.round(window.innerWidth - rect.right)+'px')
+    menu.style.setProperty('left', Math.round(rect.left + window.scrollX)+'px')
+    menu.style.setProperty('right', Math.round(window.innerWidth - rect.right - window.scrollX)+'px')
     if (rect.top > window.innerHeight - rect.bottom  + preferBottomOffset) {
       above = true
       menu.style.removeProperty('top')
-      menu.style.setProperty('bottom', Math.round(window.innerHeight - rect.top)+'px')
-      menu.style.removeProperty('border-top-width')
-      menu.style.setProperty('border-bottom-width', '0.5em')
+      menu.style.setProperty('bottom', Math.round(window.innerHeight - rect.top - window.scrollY)+'px')
+      //menu.style.removeProperty('border-top-width')
+      //menu.style.setProperty('border-bottom-width', '0.5em')
     }else{
-      menu.style.setProperty('top', Math.round(rect.bottom)+'px')
+      menu.style.setProperty('top', Math.round(rect.bottom + window.scrollY)+'px')
       menu.style.removeProperty('bottom')
-      menu.style.setProperty('border-top-width', '0.5em')
-      menu.style.removeProperty('border-bottom-width')
+      //menu.style.setProperty('border-top-width', '0.5em')
+      //menu.style.removeProperty('border-bottom-width')
     }
     menu.style.setProperty('display', 'block')
 
     return above
   },
 
-  _add_entry: function (ul, title, handler, playlist_idx, playlist_range) {
+  _add_entry: function (ul, title, handler, idx, playlist_range) {
     var el = document.createElement('li')
     el.classname = "button content playlist-controls touch-entry"
-    el.innerText = `#${playlist_idx+1} ${title}`
+    el.innerText = `#${idx} ${title}`
     el.addEventListener("click", handler)
     ul.appendChild(el)
   },
@@ -1320,13 +1326,34 @@ touchmenu = {
     menu.appendChild(el)
   },
 
-  next_files_menu: function show_next_files_menu(currentTarget){
+  _fill_ul: function(menu, reverse, add_entry_args){
+    var ul = document.createElement('ul')
+    if (reverse) {
+      ul.style.setProperty('flex-direction', 'column-reverse')
+    }else{
+      ul.style.setProperty('flex-direction', 'column')
+    }
+
+    add_entry_args.forEach(a => {
+      this._add_entry(ul, a[0], a[1], a[2], a[3])
+    })
+
+    menu.appendChild(ul)
+    if (reverse) {
+      ul.children[0].scrollIntoView({alignToTop: false});
+    }else{
+      ul.children[0].scrollIntoView({alignToTop: true});
+    }
+  },
+
+  next_files: function show_next_files_menu(currentTarget){
     var menu = document.getElementById("touchmenu")
     const reverse = this._prepare(menu, currentTarget, 100)
 
     // Search next M files
     const M=5
     const playlist = mpv_status['playlist']
+    if (!playlist) return;
 
     // Range [A,B)
     const A = current_playlist_index(playlist)+1;
@@ -1335,40 +1362,30 @@ touchmenu = {
       this._add_info(menu, "No further entries") // TODO: Did not respect looping
     }else{
 
-      var ul = document.createElement('ul')
-      if (reverse) {
-        ul.style.setProperty('flex-direction', 'column-reverse')
-      }else{
-        ul.style.setProperty('flex-direction', 'column')
-      }
-
+      add_entry_args = []
       for(var n=A; n<B; ++n){
-        this._add_entry(ul, playlist_get_title(playlist[n]),
+        add_entry_args.push([
+          playlist_get_title(playlist[n]),
           function (arg) {
             return function (evt) {
               send("playlist_jump", arg)
               send("play")
             }
-          }(n),
-          n, [A, B])
+          }(n), n+1, [A, B]])
       }
 
-      menu.appendChild(ul)
-      if (reverse) {
-        ul.children[0].scrollIntoView({alignToTop: false});
-      }else{
-        ul.children[0].scrollIntoView({alignToTop: true});
-      }
+      this._fill_ul(menu, reverse, add_entry_args)
     }
   },
 
-  prev_files_menu: function (currentTarget){
+  prev_files: function (currentTarget){
     var menu = document.getElementById("touchmenu")
     const reverse = this._prepare(menu, currentTarget, 0)
 
     // Search prev M files
     const M=5
     const playlist = mpv_status['playlist']
+    if (!playlist) return;
 
     // Range [A,B)
     const B = current_playlist_index(playlist)
@@ -1384,25 +1401,121 @@ touchmenu = {
         ul.style.setProperty('flex-direction', 'column')
       }
 
+      add_entry_args = []
       for(var n=B-1; n>=A; --n){
-        this._add_entry(ul, playlist_get_title(playlist[n]),
+        add_entry_args.push([
+          playlist_get_title(playlist[n]),
           function (arg) {
             return function (evt) {
               send("playlist_jump", arg)
               send("play")
             }
-          }(n),
-          n, [A, B])
+          }(n), n+1, [A, B]])
       }
 
-      menu.appendChild(ul)
-      if (reverse) {
-        ul.children[0].scrollIntoView({alignToTop: false});
-      }else{
-        ul.children[0].scrollIntoView({alignToTop: true});
+      this._fill_ul(menu, reverse, add_entry_args)
+    }
+  },
+
+  list_subtitle: function (currentTarget){
+    var menu = document.getElementById("touchmenu")
+    const reverse = this._prepare(menu, currentTarget, 0)
+    const tracklist = mpv_status['track-list']
+
+    // Loop over track-list and construct titles
+    function _text(sub_track){
+      if (sub_track.hasOwnProperty('title')) return sub_track.title;
+      else if (sub_track.hasOwnProperty('lang')) return sub_track.lang;
+      else if (sub_track.hasOwnProperty('codec')) return sub_track.codec;
+      return ""
+    }
+
+    add_entry_args = []
+    for (var i = 0; i < tracklist.length; i++){
+      if (tracklist[i].type === 'sub') {
+
+        var idx = tracklist[i].id
+        add_entry_args.push([
+        _text(tracklist[i]),
+          function (arg) {
+            return function (evt) {
+              send("set_subtitle", arg)
+            }
+          }(idx),
+          idx, [0, window.subs.count]])
       }
     }
-  }
+    this._fill_ul(menu, reverse, add_entry_args)
+  },
+
+  list_video: function (currentTarget){
+    var menu = document.getElementById("touchmenu")
+    const reverse = this._prepare(menu, currentTarget, 0)
+    const tracklist = mpv_status['track-list']
+
+    // Loop over track-list and construct titles
+    function _text(vid_track){
+      if (vid_track.hasOwnProperty('title')) return vid_track.title;
+      else if (vid_track.hasOwnProperty('demux-w')){
+        return `${vid_track['demux-w']}x${vid_track['demux-h']}`;
+      }
+      else if (vid_track.hasOwnProperty('codec')) return vid_track.codec;
+      else if (vid_track.hasOwnProperty('decoder-desc')) return vid_track.decoder-desc;
+      else if (vid_track.hasOwnProperty('lang')) return vid_track.lang;
+      return ""
+    }
+
+    add_entry_args = []
+    for (var i = 0; i < tracklist.length; i++){
+      if (tracklist[i].type === 'video') {
+
+        var idx = tracklist[i].id
+        add_entry_args.push([
+        _text(tracklist[i]),
+          function (arg) {
+            return function (evt) {
+              send("set_video", arg)
+            }
+          }(idx),
+          idx, [0, window.subs.count]])
+      }
+    }
+    this._fill_ul(menu, reverse, add_entry_args)
+  },
+
+  list_audio: function (currentTarget){
+    var menu = document.getElementById("touchmenu")
+    const reverse = this._prepare(menu, currentTarget, 0)
+    const tracklist = mpv_status['track-list']
+
+    // Loop over track-list and construct titles
+    function _text(audio_track){
+      if (audio_track.hasOwnProperty('title')) return audio_track.title;
+      else if (audio_track.hasOwnProperty('lang')) return audio_track.lang;
+      else if (audio_track.hasOwnProperty('demux-samplerate')) return audio_track.demux-samplerate;
+      else if (audio_track.hasOwnProperty('codec')) return audio_track.codec;
+      else if (audio_track.hasOwnProperty('decoder-desc')) return audio_track.decoder-desc;
+      return ""
+    }
+
+    add_entry_args = []
+    for (var i = 0; i < tracklist.length; i++){
+      if (tracklist[i].type === 'audio') {
+
+        var idx = tracklist[i].id
+        add_entry_args.push([
+        _text(tracklist[i]),
+          function (arg) {
+            return function (evt) {
+              send("set_subtitle", arg)
+              send("play")
+            }
+          }(idx),
+          idx, [0, window.subs.count]])
+      }
+    }
+    this._fill_ul(menu, reverse, add_entry_args)
+  },
 }
 
 window.addEventListener('keydown', webui_keydown, true) /* capture to skip scrolling on overlays*/

@@ -266,7 +266,7 @@ int check_int_or_float(const char *param, char **msg){
     if( is_int ) return 1;
 
     int is_dbl = (1 != sscanf( param, "%lf", &dbl));
-    if( is_dbl ) return 1;
+    if( is_dbl ) return 2;
 
     // Parsing fails
     if (msg != NULL ){
