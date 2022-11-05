@@ -11,7 +11,7 @@
 #define MINIMAL_TIME_BETWEEN_PROPERTY_UPDATE 500
 
 int webui_onion_init(onion_dict *options);
-void webui_onion_uninit();
+void webui_onion_uninit(onion *o);
 
 int webui_onion_is_running();
 void webui_onion_set_running(int bRun);

@@ -525,7 +525,7 @@ int webui_onion_init(onion_dict *_options) {
   return 0;
 }
 
-void webui_onion_uninit(){
+void webui_onion_uninit(onion *o){
 
 #ifdef WITH_MPV
     // Quit mpv instance

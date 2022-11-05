@@ -167,7 +167,7 @@ option_t *split_shared_folder_str(const char *options){
 
     // 2. Fill output array
     char *key=NULL, *value=NULL;
-    char delim[1] = "?";
+    char delim[2] = "?";
     int n1=-1; // consumed chars after first token
     int n2=-1; // consumed chars after second token
 
