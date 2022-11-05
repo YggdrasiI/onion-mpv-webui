@@ -269,6 +269,7 @@ function updatePlaylist(new_playlist, old_playlist, new_pause) {
     if (new_entry.filename == old_entry.filename
       && (new_entry.current == old_entry.current))
       return true;
+    return false
   }
 
   var operations = get_diff(new_playlist, old_playlist, compare_handler)
@@ -280,13 +281,13 @@ function updatePlaylist(new_playlist, old_playlist, new_pause) {
   var offset = 0
   operations.forEach( x => {
     if (x['op'] == 'replace' /* || x['op'] == 'changed'*/) {
-      row = createPlaylistTable(
+      var row = createPlaylistTable(
         new_playlist[x['new']],
         x['old'], new_pause, (x['new']==0));
       playlist.replaceChild( row,
         playlist.children[x['old'] + offset])
     }else if (x['op'] == 'add') {
-      row = createPlaylistTable(
+      var row = createPlaylistTable(
         new_playlist[x['new']],
         x['old'], new_pause, (x['new']==0));
       playlist.insertBefore( row,
@@ -303,9 +304,18 @@ function updatePlaylist(new_playlist, old_playlist, new_pause) {
   var id = 0;
   playlist.childNodes.forEach(n => { n.playlist_id = id++; })
 
-  // TODO: Scroll played entry into view?!
-  // This could be anoying...
-  // Maybe a button to scroll to active entry is a better solution.
+  /* Scroll played entry into view, if menu is hidden.
+   * Scrolling if open would be anoying...
+   * Maybe a button to scroll to active entry would be nice
+   * to catch the open playlist case.
+   */
+  if (overlay.style.getPropertyValue("visibility") == "hidden"){
+    var pl_index = current_playlist_index(new_playlist)
+    if (pl_index) {
+      playlist.children[pl_index].scrollIntoView({block: 'center'})
+    }
+  }
+
 }
 
 
@@ -478,7 +488,7 @@ function setMetadata(metadata, playlist, filename) {
   }
 
   // try to gather the playing playlist element
-  var pl_index = current_playlist_index(playlist);
+  var pl_index = current_playlist_index(playlist)
 
   // set the title. Try values in this order:
   // 1. title set in playlist
@@ -1356,7 +1366,7 @@ touchmenu = {
     if (!playlist) return;
 
     // Range [A,B)
-    const A = current_playlist_index(playlist)+1;
+    const A = current_playlist_index(playlist)+1
     const B = Math.min(A+M, playlist.length)
     if (A == playlist.length){
       this._add_info(menu, "No further entries") // TODO: Did not respect looping
