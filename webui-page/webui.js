@@ -32,12 +32,12 @@ var block = {
       disable: function (name){ // Resets value after timeout
         if (this[name] === false) {
           this[name] = setTimeout(function(){
-            this[name] = null
+            window.block[name] = null // Not 'this[name]' !
           }, this.timeout_ms)
         }
       },
       timeout_ms: 300,
-      doublePause: false, // flag used without timeout
+      doublePause: false, // flag used without above timeout mechanism
     }
 
 const REGEXS = {
