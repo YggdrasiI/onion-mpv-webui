@@ -943,6 +943,16 @@ function status_init_ws(){
       return
     }
 
+    if ("status_info" in json){
+      var  info = json["status_info"]
+      if (!info.connection){
+        console.log("Websocket error on connection:" + info)
+      }
+      if ("page_title" in info) {
+        document.title = info["page_title"]
+      }
+    }
+
     if ("status" in json){
       mpv_status = json["status"]
       handleStatusResponse(mpv_status)

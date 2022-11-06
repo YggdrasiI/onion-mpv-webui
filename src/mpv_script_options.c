@@ -17,6 +17,7 @@ onion_dict *get_default_options(){
   onion_dict_add(opt, "port", "9000", 0);
   onion_dict_add(opt, "hostname", "::", 0);
   onion_dict_add(opt, "root_dir", "./webui-page", 0);
+  onion_dict_add(opt, "page_title", "MPV Webui", 0);
 
   onion_dict_add(opt, "paused", "1", 0);
   onion_dict_add(opt, "daemon", "1", 0);

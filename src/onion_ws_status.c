@@ -22,6 +22,7 @@
 #include <time.h>
 #include <sys/time.h>
 
+#include <onion/dict.h>
 #include <onion/log.h>
 #include <onion/onion.h>
 #include <onion/codecs.h>
@@ -46,6 +47,7 @@ extern mpv_handle *mpv;
 mpv_handle *mpv = NULL;
 #endif
 extern int ws_interval;
+extern onion_dict *options;
 
 enum onion_websocket_status_e {
     NORMAL_CLOSURE              = 1000,
@@ -224,7 +226,7 @@ ws_userdata *ws_userdata_new(
 void ws_userdata_free(
         void * data)
 {
-  ws_userdata *userdata = (ws_userdata *) data; 
+  ws_userdata *userdata = (ws_userdata *) data;
   //__websocket *client = &clients->clients[userdata->index];
 
   remove_client(websockets, userdata->index);
@@ -332,9 +334,10 @@ onion_connection_status ws_status_start(
     __websocket *client = add_client(websockets, ws);
     if (client == NULL){
         onion_websocket_set_opcode(ws, OWS_TEXT);
-        __chunked_websocket_printf(ws, "{\"status_info\": \"-1\","
+        __chunked_websocket_printf(ws, "{\"status_info\": {"
+                "\"connection\": false,"
                 "\"message\": \"Maximum of clients %d already reached. "
-                "Close connection...\" }",
+                "Close connection...\" }}",
                 MAX_ACTIVE_CLIENTS);
         onion_websocket_set_callback(ws, NULL); // otherwise a closing reply of the client will reach the current callback
         STATUS_STR(byebye, NORMAL_CLOSURE);
@@ -348,7 +351,11 @@ onion_connection_status ws_status_start(
 
     //(Debug) Push initial message (short 'hello client' before several locks)
     onion_websocket_set_opcode(ws, OWS_TEXT);
-    __chunked_websocket_printf(ws, "{\"status_info\": \"1\"}");
+    __chunked_websocket_printf(ws, "{\"status_info\": { "
+            "\"connection\": true,"
+            "\"page_title\": \"%s\""
+            "}}",
+            onion_dict_get(options, "page_title"));
 
     pthread_mutex_lock(&websockets->lock);
     // Push status (maybe delayed ?!)
@@ -399,7 +406,7 @@ onion_connection_status ws_status_start(
     return OCS_WEBSOCKET;
 }
 
-// Call onion_websocket_read if new data is available 
+// Call onion_websocket_read if new data is available
 // and terminate string with '\0' .
 int __read_string(
         __websocket *client,
@@ -637,19 +644,19 @@ void parse_value(
                         out->json = out->value.u.string;
                         break;
                     }
-								case MPV_FORMAT_NONE:
-								case MPV_FORMAT_OSD_STRING:
-								case MPV_FORMAT_NODE:
-								case MPV_FORMAT_NODE_ARRAY:
-								case MPV_FORMAT_NODE_MAP: 
-								case MPV_FORMAT_BYTE_ARRAY:
-										{
-												ONION_ERROR("Unexpected/Unsupported format"
-																"Parsing for this node type not defined.\n"
-																"Output format: %d",
-																out->value.format);
-												break;
-										}
+                case MPV_FORMAT_NONE:
+                case MPV_FORMAT_OSD_STRING:
+                case MPV_FORMAT_NODE:
+                case MPV_FORMAT_NODE_ARRAY:
+                case MPV_FORMAT_NODE_MAP:
+                case MPV_FORMAT_BYTE_ARRAY:
+                    {
+                        ONION_ERROR("Unexpected/Unsupported format"
+                                "Parsing for this node type not defined.\n"
+                                "Output format: %d",
+                                out->value.format);
+                        break;
+                    }
             }
         }else{
             // case already handled in property_update
@@ -684,19 +691,19 @@ void parse_value(
                         out->json = out->value.u.string;
                         break;
                     }
-								case MPV_FORMAT_NONE:
-								case MPV_FORMAT_OSD_STRING:
-								case MPV_FORMAT_NODE:
-								case MPV_FORMAT_NODE_ARRAY:
-								case MPV_FORMAT_NODE_MAP: 
-								case MPV_FORMAT_BYTE_ARRAY:
-										{
-												ONION_ERROR("Unexpected/Unsupported format"
-																"Parsing for this node type not defined.\n"
-																"Output format: %d",
-																out->value.format);
-												break;
-										}
+                case MPV_FORMAT_NONE:
+                case MPV_FORMAT_OSD_STRING:
+                case MPV_FORMAT_NODE:
+                case MPV_FORMAT_NODE_ARRAY:
+                case MPV_FORMAT_NODE_MAP:
+                case MPV_FORMAT_BYTE_ARRAY:
+                    {
+                        ONION_ERROR("Unexpected/Unsupported format"
+                                "Parsing for this node type not defined.\n"
+                                "Output format: %d",
+                                out->value.format);
+                        break;
+                    }
             }
         }else{
             // case already handled in property_update
@@ -720,7 +727,7 @@ void property_update(
 
     pthread_mutex_lock(&status->lock);
 
-    // If out->value maps on dynamic allocated data we 
+    // If out->value maps on dynamic allocated data we
     // need to copy content now. Otherwise, we can delay/omit its parsing.
     if (in->format == MPV_FORMAT_NONE){
         // no data avail for this mpv property. Gen dummy entries.
@@ -755,21 +762,21 @@ void property_update(
                         changed = 2;
                         break;
                     }
-								case MPV_FORMAT_NONE:
-								case MPV_FORMAT_OSD_STRING:
-								case MPV_FORMAT_NODE:
-								case MPV_FORMAT_NODE_ARRAY:
-								case MPV_FORMAT_NODE_MAP: 
-								case MPV_FORMAT_BYTE_ARRAY:
-										{
-												ONION_ERROR("Unexpected/Unsupported format combination"
-																"Maybe a wrong definition of observed property\n"
-																"Input format: %d\n"
-																"Output format: %d",
-																in->format,
-																out->format_out);
-												break;
-										}
+                case MPV_FORMAT_NONE:
+                case MPV_FORMAT_OSD_STRING:
+                case MPV_FORMAT_NODE:
+                case MPV_FORMAT_NODE_ARRAY:
+                case MPV_FORMAT_NODE_MAP:
+                case MPV_FORMAT_BYTE_ARRAY:
+                    {
+                        ONION_ERROR("Unexpected/Unsupported format combination"
+                                "Maybe a wrong definition of observed property\n"
+                                "Input format: %d\n"
+                                "Output format: %d",
+                                in->format,
+                                out->format_out);
+                        break;
+                    }
             }
         }else{
             if ( result_node->format == MPV_FORMAT_STRING &&
@@ -838,21 +845,21 @@ void property_update(
                         changed = 2;
                         break;
                     }
-								case MPV_FORMAT_NONE:
-								case MPV_FORMAT_OSD_STRING:
-								case MPV_FORMAT_NODE:
-								case MPV_FORMAT_NODE_ARRAY:
-								case MPV_FORMAT_NODE_MAP: 
-								case MPV_FORMAT_BYTE_ARRAY:
-										{
-												ONION_ERROR("Unexpected/Unsupported format combination"
-																"Maybe a wrong definition of observed property\n"
-																"Input format: %d\n"
-																"Output format: %d",
-																in->format,
-																out->format_out);
-												break;
-										}
+                case MPV_FORMAT_NONE:
+                case MPV_FORMAT_OSD_STRING:
+                case MPV_FORMAT_NODE:
+                case MPV_FORMAT_NODE_ARRAY:
+                case MPV_FORMAT_NODE_MAP:
+                case MPV_FORMAT_BYTE_ARRAY:
+                    {
+                        ONION_ERROR("Unexpected/Unsupported format combination"
+                                "Maybe a wrong definition of observed property\n"
+                                "Input format: %d\n"
+                                "Output format: %d",
+                                in->format,
+                                out->format_out);
+                        break;
+                    }
             }
         }else{
             if ( in->format == MPV_FORMAT_STRING &&
@@ -1495,7 +1502,7 @@ int __chunked_websocket_vprintf(onion_websocket * ws, const char *fmt, va_list a
 
     // Evaluate number of required chunks
 #define ROUND_UP(NUM, DIV) (((NUM) + (DIV-1))/(DIV))
-    const int num_chunks = ROUND_UP(l, MAX_FD_WRITE_SIZE - METADATA_LEN); 
+    const int num_chunks = ROUND_UP(l, MAX_FD_WRITE_SIZE - METADATA_LEN);
     ssize_t s_sum = 0;
     char * const buf = onion_low_scalar_malloc(l + 1 + METADATA_LEN);
     if (!buf) {
