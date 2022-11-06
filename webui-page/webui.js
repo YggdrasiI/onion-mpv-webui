@@ -5,7 +5,8 @@ var DEBUG = true,
     audios = {},
     videos = {},
     connected = false,
-    max_title_size = 60
+    max_title_size = 60,
+    tab_in_background = false
 
 var ws = null
 var mpv_status = {}
@@ -48,13 +49,14 @@ const REGEXS = {
 }
 
 /* Collect [num] milliseconds status updates before
- * they will be used to update the page.
- * Use 0 to update immediately.
+ * they will be used to update the page. This is useful to
+ * avoid too many updates for fast changing variables.
  */
 var mpv_outstanding_status = {
   delay: 300,
   updates: {},
-  timer: null
+  timer: null,
+  pending: false
 }
 
 function send_ws(command, ...params){
@@ -78,6 +80,61 @@ function send_ws(command, ...params){
   }
 
 }
+
+// ===================================
+/* On MDN
+ * https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame
+ * is written:
+ *     'requestAnimationFrame() calls are paused in most browsers
+ *     when running in background tabs'
+ *
+ * but it turn out that just the intervall is reduced. So we
+ * need to build this by hand.
+ */
+function checkForStatusUpdate(immedialty){
+  if (!window.mpv_outstanding_status.pending) return;
+
+  var _handler = function() {
+    if (window.tab_in_background) {
+      //console.log('Wait at ' + Date.now());
+      window.mpv_outstanding_status.timer = setTimeout(
+        _handler, window.mpv_outstanding_status.delay)
+      return
+    }
+
+    window.mpv_outstanding_status.timer = null
+
+    //TODO Prepare async handling by storing update in local var (!?)
+    var updates = window.mpv_outstanding_status.updates
+    window.mpv_outstanding_status.updates = {}
+    //console.log('Handle update at ' + Date.now());
+    handleStatusUpdate(updates)
+  }
+
+  if (immedialty){
+    clearTimeout(window.mpv_outstanding_status.timer)
+    _handler()
+  }else if (window.mpv_outstanding_status.delay == 0 ){
+    _handler()
+  }else{
+    if (window.mpv_outstanding_status.timer == null ){
+      window.mpv_outstanding_status.timer = setTimeout(
+        _handler, window.mpv_outstanding_status.delay)
+    }
+  }
+
+}
+document.addEventListener('visibilitychange', function (event) {
+  if (document.hidden) {
+    tab_in_background = true
+  } else {
+    tab_in_background = false
+    checkForStatusUpdate(true)
+  }
+});
+// ===================================
+
+
 
 function basename(path){
   var lpath = path.split('/')
@@ -761,6 +818,7 @@ function handleStatusResponse(json) {
 
 function handleStatusUpdate(status_updates) {
   new_status = Object.assign({}, mpv_status, status_updates)
+  mpv_outstanding_status.pending = false
   if ("metadata" in status_updates
     ||"playlist" in status_updates
     ||"filename" in status_updates){
@@ -890,25 +948,11 @@ function status_init_ws(){
       handleStatusResponse(mpv_status)
     }
     if ("status_diff" in json){
-      var status_updates = json["status_diff"]
-      if( mpv_outstanding_status.delay > 0 ){
-        // Collect updates
-        Object.assign(mpv_outstanding_status.updates, status_updates)
 
-        // Set timer for propagation
-        if ( mpv_outstanding_status.timer == null ){
-          mpv_outstanding_status.timer = setTimeout(function() {
-            mpv_outstanding_status.timer = null
-            var updates = mpv_outstanding_status.updates // store in local var
-            mpv_outstanding_status.updates = {} // Good idea for async websocket handling?!
-            //console.log("Update status! " + Object.keys(updates).length)
-            handleStatusUpdate(updates)
-          }, mpv_outstanding_status.delay)
-        }
-
-      }else{
-        handleStatusUpdate(status_updates)
-      }
+      // Collect updates in global var
+      Object.assign(window.mpv_outstanding_status.updates, json["status_diff"])
+      window.mpv_outstanding_status.pending = true
+      checkForStatusUpdate(false)
     }
     if ("result" in json){
       DEBUG && console.log(json)
@@ -928,7 +972,7 @@ function status_init_ws(){
       }
     }
 
-    mpv_outstanding_status.restart = setTimeout(function() {
+    window.mpv_outstanding_status.restart = setTimeout(function() {
       console.log("Try reconnecting websocket")
       status_init_ws()
     }, 5000)
@@ -1577,7 +1621,6 @@ document.addEventListener('touchend', function (evt) {
   }
   lastTouchEnd = now
 }, false)
-
 
 if (DEBUG) {
   // For testing long touch events in 'FF + touch simulation':
