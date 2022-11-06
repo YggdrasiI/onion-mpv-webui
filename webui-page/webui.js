@@ -1326,6 +1326,7 @@ touchmenu = {
     el.classname = "button content playlist-controls touch-entry"
     el.innerText = `#${idx} ${title}`
     el.addEventListener("click", handler)
+    el.addEventListener("touchend", handler)
     ul.appendChild(el)
   },
 
@@ -1349,10 +1350,12 @@ touchmenu = {
     })
 
     menu.appendChild(ul)
-    if (reverse) {
-      ul.children[0].scrollIntoView({alignToTop: false});
-    }else{
-      ul.children[0].scrollIntoView({alignToTop: true});
+    if (ul.children.length > 0 ){
+      if (reverse) {
+        ul.children[0].scrollIntoView({alignToTop: false});
+      }else{
+        ul.children[0].scrollIntoView({alignToTop: true});
+      }
     }
   },
 
@@ -1553,6 +1556,8 @@ function hideTouchMenu(evt) {
     if (menu){
       menu.style.setProperty('display', 'none')
     }
+
+    evt.preventDefault(); /* Without slider below menu will be clicked, etc. */
   }
 }
 
@@ -1572,3 +1577,10 @@ document.addEventListener('touchend', function (evt) {
   }
   lastTouchEnd = now
 }, false)
+
+
+if (DEBUG) {
+  // For testing long touch events in 'FF + touch simulation':
+  // Otherwise the right click simulation aborts my long press detection.
+  window.addEventListener("contextmenu", function(e) { e.preventDefault(); })
+}
