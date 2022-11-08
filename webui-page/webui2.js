@@ -33,7 +33,7 @@ function toggleShares() {
   /* Close share overlay by click on background area. */
   if (!shares.close_event_registered ){
     function _close_listener(evt) {
-      console.log(evt.target)
+      //console.log(evt.target)
       if( evt.target == el ){
         toggleShares()
       }
@@ -69,7 +69,7 @@ function share_change(el){
       var json = JSON.parse(request.responseText)
       print_share_list(json)
     } else if (request.status === 0) {
-      console.log("Fetching share list failed")
+      DEBUG && console.log("Fetching share list failed")
     }
   }
   request.send(null)

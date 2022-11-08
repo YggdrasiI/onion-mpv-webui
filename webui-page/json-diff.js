@@ -53,7 +53,7 @@ function get_diff(new_list, old_list, compare_handler){
   // Remove more pending entries…
   while (iOld<nOld) {
     operations.push({'op': 'remove', 'new': -1, 'old': iOld})
-    --nOld;
+    ++iOld;
   }
 
   // …or add more new entries
@@ -65,3 +65,4 @@ function get_diff(new_list, old_list, compare_handler){
 
   return operations
 }
+

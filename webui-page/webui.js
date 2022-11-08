@@ -74,7 +74,7 @@ function send_ws(command, ...params){
     // TODO: Implement json-parser on server side?!
     // At the moment we send simply send the url scheme
     uri = String(api.command) + "/" + String(api.param1) + "/" + String(api.param2)
-    console.log("Send " + uri)
+    DEBUG && console.log("Send " + uri)
     ws.send(uri)
     //ws.send(JSON.stringify(api))
   }
@@ -278,7 +278,7 @@ function createPlaylistTable(entry, position, pause, first) {
 
 function populatePlaylist(json, pause) {
   var playlist = document.getElementById('playlist')
-  playlist.innerHTML = ""
+  playlist.replaceChildren()
 
   var first = true
   var playedRow = null
@@ -525,7 +525,7 @@ function current_playlist_index(playlist){
       return i
     }
   }
-  console.log("Can not detect playlist entry!")
+  DEBUG && console.log("Can not detect playlist entry!")
 }
 
 function playlist_get_title(entry){
@@ -577,21 +577,24 @@ function setMetadata(metadata, playlist, filename) {
     window.metadata.album = ''
   }
 
-  document.getElementById("title").innerHTML = window.metadata.title
+  document.getElementById("title").innerText = window.metadata.title
   document.getElementById("title").setAttribute('title', title) // may be longer string
 
-  document.getElementById("artist").innerHTML = window.metadata.artist
-  document.getElementById("album").innerHTML = window.metadata.album
+  document.getElementById("artist").innerText = window.metadata.artist
+  document.getElementById("album").innerText = window.metadata.album
 }
 
-function setPosSlider(position, duration) {
+function setPosSlider(position, duration, old_position, old_duration) {
   var slider = document.getElementById("mediaPosition")
   var pos = document.getElementById("position")
   slider.max = duration
   if (!window.block.active('posSlider')) {
     slider.value = position
+
+    if (Math.round(position) != Math.round(old_position)){
+      pos.innerText = format_time(slider.value)
+    }
   }
-  pos.innerHTML = format_time(slider.value)
 }
 
 function setVolumeSlider(volume, volumeMax) {
@@ -601,7 +604,7 @@ function setVolumeSlider(volume, volumeMax) {
     slider.value = volume
     slider.max = volumeMax
   }
-  vol.innerHTML = slider.value + "%"
+  vol.innerText = slider.value + "%"
 }
 
 function setPlayPause(value) {
@@ -750,7 +753,7 @@ function setSubDelay(fDelay) {
     showInfoForControls(subContent, ['subDelay1', 'subDelay2'] , false)
   }else{
     const iDelay = parseInt(1000*fDelay)
-    subContent.innerHTML = (iDelay>0?'+':'') + iDelay + 'ms';
+    subContent.innerText = (iDelay>0?'+':'') + iDelay + 'ms';
     showInfoForControls(subContent, ['subDelay1', 'subDelay2'] , true)
   }
 }
@@ -761,7 +764,7 @@ function setAudioDelay(fDelay) {
     showInfoForControls(audioContent, ['audioDelay1', 'audioDelay2'] , false)
   }else{
     const iDelay = parseInt(1000*fDelay)
-    audioContent.innerHTML = (iDelay>0?'+':'') + iDelay + 'ms';
+    audioContent.innerText = (iDelay>0?'+':'') + iDelay + 'ms';
     showInfoForControls(audioContent, ['audioDelay1', 'audioDelay2'] , true)
   }
 }
@@ -793,19 +796,22 @@ function setLoop(loopFile, loopPlaylist) {
 function handleStatusResponse(json) {
   setMetadata(json['metadata'], json['playlist'], json['filename'])
   setTrackList(json['track-list'])
-  document.getElementById("duration").innerHTML =
-    '&nbsp;'+ format_time(json['duration'])
+  document.getElementById("duration").innerText =
+    format_time(json['duration'])
 
-  document.getElementById("playtime-remaining").innerHTML =
+  document.getElementById("playtime-remaining").innerText =
     "-" + format_time(json['playtime-remaining'])
-    + ((json['speed'] && json['speed'] != 1.0)?` (x ${Number(json['speed']).toFixed(2)})`:'')
+
   setPlaybackSpeedButtons(json['speed'])
+  if (json['speed']) {
+    document.getElementById("speed").innerText =
+      (json['speed'] != 1.0)?`(x ${Number(json['speed']).toFixed(2)})`:''
+  }
 
   setSubDelay(json['sub-delay'])
   setAudioDelay(json['audio-delay'])
   setPlayPause(json['pause'])
-  //setPosSlider(json['playback-time'], json['duration'])
-  setPosSlider(json['time-pos'], json['duration'])
+  setPosSlider(json['time-pos'], json['duration'], -1, -1)
   setVolumeSlider(json['volume'], json['volume-max'])
   setLoop(json["loop-file"], json["loop-playlist"])
   setFullscreenButton(json['fullscreen'])
@@ -828,16 +834,22 @@ function handleStatusUpdate(status_updates) {
     setTrackList(new_status['track-list'])
   }
   if ("duration" in status_updates){
-    document.getElementById("duration").innerHTML =
-      '&nbsp;'+ format_time(new_status['duration'])
+    document.getElementById("duration").innerText =
+      format_time(new_status['duration'])
   }
   if ("speed" in status_updates){
     setPlaybackSpeedButtons(new_status['speed'])
+
+    if( new_status['speed'] != mpv_status['speed']){
+      document.getElementById("speed").innerText =
+        (new_status['speed'] != 1.0)?`(x ${Number(new_status['speed']).toFixed(2)})`:''
+    }
   }
   if ("playtime-remaining" in status_updates){
-    document.getElementById("playtime-remaining").innerHTML =
-      "-" + format_time(new_status['playtime-remaining'])
-      + ((new_status['speed'] && new_status['speed'] != 1.0)?` (x ${Number(new_status['speed']).toFixed(2)})`:'')
+    if (Math.round(new_status["playtime-remaining"]) != Math.round(mpv_status["playtime-remaining"])){
+      document.getElementById("playtime-remaining").innerText =
+        "-" + format_time(new_status['playtime-remaining'])
+    }
   }
   if ("sub-delay" in status_updates){
     setSubDelay(new_status['sub-delay'])
@@ -847,7 +859,8 @@ function handleStatusUpdate(status_updates) {
   }
   if ("time-pos" in status_updates
     ||"duration" in status_updates){
-    setPosSlider(new_status['time-pos'], new_status['duration'])
+    setPosSlider(new_status['time-pos'], new_status['duration'],
+      mpv_status['time-pos'], mpv_status['duration'])
   }
   if ("volume" in status_updates
     ||"volume-max" in status_updates){
@@ -993,8 +1006,8 @@ function status_init_ws(){
 
 function print_disconnected(){
   document.getElementById("title").innerHTML = "<span class='info'>Not connected to MPV!</span>"
-  document.getElementById("artist").innerHTML = ""
-  document.getElementById("album").innerHTML = ""
+  document.getElementById("artist").innerText = ""
+  document.getElementById("album").innerText = ""
   setPlayPause("yes")
 }
 
@@ -1009,8 +1022,8 @@ function status(){
       handleStatusResponse(json)
     } else if (request.status === 0) {
       document.getElementById("title").innerHTML = "<h1><span class='error'>Couldn't connect to MPV!</span></h1>"
-      document.getElementById("artist").innerHTML = ""
-      document.getElementById("album").innerHTML = ""
+      document.getElementById("artist").innerText = ""
+      document.getElementById("album").innerText = ""
       setPlayPause("yes")
     }
   }
@@ -1246,7 +1259,7 @@ function add_button_listener() {
       window.block.enable('posSlider')
       var slider = evt.currentTarget
       var pos = document.getElementById("position")
-      pos.innerHTML = format_time(slider.value)
+      pos.innerText = format_time(slider.value)
     }],
     ['mediaVolume', 'change', function (evt) {
       var slider = evt.currentTarget
@@ -1257,7 +1270,7 @@ function add_button_listener() {
       window.block.enable('volSlider')
       var slider = evt.currentTarget
       var vol = document.getElementById("volume")
-      vol.innerHTML = slider.value + "%"
+      vol.innerText = slider.value + "%"
     }],
 
 
