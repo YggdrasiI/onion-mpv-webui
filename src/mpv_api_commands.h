@@ -136,6 +136,10 @@ int cmd_add_chapter(const char *name,
         const char *param1, const char *param2,
         char **pOutput_message);
 
+int cmd_set_chapter(const char *name,
+        const char *param1, const char *param2,
+        char **pOutput_message);
+
 int cmd_increase_playback_speed(const char *name,
         const char *param1, const char *param2,
         char **pOutput_message);

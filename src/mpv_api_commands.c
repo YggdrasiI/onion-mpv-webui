@@ -374,6 +374,19 @@ int cmd_add_chapter(const char *name,
     return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
 }
 
+int cmd_set_chapter(const char *name,
+        const char *param1, const char *param2,
+        char **pOutput_message)
+{
+    if( !check_int_or_float(param1, pOutput_message) ) return CMD_FAIL;
+
+    const char *cmd[] = {"set", "chapter", param1, NULL};
+    int err = _mpv_command(mpv, cmd);
+    check_mpv_err(err);
+
+    return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
+}
+
 // mpv/options.c:    {"speed", OPT_DOUBLE(playback_speed), M_RANGE(0.01, 100.0)}
 int cmd_increase_playback_speed(const char *name,
         const char *param1, const char *param2,

@@ -742,6 +742,9 @@ ul#sharelist li i.share_bullet {
   /*border-collapse: collapse; /* ?! */
 
   border-radius:1em;
+
+  overflow-x:hidden;
+  overflow-y:auto;
 }
 
 #touchmenu ul {
@@ -752,10 +755,6 @@ ul#sharelist li i.share_bullet {
 
   /*padding-top:1em; padding-bottom:1em;*/ /* For border-radius */
   border-radius:1em;
-
-  height:200%;
-  overflow-x:hidden;
-  overflow-y:auto;
 
   background-color: var(--touchmenu-bg);
 }

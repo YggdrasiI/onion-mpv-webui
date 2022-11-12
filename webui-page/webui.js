@@ -519,6 +519,22 @@ function setTrackList(tracklist) {
   }
 }
 
+function current_chapter_index(mpv_status){
+	if (mpv_status.hasOwnProperty('chapter')){
+		return mpv_status['chapter']
+	}
+	return -1
+}
+
+function chapter_get_title(chapters, index){
+  if (chapters[index].hasOwnProperty('title'))
+    return chapters[index]['title']
+
+  //Fallback
+  return "Chapter " + index
+}
+
+
 function current_playlist_index(playlist){
   for (var i = 0; i < playlist.length; i++){
     if (playlist[i].hasOwnProperty('current' /* or 'playing' ?!*/)) {
@@ -1231,8 +1247,10 @@ function add_button_listener() {
     ['seekForward1', 'mouseup', function (evt) {send('seek', '10') }],
     ['seekBack2', 'mouseup', function (evt) {send('seek', '-60') }],
     ['seekForward2', 'mouseup', function (evt) {send('seek', '120') }],
-    ['chapterBack', 'mouseup', function (evt) {send('add_chapter', '-1') }],
-    ['chapterForward', 'mouseup', function (evt) {send('add_chapter', '1') }],
+    ['chapterBack', 'mouseup', function (evt) {send('add_chapter', '-1') },
+      function(evt) {touchmenu.prev_chapters(evt)} ],
+    ['chapterForward', 'mouseup', function (evt) {send('add_chapter', '1') },
+      function(evt) {touchmenu.next_chapters(evt)} ],
     ['playbackSpeed1', 'mouseup', function (evt) {send('increase_playback_speed', '0.9') }],
     ['playbackSpeed2', 'mouseup', function (evt) {send('increase_playback_speed', '1.1') }],
     ['playbackSpeedReset', 'mouseup', function (evt) {
@@ -1350,7 +1368,7 @@ function add_button_listener() {
 
 
 touchmenu = {
-  _prepare: function (menu, currentTarget, preferBottomOffset){
+  _prepare: function (menu, currentTarget, preferBottomOffset, expand){
     /* Shifts 'menu' below or top of 'currentTarget'.
      *
      * • If viewports vertical space above 'currentTarget' is bigger
@@ -1362,6 +1380,7 @@ touchmenu = {
      * Returns: True if top position was selected.
      */
 
+    if (arguments.length < 4) expand = {};
     if (arguments.length < 3) preferBottomOffset = 0;
     const rect = currentTarget.getBoundingClientRect();
     let above = false
@@ -1369,8 +1388,23 @@ touchmenu = {
     menu.style.setProperty('display', 'none')
     menu.replaceChildren()
 
-    menu.style.setProperty('left', Math.round(rect.left + window.scrollX)+'px')
-    menu.style.setProperty('right', Math.round(window.innerWidth - rect.right - window.scrollX)+'px')
+		if (expand['left']){
+			const rectL = expand['left'].getBoundingClientRect();
+			menu.style.setProperty('left', Math.round(
+				rectL.left + window.scrollX)+'px')
+		}else{
+			menu.style.setProperty('left', Math.round(
+				rect.left + window.scrollX)+'px')
+		}
+		if (expand['right']){
+			const rectR = expand['right'].getBoundingClientRect();
+			menu.style.setProperty('right', Math.round(
+				window.innerWidth - rectR.right - window.scrollX )+'px')
+		}else{
+			menu.style.setProperty('right', Math.round(
+				window.innerWidth - rect.right - window.scrollX)+'px')
+		}
+
     if (rect.top > window.innerHeight - rect.bottom  + preferBottomOffset) {
       above = true
       menu.style.removeProperty('top')
@@ -1428,7 +1462,8 @@ touchmenu = {
 
   next_files: function show_next_files_menu(currentTarget){
     var menu = document.getElementById("touchmenu")
-    const reverse = this._prepare(menu, currentTarget, 100)
+    const reverse = this._prepare(menu, currentTarget, 100,
+			{'left': document.getElementById("playlistPrev")})
 
     // Search next M files
     const M=5
@@ -1460,7 +1495,8 @@ touchmenu = {
 
   prev_files: function (currentTarget){
     var menu = document.getElementById("touchmenu")
-    const reverse = this._prepare(menu, currentTarget, 0)
+    const reverse = this._prepare(menu, currentTarget, 0,
+		{'right': document.getElementById("playlistNext")})
 
     // Search prev M files
     const M=5
@@ -1469,18 +1505,10 @@ touchmenu = {
 
     // Range [A,B)
     const B = current_playlist_index(playlist)
-    const A = Math.max(0, B-5);
+    const A = Math.max(0, B-M);
     if (A >= B){
       this._add_info(menu, "No previous entries") // TODO: Did not respect looping
     }else{
-
-      var ul = document.createElement('ul')
-      if (reverse) {
-        ul.style.setProperty('flex-direction', 'column-reverse')
-      }else{
-        ul.style.setProperty('flex-direction', 'column')
-      }
-
       add_entry_args = []
       for(var n=B-1; n>=A; --n){
         add_entry_args.push([
@@ -1489,6 +1517,69 @@ touchmenu = {
             return function (evt) {
               send("playlist_jump", arg)
               send("play")
+            }
+          }(n), n+1, [A, B]])
+      }
+
+      this._fill_ul(menu, reverse, add_entry_args)
+    }
+  },
+
+  next_chapters: function show_next_chapters_menu(currentTarget){
+    var menu = document.getElementById("touchmenu")
+    const reverse = this._prepare(menu, currentTarget, 100,
+			{'left': document.getElementById("chapterBack")})
+
+    // Search next M chapters
+    const M=100
+    const chapters = mpv_status['chapter-list'] || []
+
+		// Note: current chapter index can be -1
+    // Range [A,B)
+    const A = current_chapter_index(mpv_status)+1
+    const B = Math.min(A+M, chapters.length)
+    if (A >= chapters.length){
+      this._add_info(menu, "No further entries")
+    }else{
+
+      add_entry_args = []
+      for(var n=A; n<B; ++n){
+        add_entry_args.push([
+          chapter_get_title(chapters, n),
+          function (arg) {
+            return function (evt) {
+              send("set_chapter", arg)
+            }
+          }(n), n+1, [A, B]])
+      }
+
+      this._fill_ul(menu, reverse, add_entry_args)
+    }
+  },
+
+  prev_chapters: function show_next_chapters_menu(currentTarget){
+    var menu = document.getElementById("touchmenu")
+    const reverse = this._prepare(menu, currentTarget, 100,
+			{'right': document.getElementById("chapterForward")})
+
+    // Search next M chapters
+    const M=100
+    const chapters = mpv_status['chapter-list'] || []
+
+		// Note: Index of chapters shifted by 1. ?!
+    // Range [A,B)
+    const B = current_chapter_index(mpv_status)
+    const A = Math.max(0, B-M);
+    if (A >= B){
+      this._add_info(menu, "No previous entries")
+    }else{
+      add_entry_args = []
+      for(var n=B-1; n>=A; --n){
+        add_entry_args.push([
+          chapter_get_title(chapters, n),
+          function (arg) {
+            return function (evt) {
+              send("set_chapter", arg)
             }
           }(n), n+1, [A, B]])
       }
