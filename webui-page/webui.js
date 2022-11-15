@@ -446,9 +446,9 @@ function webui_keydown(evt) {
   // For example, a US QWERTY uses Shift+/ to get ?.
   // Additionally, we want to ignore any keystrokes if an input element is focussed.
   if (
-    e.altKey ||
-    e.ctrlKey ||
-    e.metaKey ||
+    evt.altKey ||
+    evt.ctrlKey ||
+    evt.metaKey ||
     document.activeElement.tagName.toLowerCase() === "input"
   ) {
     return;
@@ -1568,7 +1568,7 @@ touchmenu = {
       this._add_info(menu, "No previous entries") // TODO: Did not respect looping
     }else{
       add_entry_args = []
-      for(var n=B-1; n>=A; --n){
+      for(var n=B/*-1*/; n>=A; --n){ // -1 removed to allow jump back to start of current file.
         add_entry_args.push([
           playlist_get_title(playlist[n]),
           function (arg) {
@@ -1632,7 +1632,7 @@ touchmenu = {
       this._add_info(menu, "No previous entries")
     }else{
       add_entry_args = []
-      for(var n=B-1; n>=A; --n){
+      for(var n=B/*-1*/; n>=A; --n){ // -1 removed to allow jump back to start of current chapter.
         add_entry_args.push([
           chapter_get_title(chapters, n),
           function (arg) {
