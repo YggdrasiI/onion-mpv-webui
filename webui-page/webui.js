@@ -427,11 +427,23 @@ function webui_keydown(evt) {
       "code": 8,
       "command": "reset_playback_speed",
     },
+    {
+      "key": "9",
+      "code": 57,
+      "command": "add_volume",
+      "param1": "-2"
+    },
+    {
+      "key": "0",
+      "code": 48,
+      "command": "add_volume",
+      "param1": "2"
+    },
   ]
   for (var i = 0; i < bindings.length; i++) {
     if (evt.keyCode === bindings[i].code || evt.key === bindings[i].key) {
       send(bindings[i].command, bindings[i].param1, bindings[i].param2)
-      evt.stopPropagation()//return false
+      evt.stopPropagation()
     }
   }
   //console.log("Key pressed: " + evt.keyCode + " " + evt.key )
@@ -441,6 +453,23 @@ function format_time(seconds){
   var date = new Date(null);
   date.setSeconds(seconds)
   return date.toISOString().substr(11, 8)
+}
+
+function format_time2(seconds){
+  if (Math.abs(seconds) < 60) {
+    return `${seconds}s`
+  }
+  if (seconds < 0){
+    var min =`${Math.ceil(seconds/60)}min`
+  }else{
+    var min =`${Math.floor(seconds/60)}min`
+  }
+  if (0 == seconds % 60){
+    var sec = ''
+  }else{
+    var sec = `${Math.abs(seconds)%60}s`
+  }
+  return min+sec
 }
 
 function setFullscreenButton(fullscreen) {
@@ -520,10 +549,10 @@ function setTrackList(tracklist) {
 }
 
 function current_chapter_index(mpv_status){
-	if (mpv_status.hasOwnProperty('chapter')){
-		return mpv_status['chapter']
-	}
-	return -1
+  if (mpv_status.hasOwnProperty('chapter')){
+    return mpv_status['chapter']
+  }
+  return -1
 }
 
 function chapter_get_title(chapters, index){
@@ -1243,8 +1272,10 @@ function add_button_listener() {
       function(evt) {touchmenu.prev_files(evt)} ],
     ['playlistNext', 'mouseup', function (evt) {send('playlist_next') },
       function(evt) {touchmenu.next_files(evt)} ],
-    ['seekBack1', 'mouseup', function (evt) {send('seek', '-5') }],
-    ['seekForward1', 'mouseup', function (evt) {send('seek', '10') }],
+    ['seekBack1', 'mouseup', function (evt) {send('seek', '-5') },
+      function(evt) {touchmenu.seek_menu(evt, [-30, -60, -180, -600, -1800])} ],
+    ['seekForward1', 'mouseup', function (evt) {send('seek', '10') },
+      function(evt) {touchmenu.seek_menu(evt, [30, 60, 180, 600, 1800])} ],
     ['seekBack2', 'mouseup', function (evt) {send('seek', '-60') }],
     ['seekForward2', 'mouseup', function (evt) {send('seek', '120') }],
     ['chapterBack', 'mouseup', function (evt) {send('add_chapter', '-1') },
@@ -1388,22 +1419,22 @@ touchmenu = {
     menu.style.setProperty('display', 'none')
     menu.replaceChildren()
 
-		if (expand['left']){
-			const rectL = expand['left'].getBoundingClientRect();
-			menu.style.setProperty('left', Math.round(
-				rectL.left + window.scrollX)+'px')
-		}else{
-			menu.style.setProperty('left', Math.round(
-				rect.left + window.scrollX)+'px')
-		}
-		if (expand['right']){
-			const rectR = expand['right'].getBoundingClientRect();
-			menu.style.setProperty('right', Math.round(
-				window.innerWidth - rectR.right - window.scrollX )+'px')
-		}else{
-			menu.style.setProperty('right', Math.round(
-				window.innerWidth - rect.right - window.scrollX)+'px')
-		}
+    if (expand['left']){
+      const rectL = expand['left'].getBoundingClientRect();
+      menu.style.setProperty('left', Math.round(
+        rectL.left + window.scrollX)+'px')
+    }else{
+      menu.style.setProperty('left', Math.round(
+        rect.left + window.scrollX)+'px')
+    }
+    if (expand['right']){
+      const rectR = expand['right'].getBoundingClientRect();
+      menu.style.setProperty('right', Math.round(
+        window.innerWidth - rectR.right - window.scrollX )+'px')
+    }else{
+      menu.style.setProperty('right', Math.round(
+        window.innerWidth - rect.right - window.scrollX)+'px')
+    }
 
     if (rect.top > window.innerHeight - rect.bottom  + preferBottomOffset) {
       above = true
@@ -1425,7 +1456,7 @@ touchmenu = {
   _add_entry: function (ul, title, handler, idx, playlist_range) {
     var el = document.createElement('li')
     el.classname = "button content playlist-controls touch-entry"
-    el.innerText = `#${idx} ${title}`
+    el.innerText = idx<0?`${title}`:`#${idx} ${title}`
     el.addEventListener("click", handler)
     el.addEventListener("touchend", handler)
     ul.appendChild(el)
@@ -1463,7 +1494,7 @@ touchmenu = {
   next_files: function show_next_files_menu(currentTarget){
     var menu = document.getElementById("touchmenu")
     const reverse = this._prepare(menu, currentTarget, 100,
-			{'left': document.getElementById("playlistPrev")})
+      {'left': document.getElementById("playlistPrev")})
 
     // Search next M files
     const M=5
@@ -1496,7 +1527,7 @@ touchmenu = {
   prev_files: function (currentTarget){
     var menu = document.getElementById("touchmenu")
     const reverse = this._prepare(menu, currentTarget, 0,
-		{'right': document.getElementById("playlistNext")})
+      {'right': document.getElementById("playlistNext")})
 
     // Search prev M files
     const M=5
@@ -1528,13 +1559,13 @@ touchmenu = {
   next_chapters: function show_next_chapters_menu(currentTarget){
     var menu = document.getElementById("touchmenu")
     const reverse = this._prepare(menu, currentTarget, 100,
-			{'left': document.getElementById("chapterBack")})
+      {'left': document.getElementById("chapterBack")})
 
     // Search next M chapters
     const M=100
     const chapters = mpv_status['chapter-list'] || []
 
-		// Note: current chapter index can be -1
+    // Note: current chapter index can be -1
     // Range [A,B)
     const A = current_chapter_index(mpv_status)+1
     const B = Math.min(A+M, chapters.length)
@@ -1560,13 +1591,13 @@ touchmenu = {
   prev_chapters: function show_next_chapters_menu(currentTarget){
     var menu = document.getElementById("touchmenu")
     const reverse = this._prepare(menu, currentTarget, 100,
-			{'right': document.getElementById("chapterForward")})
+      {'right': document.getElementById("chapterForward")})
 
     // Search next M chapters
     const M=100
     const chapters = mpv_status['chapter-list'] || []
 
-		// Note: Index of chapters shifted by 1. ?!
+    // Note: Index of chapters shifted by 1. ?!
     // Range [A,B)
     const B = current_chapter_index(mpv_status)
     const A = Math.max(0, B-M);
@@ -1686,6 +1717,26 @@ touchmenu = {
       }
     }
     this._fill_ul(menu, reverse, add_entry_args)
+  },
+
+  seek_menu: function (currentTarget, seconds_list){
+    var menu = document.getElementById("touchmenu")
+    const reverse = this._prepare(menu, currentTarget, 0)
+
+    add_entry_args = []
+    for (var i = 0; i < seconds_list.length; i++){
+      add_entry_args.push([
+        format_time2(seconds_list[i]),
+        function (arg) {
+          return function (evt) {
+            send("seek", arg)
+          }
+        }(seconds_list[i]),
+        -1, [0, seconds_list.length]])
+    }
+    this._fill_ul(menu, reverse, add_entry_args)
+
+    menu.children[0].style.setProperty('text-align', 'center')
   },
 }
 
