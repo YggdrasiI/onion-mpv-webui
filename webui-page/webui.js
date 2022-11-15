@@ -1350,6 +1350,11 @@ function add_button_listener() {
     let els = document.getElementsByName(x[0])
     let count = els.length;
 
+    if (x[3] && x[1] != 'mouseup'){
+      console.log("Warning, touchmenu defined for event != mouseup."
+      + "Element: " + x[0])
+    }
+
     /* Wrap shortpress event if longpress event handler is defined */
     if (x[3] ) {
       fshort = function (evt) {
@@ -1362,7 +1367,6 @@ function add_button_listener() {
     }
 
     els.forEach(el => {el.addEventListener(x[1], fshort)})
-
     let el = document.getElementById(x[0])
     if (el) {
       el.addEventListener(x[1], fshort)
@@ -1371,6 +1375,14 @@ function add_button_listener() {
     if (count == 0){
       console.log(`No button named '${x[0]}' found to add event!`)
     }
+
+    if (x[1] == "mouseup") {
+      els.forEach(el => {el.addEventListener("touchend", fshort)})
+      if (el) {
+        el.addEventListener("touchend", fshort)
+      }
+    }
+
 
     /* Add handlers for longpresses */
     if (x[3]) {
