@@ -377,7 +377,7 @@ function updatePlaylist(new_playlist, old_playlist, new_pause) {
 
 
 function webui_keydown(evt) {
-  var bindings = [
+  const bindings = [
     {
       "key": " ",
       "code": 32,
@@ -440,10 +440,25 @@ function webui_keydown(evt) {
       "param1": "2"
     },
   ]
+
+  // We have no shortcuts below that use these combos, so don't capture them.
+  // We allow Shift key as some keyboards require that to trigger the keys.
+  // For example, a US QWERTY uses Shift+/ to get ?.
+  // Additionally, we want to ignore any keystrokes if an input element is focussed.
+  if (
+    e.altKey ||
+    e.ctrlKey ||
+    e.metaKey ||
+    document.activeElement.tagName.toLowerCase() === "input"
+  ) {
+    return;
+  }
+
   for (var i = 0; i < bindings.length; i++) {
     if (evt.keyCode === bindings[i].code || evt.key === bindings[i].key) {
       send(bindings[i].command, bindings[i].param1, bindings[i].param2)
       evt.stopPropagation()
+      break
     }
   }
   //console.log("Key pressed: " + evt.keyCode + " " + evt.key )

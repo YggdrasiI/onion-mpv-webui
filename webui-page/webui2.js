@@ -402,3 +402,19 @@ function decode(s){
   s = s.replace('&lt;', '<').replace('&gt;', '>')
   return s;
 }
+
+// From simple-mpv-webui
+function sanitize(string) {
+  // https://stackoverflow.com/a/48226843
+  const map = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#x27;",
+    "/": "&#x2F;",
+    "`": "&grave;",
+  };
+  const reg = /[&<>"'/`]/gi;
+  return string.replace(reg, (match) => map[match]);
+}
