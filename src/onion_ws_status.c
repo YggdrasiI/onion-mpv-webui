@@ -1527,8 +1527,8 @@ int __chunked_websocket_vprintf(onion_websocket * ws, const char *fmt, va_list a
       ssize_t s = onion_websocket_write(ws, chunk, num_bytes_to_write);
 
       if ( s<0 ){
-        ONION_ERROR("Could not write chunk %d with %d bytes. Errno: %d",
-            chunk_id, num_bytes_to_write, s);
+        ONION_ERROR("Could not write chunk %d with %d bytes. Errno: %d (%s)",
+            chunk_id, num_bytes_to_write, s, strerror(errno));
       }else{
         s_sum += s - METADATA_LEN;
       }

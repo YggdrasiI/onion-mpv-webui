@@ -4,7 +4,7 @@
 
   --playlist-bg-hover: #333333;
   --playlist-bg-active: #9135bc; /* violet */
-  
+
   --touchmenu-bg-red: rgba(150, 0, 0, 0.85);
   --touchmenu-bg-blue: rgba(90, 90, 240, 0.5);
   --touchmenu-bg-yellow: rgba(204, 171, 41, 0.47);
@@ -176,7 +176,7 @@ input[type="range"] {
   box-sizing: border-box; /* Border respected by width. */
   border-radius: 6px;
   border: 3px solid var(--main-fg-color);
- 
+
   overflow: hidden;
   cursor: pointer;
   /*background: var(--main-fg-color);*/
@@ -251,6 +251,9 @@ input[type="range"] {
   display: none;
 }
 
+.slider {
+	/* class used in JS functions */
+}
 .sliderInfoContainer {
   /*width: 100%;*/
   text-align: center;
@@ -613,7 +616,7 @@ td.playlist.playing:hover {
   height: 100%;
   /*padding-top:30%;*/
   /*max-height: 2.8em;*/
- 
+
   /* Vertical allign over flexbox properties */
   display: flex;
   justify-content: center;
@@ -729,11 +732,8 @@ ul#sharelist li i.share_bullet {
   /*top: 0; left: 0; right: 0; bottom: 0;*/
   /* Do not set here top,left,right,bottom values because
    * javascript's removeProperty won't work as expected */
-  z-index: 1001;
-  position: absolute;
-  display:none;
+  /*position: absolute; display:none; Set by JS*/
 
-  /*max-height:38vh; /* shifts position ?! */
   max-height:38vh;
   /*margin-top: 3vh; margin-bottom: 3vh; /* distance to invoker button */
   border: 0.3em solid var(--main-bg-color);
@@ -756,6 +756,9 @@ ul#sharelist li i.share_bullet {
   /*padding-top:1em; padding-bottom:1em;*/ /* For border-radius */
   border-radius:1em;
 
+	user-select:none; /* Without this click events are triggered
+										 * even if mouse moved away after mousedown */
+
   background-color: var(--touchmenu-bg);
 }
 
@@ -767,7 +770,7 @@ ul#sharelist li i.share_bullet {
   margin:0px;
   padding:0.3em;
 
-  
+
   overflow:hidden;
   white-space:nowrap; /* single line */
   /*border: 1px solid red;*/

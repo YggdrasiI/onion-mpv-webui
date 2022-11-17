@@ -38,6 +38,22 @@ int mpv_open_cplugin(mpv_handle *handle)
     int err=0;
     mpv = handle;
     const char *mpv_plugin_name = mpv_client_name(handle);
+
+#ifdef MPV_PLUGIN_NAME
+#define STR(x) #x // Adds quotes
+#define CMP_DEFINE(x) strcmp(STR(x), mpv_plugin_name)
+#define SHOW_DEFINE(x) fprintf(stderr, "Plugin name: '%s'\nExpected name: '%s'\n",\
+        mpv_plugin_name, STR(x))
+
+    if( CMP_DEFINE(MPV_PLUGIN_NAME) != 0 ){
+        perror("Plugin loaded twice. Multiple --profile args used!?\n");
+        SHOW_DEFINE(MPV_PLUGIN_NAME);
+        return EXIT_FAILURE;
+    }else
+#undef STR
+#undef CMP_DEFINE
+#undef SHOW_DEFINE
+#endif
     printf("Webui plugin loaded as '%s'!\n", mpv_plugin_name);
 
     onion_dict *options = get_default_options();

@@ -1,4 +1,5 @@
 var DEBUG = true,
+    DEBUG_MOBILE = false,
     use_dummy_audio_element = false, /* for controls on lock screen. */
     metadata = {},
     subs = {},
@@ -10,12 +11,6 @@ var DEBUG = true,
 
 var ws = null
 var mpv_status = {}
-
-// For touchmenu
-var longpress = {
-  ms: 400,
-  done: null,
-  timer: null}
 
 var block = {
       posSlider: null, // null, false or Timeout-ID during user interaction
@@ -330,7 +325,7 @@ function updatePlaylist(new_playlist, old_playlist, new_pause) {
   }
 
   var operations = get_diff(new_playlist, old_playlist, compare_handler)
-  DEBUG && console.log(operations)
+  //DEBUG && console.log(operations)
 
   var playlist = document.getElementById('playlist')
   // children Index of playlist matches with above index.
@@ -713,7 +708,7 @@ function __mediaSession() {
 
     navigator.mediaSession.setActionHandler('play', function() {send('play');})
     navigator.mediaSession.setActionHandler('pause', function() {send('pause');})
-    navigator.mediaSession.setActionHandler('seekbackward', function() {send('seek', '-10');})
+    navigator.mediaSession.setActionHandler('seekbackward', function() {send('seek', '-5');})
     navigator.mediaSession.setActionHandler('seekforward', function() {send('seek', '10');})
     navigator.mediaSession.setActionHandler('previoustrack', function() {send('playlist_prev');})
     navigator.mediaSession.setActionHandler('nexttrack', function() {send('playlist_next');})
@@ -1038,7 +1033,7 @@ function status_init_ws(){
       checkForStatusUpdate(false)
     }
     if ("result" in json){
-      DEBUG && console.log(json)
+      DEBUG && console.log(JSON.stringify(json))
     }
   }
 
@@ -1263,14 +1258,48 @@ function updateNotification(mpv_status) {
   }
 }
 
+// To check log on Mobile-Browser.
+// Clearing with double click or double touch.
+function logging_in_page(){
+  var log = document.createElement('div')
+  log.style.cssText = `
+    position: absolute;
+    top:0em; left:0em;
+    width:90%; height: 20%;
+    background-color:rgba(0,0,0,0.8);
+    color:lightgrey;
+    z-index: 1002; overflow:scroll;
+  `;
+  console.log = function(s) {
+    if (typeof(s) == 'object'){
+      var t = JSON.stringify(s)
+      if (t.length>100) t = t.substr(0,99)+'…'
+    }else{
+      var t = s.valueOf()
+    }
+    log.innerHTML += "<br />" + t
+    log.scrollTo({'top': 10000})
+  }
+  log.addEventListener('dblclick',
+    function(evt) { this.innerHTML=''})
+  log.addEventListener('touchstart',
+    function(evt) {
+      if (evt.targetTouches.length == 2){this.innerHTML=''}
+    })
+  document.getElementsByTagName('body')[0].appendChild(log)
+}
+
 /* To satisfy Content-Security-Policy define
  * onClick/onTouch/etc events here.
  *
  * Using name instead of id is possible because some Events are
  * triggered by multiple buttons, e.g. 'togglePlayPause'.
  *
- * If longpress handler is used, use 'mouseup' instead of
+ * If longpress handler is used, prefer 'mouseup'/'pointerup' instead of
  * 'mousedown' events. Otherwise the shortclick event will always trigger.
+ *
+ * If fast multiple clicks needed, use 'pointerup' instead of 'mouseup'.
+ * Otherwise, it will just trigger once on touch devices.
  * */
 function add_button_listener() {
   const btnEvents = [
@@ -1283,36 +1312,36 @@ function add_button_listener() {
     ['shareSortingAlpha', 'click', function (evt) {share_change_sorting('alpha'); sortShareList(); }],
     ['shareSortingDate', 'click', function (evt) {share_change_sorting('date'); sortShareList(); }],
     ['toggleShares', 'click', function (evt) {toggleShares() }],
-    ['playlistPrev', 'mouseup', function (evt) {send('playlist_prev') },
+    ['playlistPrev', 'pointerup', function (evt) {send('playlist_prev') },
       function(evt) {touchmenu.prev_files(evt)} ],
-    ['playlistNext', 'mouseup', function (evt) {send('playlist_next') },
+    ['playlistNext', 'pointerup', function (evt) {send('playlist_next') },
       function(evt) {touchmenu.next_files(evt)} ],
-    ['seekBack1', 'mouseup', function (evt) {send('seek', '-5') },
+    ['seekBack1', 'pointerup', function (evt) {send('seek', '-5') },
       function(evt) {touchmenu.seek_menu(evt, [-30, -60, -180, -600, -1800])} ],
-    ['seekForward1', 'mouseup', function (evt) {send('seek', '10') },
+    ['seekForward1', 'pointerup', function (evt) {send('seek', '10') },
       function(evt) {touchmenu.seek_menu(evt, [30, 60, 180, 600, 1800])} ],
-    ['seekBack2', 'mouseup', function (evt) {send('seek', '-60') }],
-    ['seekForward2', 'mouseup', function (evt) {send('seek', '120') }],
-    ['chapterBack', 'mouseup', function (evt) {send('add_chapter', '-1') },
+    ['seekBack2', 'pointerup', function (evt) {send('seek', '-60') }],
+    ['seekForward2', 'pointerup', function (evt) {send('seek', '120') }],
+    ['chapterBack', 'pointerup', function (evt) {send('add_chapter', '-1') },
       function(evt) {touchmenu.prev_chapters(evt)} ],
-    ['chapterForward', 'mouseup', function (evt) {send('add_chapter', '1') },
+    ['chapterForward', 'pointerup', function (evt) {send('add_chapter', '1') },
       function(evt) {touchmenu.next_chapters(evt)} ],
-    ['playbackSpeed1', 'mouseup', function (evt) {send('increase_playback_speed', '0.9') }],
-    ['playbackSpeed2', 'mouseup', function (evt) {send('increase_playback_speed', '1.1') }],
-    ['playbackSpeedReset', 'mouseup', function (evt) {
+    ['playbackSpeed1', 'pointerup', function (evt) {send('increase_playback_speed', '0.9') }],
+    ['playbackSpeed2', 'pointerup', function (evt) {send('increase_playback_speed', '1.1') }],
+    ['playbackSpeedReset', 'click', function (evt) {
       setPlaybackSpeedButtons(1.0); // anticipate reply of reset_playback_speed for fast gui reaction.
       send('reset_playback_speed') }],
-    ['subDelay1', 'mouseup', function (evt) {send('add_sub_delay', '-0.05') }],
-    ['subDelay2', 'mouseup', function (evt) {send('add_sub_delay', '0.05') }],
-    ['audioDelay1', 'mouseup', function (evt) {send('add_audio_delay', '-0.05') }],
-    ['audioDelay2', 'mouseup', function (evt) {send('add_audio_delay', '0.05') }],
+    ['subDelay1', 'pointerup', function (evt) {send('add_sub_delay', '-0.05') }],
+    ['subDelay2', 'pointerup', function (evt) {send('add_sub_delay', '0.05') }],
+    ['audioDelay1', 'pointerup', function (evt) {send('add_audio_delay', '-0.05') }],
+    ['audioDelay2', 'pointerup', function (evt) {send('add_audio_delay', '0.05') }],
     ['toggleFullscreen', 'click', function (evt) {send('fullscreen') }],
-    ['cycleAudioDevice', 'click', function (evt) {send('cycle', 'audio-device') }],
-    ['cycleSub', 'mouseup', function (evt) {send('cycle', 'sub') },
+    ['cycleAudioDevice', 'pointerup', function (evt) {send('cycle', 'audio-device') }],
+    ['cycleSub', 'pointerup', function (evt) {send('cycle', 'sub') },
       function(evt) {touchmenu.list_subtitle(evt)} ],
-    ['cycleAudio', 'mouseup', function (evt) {send('cycle', 'audio') },
+    ['cycleAudio', 'pointerup', function (evt) {send('cycle', 'audio') },
       function(evt) {touchmenu.list_audio(evt)} ],
-    ['cycleVideo', 'mouseup', function (evt) {send('cycle', 'video') },
+    ['cycleVideo', 'pointerup', function (evt) {send('cycle', 'video') },
       function(evt) {touchmenu.list_video(evt)} ],
     ['mediaPosition', 'change', function (evt) {
       var slider = evt.currentTarget
@@ -1343,428 +1372,23 @@ function add_button_listener() {
       if(evt.target == this) togglePlaylist();
       evt.stopPropagation();
     }],
-    //['overlay2', 'click', function (evt) {if (evt.target == this) toggleShares(); stopPropagation() }], //->webui2.js
   ]
 
   btnEvents.forEach( x => {
     let els = document.getElementsByName(x[0])
-    let count = els.length;
-
-    if (x[3] && x[1] != 'mouseup'){
-      console.log("Warning, touchmenu defined for event != mouseup."
-      + "Element: " + x[0])
-    }
-
-    /* Wrap shortpress event if longpress event handler is defined */
-    if (x[3] ) {
-      fshort = function (evt) {
-        if (!window.longpress.done){ /* null or false */
-          x[2](evt)
-        }
-      }
-    }else{
-      fshort = x[2]
-    }
-
-    els.forEach(el => {el.addEventListener(x[1], fshort)})
     let el = document.getElementById(x[0])
+    let count = els.length;
     if (el) {
-      el.addEventListener(x[1], fshort)
       count++;
     }
     if (count == 0){
       console.log(`No button named '${x[0]}' found to add event!`)
     }
-
-    if (x[1] == "mouseup") {
-      els.forEach(el => {el.addEventListener("touchend", fshort)})
-      if (el) {
-        el.addEventListener("touchend", fshort)
-      }
+    longpress.addEventHandler(els, x[1], x[2], x[3])
+    if (el) {
+      longpress.addEventHandler([el], x[1], x[2], x[3])
     }
-
-
-    /* Add handlers for longpresses */
-    if (x[3]) {
-      flong = function (evt) {
-        window.longpress.done = false;
-        window.longpress.timer = setTimeout(
-          function(target) {
-            return function() {
-              window.longpress.done = true;
-              x[3](target)
-            }
-          }(evt.currentTarget), window.longpress.ms);
-      }
-
-      flongAbort = function (evt) {
-        if (window.longpress.timer){
-          clearTimeout(window.longpress.timer);
-          window.longpress.timer = null
-        }
-      }
-
-      els.forEach(el => {
-        el.addEventListener('touchstart', flong)
-        el.addEventListener('mousedown', flong)
-      })
-      els.forEach(el => {
-        el.addEventListener('touchend', flongAbort)
-        el.addEventListener('mouseup', flongAbort)
-      })
-
-      if (el) {
-        el.addEventListener('touchstart', flong)
-        el.addEventListener('mousedown', flong)
-        el.addEventListener('touchend', flongAbort)
-        el.addEventListener('mouseup', flongAbort)
-      }
-    }
-
   })
-}
-
-
-touchmenu = {
-  _prepare: function (menu, currentTarget, preferBottomOffset, expand){
-    /* Shifts 'menu' below or top of 'currentTarget'.
-     *
-     * • If viewports vertical space above 'currentTarget' is bigger
-     *   it selects the top position. This switch can be shifted by
-     *   'preferBottomOffset'
-     * • The 'menu' got the same width as 'currentTarget'
-     * • The maximal 'menu' height is set by CSS.
-     *
-     * Returns: True if top position was selected.
-     */
-
-    if (arguments.length < 4) expand = {};
-    if (arguments.length < 3) preferBottomOffset = 0;
-    const rect = currentTarget.getBoundingClientRect();
-    let above = false
-
-    menu.style.setProperty('display', 'none')
-    menu.replaceChildren()
-
-    if (expand['left']){
-      const rectL = expand['left'].getBoundingClientRect();
-      menu.style.setProperty('left', Math.round(
-        rectL.left + window.scrollX)+'px')
-    }else{
-      menu.style.setProperty('left', Math.round(
-        rect.left + window.scrollX)+'px')
-    }
-    if (expand['right']){
-      const rectR = expand['right'].getBoundingClientRect();
-      menu.style.setProperty('right', Math.round(
-        window.innerWidth - rectR.right - window.scrollX )+'px')
-    }else{
-      menu.style.setProperty('right', Math.round(
-        window.innerWidth - rect.right - window.scrollX)+'px')
-    }
-
-    if (rect.top > window.innerHeight - rect.bottom  + preferBottomOffset) {
-      above = true
-      menu.style.removeProperty('top')
-      menu.style.setProperty('bottom', Math.round(window.innerHeight - rect.top - window.scrollY)+'px')
-      //menu.style.removeProperty('border-top-width')
-      //menu.style.setProperty('border-bottom-width', '0.5em')
-    }else{
-      menu.style.setProperty('top', Math.round(rect.bottom + window.scrollY)+'px')
-      menu.style.removeProperty('bottom')
-      //menu.style.setProperty('border-top-width', '0.5em')
-      //menu.style.removeProperty('border-bottom-width')
-    }
-    menu.style.setProperty('display', 'block')
-
-    return above
-  },
-
-  _add_entry: function (ul, title, handler, idx, playlist_range) {
-    var el = document.createElement('li')
-    el.classname = "button content playlist-controls touch-entry"
-    el.innerText = idx<0?`${title}`:`#${idx} ${title}`
-    el.addEventListener("click", handler)
-    el.addEventListener("touchend", handler)
-    ul.appendChild(el)
-  },
-
-  _add_info: function (menu, text) {
-    var el = document.createElement('li')
-    el.classname = "touch-info"
-    el.innerText = text
-    menu.appendChild(el)
-  },
-
-  _fill_ul: function(menu, reverse, add_entry_args){
-    var ul = document.createElement('ul')
-    if (reverse) {
-      ul.style.setProperty('flex-direction', 'column-reverse')
-    }else{
-      ul.style.setProperty('flex-direction', 'column')
-    }
-
-    add_entry_args.forEach(a => {
-      this._add_entry(ul, a[0], a[1], a[2], a[3])
-    })
-
-    menu.appendChild(ul)
-    if (ul.children.length > 0 ){
-      if (reverse) {
-        ul.children[0].scrollIntoView({alignToTop: false});
-      }else{
-        ul.children[0].scrollIntoView({alignToTop: true});
-      }
-    }
-  },
-
-  next_files: function show_next_files_menu(currentTarget){
-    var menu = document.getElementById("touchmenu")
-    const reverse = this._prepare(menu, currentTarget, 100,
-      {'left': document.getElementById("playlistPrev")})
-
-    // Search next M files
-    const M=5
-    const playlist = mpv_status['playlist']
-    if (!playlist) return;
-
-    // Range [A,B)
-    const A = current_playlist_index(playlist)+1
-    const B = Math.min(A+M, playlist.length)
-    if (A == playlist.length){
-      this._add_info(menu, "No further entries") // TODO: Did not respect looping
-    }else{
-
-      add_entry_args = []
-      for(var n=A; n<B; ++n){
-        add_entry_args.push([
-          playlist_get_title(playlist[n]),
-          function (arg) {
-            return function (evt) {
-              send("playlist_jump", arg)
-              send("play")
-            }
-          }(n), n+1, [A, B]])
-      }
-
-      this._fill_ul(menu, reverse, add_entry_args)
-    }
-  },
-
-  prev_files: function (currentTarget){
-    var menu = document.getElementById("touchmenu")
-    const reverse = this._prepare(menu, currentTarget, 0,
-      {'right': document.getElementById("playlistNext")})
-
-    // Search prev M files
-    const M=5
-    const playlist = mpv_status['playlist']
-    if (!playlist) return;
-
-    // Range [A,B)
-    const B = current_playlist_index(playlist)
-    const A = Math.max(0, B-M);
-    if (A >= B){
-      this._add_info(menu, "No previous entries") // TODO: Did not respect looping
-    }else{
-      add_entry_args = []
-      for(var n=B/*-1*/; n>=A; --n){ // -1 removed to allow jump back to start of current file.
-        add_entry_args.push([
-          playlist_get_title(playlist[n]),
-          function (arg) {
-            return function (evt) {
-              send("playlist_jump", arg)
-              send("play")
-            }
-          }(n), n+1, [A, B]])
-      }
-
-      this._fill_ul(menu, reverse, add_entry_args)
-    }
-  },
-
-  next_chapters: function show_next_chapters_menu(currentTarget){
-    var menu = document.getElementById("touchmenu")
-    const reverse = this._prepare(menu, currentTarget, 100,
-      {'left': document.getElementById("chapterBack")})
-
-    // Search next M chapters
-    const M=100
-    const chapters = mpv_status['chapter-list'] || []
-
-    // Note: current chapter index can be -1
-    // Range [A,B)
-    const A = current_chapter_index(mpv_status)+1
-    const B = Math.min(A+M, chapters.length)
-    if (A >= chapters.length){
-      this._add_info(menu, "No further entries")
-    }else{
-
-      add_entry_args = []
-      for(var n=A; n<B; ++n){
-        add_entry_args.push([
-          chapter_get_title(chapters, n),
-          function (arg) {
-            return function (evt) {
-              send("set_chapter", arg)
-            }
-          }(n), n+1, [A, B]])
-      }
-
-      this._fill_ul(menu, reverse, add_entry_args)
-    }
-  },
-
-  prev_chapters: function show_next_chapters_menu(currentTarget){
-    var menu = document.getElementById("touchmenu")
-    const reverse = this._prepare(menu, currentTarget, 100,
-      {'right': document.getElementById("chapterForward")})
-
-    // Search next M chapters
-    const M=100
-    const chapters = mpv_status['chapter-list'] || []
-
-    // Note: Index of chapters shifted by 1. ?!
-    // Range [A,B)
-    const B = current_chapter_index(mpv_status)
-    const A = Math.max(0, B-M);
-    if (A >= B){
-      this._add_info(menu, "No previous entries")
-    }else{
-      add_entry_args = []
-      for(var n=B/*-1*/; n>=A; --n){ // -1 removed to allow jump back to start of current chapter.
-        add_entry_args.push([
-          chapter_get_title(chapters, n),
-          function (arg) {
-            return function (evt) {
-              send("set_chapter", arg)
-            }
-          }(n), n+1, [A, B]])
-      }
-
-      this._fill_ul(menu, reverse, add_entry_args)
-    }
-  },
-
-  list_subtitle: function (currentTarget){
-    var menu = document.getElementById("touchmenu")
-    const reverse = this._prepare(menu, currentTarget, 0)
-    const tracklist = mpv_status['track-list']
-
-    // Loop over track-list and construct titles
-    function _text(sub_track){
-      if (sub_track.hasOwnProperty('title')) return sub_track.title;
-      else if (sub_track.hasOwnProperty('lang')) return sub_track.lang;
-      else if (sub_track.hasOwnProperty('codec')) return sub_track.codec;
-      return ""
-    }
-
-    add_entry_args = []
-    for (var i = 0; i < tracklist.length; i++){
-      if (tracklist[i].type === 'sub') {
-
-        var idx = tracklist[i].id
-        add_entry_args.push([
-        _text(tracklist[i]),
-          function (arg) {
-            return function (evt) {
-              send("set_subtitle", arg)
-            }
-          }(idx),
-          idx, [0, window.subs.count]])
-      }
-    }
-    this._fill_ul(menu, reverse, add_entry_args)
-  },
-
-  list_video: function (currentTarget){
-    var menu = document.getElementById("touchmenu")
-    const reverse = this._prepare(menu, currentTarget, 0)
-    const tracklist = mpv_status['track-list']
-
-    // Loop over track-list and construct titles
-    function _text(vid_track){
-      if (vid_track.hasOwnProperty('title')) return vid_track.title;
-      else if (vid_track.hasOwnProperty('demux-w')){
-        return `${vid_track['demux-w']}x${vid_track['demux-h']}`;
-      }
-      else if (vid_track.hasOwnProperty('codec')) return vid_track.codec;
-      else if (vid_track.hasOwnProperty('decoder-desc')) return vid_track.decoder-desc;
-      else if (vid_track.hasOwnProperty('lang')) return vid_track.lang;
-      return ""
-    }
-
-    add_entry_args = []
-    for (var i = 0; i < tracklist.length; i++){
-      if (tracklist[i].type === 'video') {
-
-        var idx = tracklist[i].id
-        add_entry_args.push([
-        _text(tracklist[i]),
-          function (arg) {
-            return function (evt) {
-              send("set_video", arg)
-            }
-          }(idx),
-          idx, [0, window.subs.count]])
-      }
-    }
-    this._fill_ul(menu, reverse, add_entry_args)
-  },
-
-  list_audio: function (currentTarget){
-    var menu = document.getElementById("touchmenu")
-    const reverse = this._prepare(menu, currentTarget, 0)
-    const tracklist = mpv_status['track-list']
-
-    // Loop over track-list and construct titles
-    function _text(audio_track){
-      if (audio_track.hasOwnProperty('title')) return audio_track.title;
-      else if (audio_track.hasOwnProperty('lang')) return audio_track.lang;
-      else if (audio_track.hasOwnProperty('demux-samplerate')) return audio_track.demux-samplerate;
-      else if (audio_track.hasOwnProperty('codec')) return audio_track.codec;
-      else if (audio_track.hasOwnProperty('decoder-desc')) return audio_track.decoder-desc;
-      return ""
-    }
-
-    add_entry_args = []
-    for (var i = 0; i < tracklist.length; i++){
-      if (tracklist[i].type === 'audio') {
-
-        var idx = tracklist[i].id
-        add_entry_args.push([
-        _text(tracklist[i]),
-          function (arg) {
-            return function (evt) {
-              send("set_subtitle", arg)
-              send("play")
-            }
-          }(idx),
-          idx, [0, window.subs.count]])
-      }
-    }
-    this._fill_ul(menu, reverse, add_entry_args)
-  },
-
-  seek_menu: function (currentTarget, seconds_list){
-    var menu = document.getElementById("touchmenu")
-    const reverse = this._prepare(menu, currentTarget, 0)
-
-    add_entry_args = []
-    for (var i = 0; i < seconds_list.length; i++){
-      add_entry_args.push([
-        format_time2(seconds_list[i]),
-        function (arg) {
-          return function (evt) {
-            send("seek", arg)
-          }
-        }(seconds_list[i]),
-        -1, [0, seconds_list.length]])
-    }
-    this._fill_ul(menu, reverse, add_entry_args)
-
-    menu.children[0].style.setProperty('text-align', 'center')
-  },
 }
 
 window.addEventListener('keydown', webui_keydown, true) /* capture to skip scrolling on overlays*/
@@ -1772,35 +1396,6 @@ window.addEventListener('load', status_init_ws, false)
 window.addEventListener('load', add_button_listener, false)
 //status_ws()
 //setInterval(function(){status();}, 1000)
-
-
-function hideTouchMenu(evt) {
-  if (evt.type == 'resize') {
-    // Always hide menu on resize event.
-    longpress.done = false
-  }
-
-  if (longpress.done) { // Skip hide on first click after long touch
-    longpress.done = false
-    return;
-  }
-
-  if (longpress.done !== null) {
-    longpress.done = null
-    console.log("Hide touch menu")
-    var menu = document.getElementById("touchmenu")
-    if (menu){
-      menu.style.setProperty('display', 'none')
-    }
-
-    evt.preventDefault(); /* Without slider below menu will be clicked, etc. */
-  }
-}
-
-window.addEventListener('click', hideTouchMenu);
-window.addEventListener('touchend', hideTouchMenu);
-// Hide touch menu if position/dimension went unclear.
-window.addEventListener('resize', hideTouchMenu);
 
 
 // prevent zoom-in on double-click
@@ -1818,4 +1413,7 @@ if (DEBUG) {
   // For testing long touch events in 'FF + touch simulation':
   // Otherwise the right click simulation aborts my long press detection.
   window.addEventListener("contextmenu", function(e) { e.preventDefault(); })
+}
+if (DEBUG_MOBILE) {
+  logging_in_page()
 }
