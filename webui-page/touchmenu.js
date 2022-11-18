@@ -1,4 +1,4 @@
-const DEBUG_TOUCH = false
+const DEBUG_TOUCH = true
 
 /* Helper object to create elements with short and long press events */
 var longpress = {
@@ -144,23 +144,59 @@ var touchmenu = {
 
     if (arguments.length < 4) expand = {};
     if (arguments.length < 3) preferBottomOffset = 0;
-    const rect = currentTarget.getBoundingClientRect();
-    let above = false
 
-    if (!this._menu_handler.hasOwnProperty(menu)){
+    if (this._menu_handler_initialized.hasOwnProperty(menu) === false){
       DEBUG_TOUCH && console.log("Add menu listener")
       //menu.addEventListener('mousedown', this._avoid_menu_hide)
       //menu.addEventListener('touchstart', this._avoid_menu_hide)
       menu.addEventListener('pointerdown', this._avoid_menu_hide)
       menu.addEventListener('touchmove', this._skip_touchend_handler)
-      this._menu_handler[menu] = true
+      this._menu_handler_initialized[menu] = true
     }
+    this._menu_innerHeights[menu] = window.innerHeight
+
     // Reset flags
     this.touchstart_in_menu = false
     this.touchmove_in_menu = false
 
+    // Clear old content
     menu.style.setProperty('display', 'none')
     menu.replaceChildren()
+
+    // Eval new position. Here the above flag is undefined, but defined in all later calls. We fixing this value because otherwise the order of elements needs to be reversed.
+    var above = this._position(menu, currentTarget, preferBottomOffset, expand, undefined)
+
+    // Remove previous resize handler
+    window.removeEventListener('resize', this._resize_handler[menu])
+
+    // Define new resize handler (respecting arguments of this function)
+    this._resize_handler[menu] = function(evt){
+      //console.log(`Resize! IH: ${window.innerHeight} OH: ${window.outerHeight} BAR: ${window.locationbar.visible} `)
+
+      if (touchmenu._update_innerHeight) // flag set by orientation event
+      {
+        touchmenu._update_innerHeight = false
+        Object.keys(touchmenu._menu_innerHeights).forEach( (m) => {
+            touchmenu._menu_innerHeights[m] = window.innerHeight
+        })
+      }
+
+      // Update position 
+      touchmenu._position(menu, currentTarget, preferBottomOffset, expand, above)
+    }
+
+    // Add resize handler
+    window.addEventListener('resize', this._resize_handler[menu]);
+
+    return above;
+  },
+
+  _position: function (menu, currentTarget, preferBottomOffset, expand, above){
+    console.log("_position called")
+    const rect = currentTarget.getBoundingClientRect();
+
+    // FF-Mobile: Respect hiding of address bar
+    const addressbar_offset = window.innerHeight - touchmenu._menu_innerHeights[menu]
 
     if (expand['left']){
       const rectL = expand['left'].getBoundingClientRect();
@@ -179,14 +215,19 @@ var touchmenu = {
         window.innerWidth - rect.right - window.scrollX)+'px')
     }
 
-    if (rect.top > window.innerHeight - rect.bottom  + preferBottomOffset) {
+    if (above || (rect.top > window.innerHeight - rect.bottom  + preferBottomOffset)) {
       above = true
       menu.style.removeProperty('top')
-      menu.style.setProperty('bottom', Math.round(window.innerHeight - rect.top - window.scrollY)+'px')
+      menu.style.setProperty('bottom', Math.round(
+        window.innerHeight - rect.top - window.scrollY - addressbar_offset
+      )+'px')
       //menu.style.removeProperty('border-top-width')
       //menu.style.setProperty('border-bottom-width', '0.5em')
     }else{
-      menu.style.setProperty('top', Math.round(rect.bottom + window.scrollY)+'px')
+      above = false
+      menu.style.setProperty('top', Math.round(
+        rect.bottom + window.scrollY + addressbar_offset
+      )+'px')
       menu.style.removeProperty('bottom')
       //menu.style.setProperty('border-top-width', '0.5em')
       //menu.style.removeProperty('border-bottom-width')
@@ -511,8 +552,15 @@ var touchmenu = {
     }
   },
 
-  _menu_handler: {},
+  _menu_handler_initialized: {},
+  _resize_handler: {},
   _hidden : true,
+
+  /* FF-Mobile: Save current innerHeight to respect geometry change
+   * by hide/show of addressbar by scrolling.
+   */
+  _menu_innerHeights: {},
+  _update_innerHeight: false,
 }
 
 function captureEvents(evt) {
@@ -548,13 +596,6 @@ function hideTouchMenu(evt) {
     "  |" + touchmenu.touchstart_in_menu + ", " + longpress.done)
   if (touchmenu._hidden) {
     return;
-  }
-  if (evt.type == 'resize') {
-    return;
-    // TODO: Ignore resize between [touchstart, touchend]
-    // Scrolling forces resize due hide of uri row
-    // Always hide menu on resize event.
-    longpress.done = false
   }
 
   if( touchmenu.touchstart_in_menu || longpress.done)
@@ -617,8 +658,25 @@ window.addEventListener('change', captureEvents, {'capture': true})*/
 window.addEventListener('click', hideTouchMenu, {'capture': false})
 //window.addEventListener('touchend', hideTouchMenu, {'capture': false})
 
-// Hide touch menu if position/dimension went unclear.
-//window.addEventListener('resize', hideTouchMenu);
+//TODO
+screen.orientation.addEventListener('change', (evt) => {
+  //console.log("Orient!" + screen.orientation.type)
 
+  // Note that window.innerHeight is not updated to value after orientation
+  // change (2022). We need to add a one-time listener to the next resize event.
+  // or…
+  /*
+   * window.addEventListener('resize', function(evt) {
+   *   // Reset some anchors to new innerHeight.
+   *   Object.keys(touchmenu._menu_innerHeights).forEach( (m) => {
+   *     touchmenu._menu_innerHeights[m] = window.innerHeight
+   *   })
+   * }, {once:true, capture:true});
+   */
+  // … setting a flag forresize-handler in touchmenu._prepare.
+  // This is the preferred variant because above listener wouldn't fire before
+  // the other handler, but after.
+  touchmenu._update_innerHeight = true
 
+})
 

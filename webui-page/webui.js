@@ -1,5 +1,5 @@
-var DEBUG = true,
-    DEBUG_MOBILE = false,
+var DEBUG = false,
+    DEBUG_MOBILE = true,
     use_dummy_audio_element = false, /* for controls on lock screen. */
     metadata = {},
     subs = {},
@@ -1384,9 +1384,14 @@ function add_button_listener() {
     if (count == 0){
       console.log(`No button named '${x[0]}' found to add event!`)
     }
-    longpress.addEventHandler(els, x[1], x[2], x[3])
-    if (el) {
-      longpress.addEventHandler([el], x[1], x[2], x[3])
+    if (window.longpress) {
+      longpress.addEventHandler(els, x[1], x[2], x[3])
+      if (el) {
+        longpress.addEventHandler([el], x[1], x[2], x[3])
+      }
+    }else{
+      // Fallback on non-touchmenu-case
+      console.log("TODO")
     }
   })
 }

@@ -20,6 +20,7 @@ body {
   padding: 0px;
 
   overflow:auto;
+  /*overflow:clip;*/
 }
 
 h1, h2, h3 {
@@ -879,10 +880,10 @@ ul#sharelist li i.share_bullet {
     /*padding-bottom:0.1em;*/
   }
 
-  #debug::after {
+  /*#debug::after {
     color:navy;
     content: "slim"
-  }
+  }*/
 } /* end of @media  */
 
 /* Design for wide screens */
@@ -915,10 +916,10 @@ ul#sharelist li i.share_bullet {
     font-size: min(4.5vw, 4em);
   }
 
-  #debug::before {
+  /*#debug::before {
     color:navy;
     content: "wide"
-  }
+  }*/
 } /* end of @media  */
 
 
@@ -959,8 +960,8 @@ ul#sharelist li i.share_bullet {
     background-color:navy;
   }
 
-  #debug::after {
+  /*#debug::after {
     color:navy;
     content: "debug"
-  }
+  }*/
 } /* end of @media  */
