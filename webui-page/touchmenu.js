@@ -1,4 +1,4 @@
-const DEBUG_TOUCH = true
+const DEBUG_TOUCH = false
 
 /* Helper object to create elements with short and long press events */
 var longpress = {
@@ -192,7 +192,7 @@ var touchmenu = {
   },
 
   _position: function (menu, currentTarget, preferBottomOffset, expand, above){
-    console.log("_position called")
+    //console.log("_position called")
     const rect = currentTarget.getBoundingClientRect();
 
     // FF-Mobile: Respect hiding of address bar

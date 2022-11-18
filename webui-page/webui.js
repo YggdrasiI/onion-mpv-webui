@@ -1,5 +1,5 @@
 var DEBUG = false,
-    DEBUG_MOBILE = true,
+    DEBUG_MOBILE = false,
     use_dummy_audio_element = false, /* for controls on lock screen. */
     metadata = {},
     subs = {},
