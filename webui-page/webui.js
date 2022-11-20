@@ -87,6 +87,11 @@ function send_ws(command, ...params){
  * need to build this by hand.
  */
 function checkForStatusUpdate(immedialty){
+  if (immedialty && !window.connected && !window.tab_in_background){
+    clearTimeout(window.mpv_outstanding_status.restart)
+    status_init_ws()
+    return
+  }
   if (!window.mpv_outstanding_status.pending) return;
 
   var _handler = function() {
@@ -161,9 +166,11 @@ function togglePlaylist() {
 function createPlaylistTable(entry, position, pause, first) {
   function setActive(set) {
     if (set === true) {
+      td_left.innerHTML = '<i class="fas fa-play"></i>'
       td_left.classList.add('active')
       td_2.classList.add('active')
     } else {
+      td_left.replaceChildren()
       td_left.classList.remove('active')
       td_2.classList.remove('active')
     }
@@ -235,15 +242,15 @@ function createPlaylistTable(entry, position, pause, first) {
     }
 
     td_left.addEventListener('click', () => { playlist_jump(table) })
-    td_2.addEventListener('click', () => { playlist_jump(table) })
+    //td_2.addEventListener('click', () => { playlist_jump(table) })
 
     td_left.addEventListener("mouseover", function() {setActive(true)})
     td_left.addEventListener("mouseout", function() {setActive(false)})
-    td_2.addEventListener("mouseover", function() {setActive(true)})
-    td_2.addEventListener("mouseout", function() {setActive(false)})
+    //td_2.addEventListener("mouseover", function() {setActive(true)})
+    //td_2.addEventListener("mouseout", function() {setActive(false)})
 
     td_left.addEventListener("click", blink)
-    td_2.addEventListener("click", blink)
+    //td_2.addEventListener("click", blink)
   }
 
   td_3.addEventListener('click',
@@ -1050,10 +1057,12 @@ function status_init_ws(){
       }
     }
 
-    window.mpv_outstanding_status.restart = setTimeout(function() {
-      console.log("Try reconnecting websocket")
-      status_init_ws()
-    }, 5000)
+    if (!window.tab_in_background) {
+      window.mpv_outstanding_status.restart = setTimeout(function() {
+        console.log("Try reconnecting websocket")
+        status_init_ws()
+      }, 5000)
+    }
   }
   //ws.onerror = ws.onclose; // not required for reconnections
 
