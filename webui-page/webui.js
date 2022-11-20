@@ -460,6 +460,7 @@ function webui_keydown(evt) {
     if (evt.keyCode === bindings[i].code || evt.key === bindings[i].key) {
       send(bindings[i].command, bindings[i].param1, bindings[i].param2)
       evt.stopPropagation()
+      evt.preventDefault()  // e.g. avoids 'scrolling by space key'
       break
     }
   }
