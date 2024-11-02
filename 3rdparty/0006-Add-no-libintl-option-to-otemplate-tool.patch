@@ -70,6 +70,7 @@ index 6a7c8e4..96d06f8 100644
 +      fprintf(status.out, "#define dgettext(DICT, KEY) (KEY)\n");
 +  }
 +  fprintf(status.out,
++          "#include <stdio.h>\n"
            "#include <string.h>\n\n"
            "#include <onion/onion.h>\n"
            "#include <onion/dict.h>\n"
