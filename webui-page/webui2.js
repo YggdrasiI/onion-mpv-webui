@@ -1,3 +1,5 @@
+DEBUG_SORTINGS = false
+
 var sortings = {
   "alpha": {
     // id for direction, normally just 1 for forward and -1 for backward
@@ -59,6 +61,7 @@ function share_change(el){
     // Backup current sorting and its direction
     if (shares.sorting) {
       var sname = shares.sorting.sname
+      DEBUG_SORTINGS && console.log(`Save sorting ${shares.sorting.sname} ${sortings[sname].active}`)
       shares.local_sorting[prev_dirname] = {
         "sname": shares.sorting.sname,
         "active": sortings[sname].active
@@ -238,15 +241,16 @@ function print_share_list(json){
   /* Presort element before inserting into DOM */
   var local_sorting = shares.local_sorting[json.dirname]
   if (local_sorting !== undefined){
-    DEBUG && console.log(`Restore sorting ${local_sorting.sname} ${local_sorting.active}`)
+    DEBUG_SORTINGS && console.log(`Restore sorting ${local_sorting.sname} ${local_sorting.active}`)
     // Use previous sorting option for this folder because the
     // saved scrollingOffset matches just for this value
     shares.sorting = {"sname": local_sorting.sname}
     sortings[local_sorting.sname].active = local_sorting.active
     __sortShareList(sharelist)
+    update_sort_buttons()
   }else if(shares.sorting){
     var sname = shares.sorting.sname
-    DEBUG && console.log(`Use sorting ${sname} ${sortings[sname].active}`)
+    DEBUG_SORTINGS && console.log(`Use sorting ${sname} ${sortings[sname].active}`)
     __sortShareList(sharelist)
   }
 
@@ -410,10 +414,12 @@ function update_sort_buttons()
   for (var sname in sortings ){
     var s = sortings[sname]
     var cur = s.active
+    DEBUG_SORTINGS && console.log(`Change Icon from ${sname} to ${cur}`)
     var prev = (s.dirs.length + cur - 1) % s.dirs.length
     var x = get_fa_nodes("shareSortButton_" + sname, "fas")
     x.forEach(function (fasEl) {
-      fasEl.classList.replace(s["icons"][prev], s["icons"][cur])
+      fasEl.classList.remove(...s["icons"])
+      fasEl.classList.add(s["icons"][cur])
     })
   }
 }
@@ -478,9 +484,9 @@ function decode(s){
 }
 
 function encode(s){
-	// Encode spaces. Is this enough?!
+  // Encode spaces. Is this enough?!
   s = s.replaceAll(' ', '%20')
-	return s
+  return s
 }
 
 // From simple-mpv-webui
