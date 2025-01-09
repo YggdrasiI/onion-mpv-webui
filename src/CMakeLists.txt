@@ -182,7 +182,7 @@ if(ONION_BUILD)
 		# Patch source of libonion (during configuration time)
 		execute_process(
 			COMMAND git checkout -b onion-mpv-webui
-			COMMAND git pull ../onion-mpv-webui_0001-0008.bundle onion-mpv-webui
+			COMMAND git pull ../onion-mpv-webui.bundle HEAD
 			COMMAND cmake -E touch .onion_patched
 			WORKING_DIRECTORY "${ONION_DIR}"
 			)

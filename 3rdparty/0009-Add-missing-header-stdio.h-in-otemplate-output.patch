@@ -1,0 +1,24 @@
+From 310e6fd3a0ba1dfb0135bcf37db5e53c984df961 Mon Sep 17 00:00:00 2001
+From: Olaf Schulz <947069+YggdrasiI@users.noreply.github.com>
+Date: Thu, 9 Jan 2025 11:20:43 +0100
+Subject: [PATCH] Add missing header stdio.h in otemplate output
+
+---
+ tools/otemplate/otemplate.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/tools/otemplate/otemplate.c b/tools/otemplate/otemplate.c
+index 96d06f8..ea309ce 100644
+--- a/tools/otemplate/otemplate.c
++++ b/tools/otemplate/otemplate.c
+@@ -241,6 +241,7 @@ int work(const char *infilename, const char *outfilename,
+       fprintf(status.out, "#define dgettext(DICT, KEY) (KEY)\n");
+   }
+   fprintf(status.out,
++          "#include <stdio.h>\n\n"
+           "#include <string.h>\n\n"
+           "#include <onion/onion.h>\n"
+           "#include <onion/dict.h>\n"
+-- 
+2.47.1
+

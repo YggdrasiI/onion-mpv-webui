@@ -13,13 +13,12 @@ diff --git a/examples/websockets/CMakeLists.txt b/examples/websockets/CMakeLists
 index c9f8b01..aa5573b 100644
 --- a/examples/websockets/CMakeLists.txt
 +++ b/examples/websockets/CMakeLists.txt
-@@ -1,3 +1,6 @@
+@@ -1,3 +1,5 @@
  add_executable(websockets websockets.c)
  target_link_libraries(websockets onion)
  
 +add_executable(websockets_multiclient websockets_multiclient.c)
 +target_link_libraries(websockets_multiclient onion)
-+
 diff --git a/examples/websockets/websockets_multiclient.c b/examples/websockets/websockets_multiclient.c
 new file mode 100644
 index 0000000..c916d6a
@@ -112,7 +111,7 @@ index 0000000..c916d6a
 +}
 +
 +void ws_userdata_free(void * data){
-+  ws_userdata *userdata = (ws_userdata *) data; 
++  ws_userdata *userdata = (ws_userdata *) data;
 +  pthread_mutex_lock(&ws_lock[userdata->index]);
 +  ws_active[userdata->index] = NULL;
 +  pthread_mutex_unlock(&ws_lock[userdata->index]);
