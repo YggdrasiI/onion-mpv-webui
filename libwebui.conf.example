@@ -2,8 +2,8 @@
 profile-desc="Enables webinterface"
 
 # Mandatory arguments
-script="${PWD}/build/src/libwebui.so"
-script-opts-add=libwebui-root_dir="${PWD}/webui-page"
+script="${SCRIPT_DIR}/libwebui.so"
+script-opts-add=libwebui-root_dir="${HTTP_DIR}/webui-page"
 
 # idle=yes # Otherwise, mpv returns before plugin is loaded without files
 

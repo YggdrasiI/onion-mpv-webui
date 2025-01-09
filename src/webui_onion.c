@@ -39,6 +39,7 @@
 #include "fileserver.h"
 #include "media.h"
 #include "onion_ws_status.h"
+#include "onion_default_errors.h"
 
 
 
@@ -80,15 +81,15 @@ void webui_onion_end_signal(int unused) {
 
 
 onion_connection_status handle_status_get(void *d, onion_request * req, onion_response * res){
+    onion_response_set_header(res, "Content-Type", onion_mime_get("_.json"));
+
 #ifdef WITH_MPV
     char *json = json_status_response();
 
-    onion_response_set_header(res, "Content-Type", onion_mime_get("_.json"));
     onion_connection_status ret = onion_shortcut_response(json, 200, req, res);
     free(json);
     return ret;
 #else
-    onion_response_set_header(res, "Content-Type", onion_mime_get("_.json"));
     return onion_shortcut_response("{\"info\":\"Compiled without mpv\"}", 200, req, res);
 #endif
 }
@@ -103,6 +104,8 @@ onion_connection_status handle_api_post_data(void *_, onion_request * req,
     onion_response_write_headers(res);
     return OCS_PROCESSED;
   }
+
+  onion_response_set_header(res, "Content-Type", onion_mime_get("_.json"));
 
   /* Get data */
   // Default variant: Api command encoded in path
@@ -430,13 +433,14 @@ int webui_onion_init(onion_dict *_options) {
   // All is configured now, now in hands of dgettext(LANG, txt);
 #endif
 
-    if ('0' == onion_dict_get(options, "debug")[0]) {
-        onion_log_flags |= OF_NODEBUG;
-        //onion_log_flags |= OF_NOINFO;
-    }
+  // Disable DEBUG of libonion output
+  if ('0' == onion_dict_get(options, "debug")[0]) {
+      onion_log_flags |= OF_NODEBUG;
+      //onion_log_flags |= OF_NOINFO;
+  }
 
   /* Note that PATH_MAX does not guarantee that arbitary
-   * pathst are not longer than this value. E.g. an absolute
+   * paths are not longer than this value. E.g. an absolute
    * path of a relative path could be longer. So still
    * check the boundaries on writing into 'path_buffers'.
    * See https://eklitzke.org/path-max-is-tricky
@@ -463,7 +467,6 @@ int webui_onion_init(onion_dict *_options) {
   //o = onion_new(O_DETACH_LISTEN);
   o = onion_new(O_THREADED|O_DETACH_LISTEN|O_NO_SIGTERM); // requires mutex lock on mpv access?!
 
-
   //Connect url pattern with handlers. Also added the empty rule that redirects to static/index.html
   onion_url *urls = onion_url_new();
 
@@ -473,6 +476,8 @@ int webui_onion_init(onion_dict *_options) {
   onion_url_add(urls, "ws", ws_status_start);  // websocket
   onion_url_add(urls, "^api/", handle_api_post_data);
   onion_url_add(urls, "^api2$", handle_api_post_data2);
+  /* /api2 evaluates POST content of api.html and redirects to api.html
+   * after handling command */
 
   onion_url_add_static(urls, "api.html",
                        "<html>\n"
@@ -508,6 +513,9 @@ int webui_onion_init(onion_dict *_options) {
   onion_set_root_handler(o, onion_url_to_handler(urls));
   onion_set_port(o, onion_dict_get(options, "port"));
   onion_set_hostname(o, onion_dict_get(options, "hostname"));
+
+  // Overwrite internal error handler
+  webui_wrap_onion_internal_error_handler(o);
 
   signal(SIGINT, webui_onion_end_signal);
   signal(SIGTERM, webui_onion_end_signal);

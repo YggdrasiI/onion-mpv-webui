@@ -1,0 +1,62 @@
+<svg version="1.1"
+xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+width="1100" height="auto" preserveAspectRatio="none">
+<defs>
+<symbol id="markA"
+viewBox="0 0 50 200"
+YpreserveAspectRatio="none"
+preserveAspectRatio="xMidYMid"
+>
+<!--
+preserveAspectRatio="none" ==> Positionierung mit translate ist erfolgreich weil innere Breite mit äußerer übereinstimmt.
+-->
+<!--
+ 2. (0,0) ——————— (X3,0)   3.
+        \            /
+ 1.    (X1,H1)  (X2,H1)    4.
+         |          |
+         |          |
+ 8.    (X1,H2)  (X2,H2)    5.
+        /            \
+ 7. (0,H4) ——————— (X3,H4) 6.
+ X1=19, X2=X3-X1=30, X3=49
+ H1=49, H2=H3-H1=150, H3=199
+-->
+<polygon
+points="19,49 0,0 49,0, 30,49, 30,150, 49,199, 0,199, 19,150"
+Xfill="rgba(33,33,33,0.5)" fill="transparent"
+stroke="#555544" stroke-width="3" vector-effect="non-scaling-stroke"
+/>
+</symbol>
+<symbol id="markB"
+viewBox="0 0 50 200"
+preserveAspectRatio="xMidYMid"
+>
+<polygon
+points="24,49 0,0 49,0, 25,49, 25,150, 49,199, 0,199, 24,150"
+Xfill="rgba(33,33,33,0.5)" fill="rgba(200,30,30, 0.3)"
+stroke="#555544" stroke-width="3" vector-effect="non-scaling-stroke"
+/>
+</symbol>
+    <linearGradient id="g" x1="0%" x2="0%" y1="0%" y2="100%">
+      <stop style="stop-color: cyan;" offset="0"/>
+      <stop style="stop-color: blue;" offset="1"/>
+    </linearGradient>
+</defs>
+<!--<g transform="translate(0 3)"></g>
+<rect x="0" width="100%" height="100%" fill="rgba(0,100,0,.5)" />
+-->
+<!-- Translation by Leftborder_Width - Element_Width/2 = 50 - 25 = 25
+  x value of xlink-Element is 'chapter mark position' * 10.
+-->
+<!--<rect style="fill: url(#g);" width="100%" height="100%"/>
+<rect x="50" width="1000" height="50%" fill="rgba(0,100,0,.5)" />
+<rect x="50" width="1000" height="50" fill="rgba(0,100,0,.5)" />
+<rect x="0" width="1000" height="50" fill="rgba(100,0,0,.5)" />-->
+<g transform="translate(25 0)">
+<use xlink:href="#markB" x="0" width="50" height="100%" />
+<use xlink:href="#markB" x="500" width="50" height="100%" />
+<use xlink:href="#markB" x="1000" width="50" height="100%" />
+</g>
+</svg>
+

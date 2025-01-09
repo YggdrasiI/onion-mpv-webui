@@ -774,7 +774,7 @@ function playlist_loop_cycle() {
   }
 }
 
-function setChapter(chapters, chapter, metadata) {
+function setChapter(num_chapters, chapter, metadata) {
   var chapterContent = document.getElementById('chapterContent')
   var chapter_title = ''
   if (metadata !== null ){
@@ -786,15 +786,61 @@ function setChapter(chapters, chapter, metadata) {
       //chapter_title = "No title"
     }
   }
-  if (chapters === 0) {
+  if (num_chapters === 0) {
     displayElementClass('chapter', false)
     displayElementClass('no_chapter', true)
     chapterContent.innerText = "0/0"
   } else {
     displayElementClass('chapter', true)
     displayElementClass('no_chapter', false)
-    chapterContent.innerText = "" + (chapter + 1) + "/" + chapters
+    chapterContent.innerText = "" + (chapter + 1) + "/" + num_chapters
       + " " + chapter_title
+  }
+}
+
+function updateCapterMarks(num_chapters, chapter, metadata, chapter_list, duration) {
+  /* Enrich the position slider by the chapter marks. Currently 
+   * this is realized by drawing the marks into a SVG background-image.
+   */
+  var chapter_marker = document.getElementById('chapter_marker')
+  if (num_chapters === 0) {
+    chapter_marker.style.backgroundImage = 'none'
+  }else{
+		if( chapter == -1 ){
+			/* If mpv is paused and the played file is changed, duration of the previous file is 
+			 * still the active. We need to wait until chapter >= 0 to guarantee that the correct
+			 * time was extracted from the file. (*4)
+			 * 
+			 */
+			return;
+		}
+
+		var svg_chapter_list = []
+		console.log(duration)
+    for (var i = 0; i < chapter_list.length; i++){
+			const pos_promille = (1000 * chapter_list[i]['time']/duration).toFixed(2)
+			svg_chapter_list.push(`<use xlink:href="%23markB" x="${pos_promille}" width="50" height="100%" />\\`)
+		}
+    chapter_marker.style.backgroundImage = `url('data:image/svg+xml,\\
+<svg version="1.1" \\
+xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" \\
+width="1100" height="auto" preserveAspectRatio="none">\\
+<defs>\\
+<symbol id="markB" \\
+viewBox="0 0 50 200" \\
+preserveAspectRatio="xMidYMid" \\
+>\\
+<polygon \\
+points="24,49 0,0 49,0, 25,49, 25,150, 49,199, 0,199, 24,150" \\
+fill="rgba(200,30,30, 0.3)" \\
+stroke="%23555544" stroke-width="1" vector-effect="non-scaling-stroke"\\
+/>\\
+</symbol>\\
+</defs>\\
+<g transform="translate(25 0)">\\
+		${svg_chapter_list.join('\n')}
+</g>\\
+</svg>')`
   }
 }
 
@@ -883,6 +929,9 @@ function handleStatusResponse(json) {
   if ('mediaSession' in navigator) {
     setupNotification()
   }
+
+	updateCapterMarks(json['chapters'], json['chapter'], json['chapter-metadata'],
+		json['chapter-list'], json['duration'])
 }
 
 function handleStatusUpdate(status_updates) {
@@ -940,6 +989,14 @@ function handleStatusUpdate(status_updates) {
     ||"chapter" in status_updates
     ||"chapter-metadata" in status_updates){
     setChapter(new_status['chapters'], new_status['chapter'], new_status['chapter-metadata'])
+  }
+
+	if ("chapter" in status_updates && mpv_status['chapter'] == -1){ /* See (4*) */
+		updateCapterMarks(new_status['chapters'], new_status['chapter'], new_status['chapter-metadata'],
+			new_status['chapter-list'], new_status['duration'])
+	} else if ("chapters" in status_updates){
+    updateCapterMarks(new_status['chapters'], new_status['chapter'], new_status['chapter-metadata'],
+			new_status['chapter-list'], new_status['duration'])
   }
   if ("playlist" in status_updates){
     updateNotification(new_status)
@@ -1406,7 +1463,17 @@ function add_button_listener() {
   })
 }
 
-window.addEventListener('keydown', webui_keydown, true) /* capture to skip scrolling on overlays*/
+function setup_keybinding_listening() {
+	window.addEventListener('keydown', webui_keydown, true) /* capture to skip scrolling on overlays*/
+
+	// Clicking on a slider will catching the keypress events. Add listener to this elements, too.
+  var input_slider = document.getElementsByClassName('slider');
+	[].slice.call(input_slider).forEach(function (el) {
+	el.addEventListener('keydown', webui_keydown, true)
+	})
+}
+
+setup_keybinding_listening()
 window.addEventListener('load', status_init_ws, false)
 window.addEventListener('load', add_button_listener, false)
 //status_ws()

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<style>
+body {
+	background-color:#222;
+}
+.slim {
+	height:66px !important;
+}
+.svg {
+	width:500px;
+	height:200px;
+	/*border: 2px solid green;*/
+	color:purple;
+	background-color:gray;
+
+/* Notes:
+ * • Style defined in symbol 'mark' and then references later with multiple positions.
+ * • Escape '#' with '%23' (ocours e.g. in id names)!
+ * • Setting svg height to auto allows automatic scaling on width of the slider without 
+ *   keeping the aspect ratio but filling the correct height.
+ *   You has to set 'background-size:cover;' too.
+   • 'px' in viewBox width of 'mark' is required. Otherwise FF offsets the element.
+	 • The marking line has a fixed thinkness (does not scale).
+ */
+	background-image: url('data:image/svg+xml,\
+		<svg version="1.1" \
+		xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" \
+		width="1000" height="auto">\
+		<defs><symbol id="mark" viewBox="0 0 20px 100px" preserveAspectRatio="xMinYMin" transform="translate(-10 0)">\
+		<rect x="0" width="20" height="100" fill="rgba(100,0,0,.5)" />\
+	  <line x1="10" y1="0" x2="10" y2="100" stroke="%23555544" stroke-width="2px" vector-effect="non-scaling-stroke"/>\
+		</symbol></defs>\
+		<use xlink:href="%23mark" x="0"/>\
+		<use xlink:href="%23mark" x="500" />\
+		<use xlink:href="%23mark" x="1000" />\
+		<!--\
+		<rect width="20" height="50" y="0" x="-10" fill="%237f0044"/>\
+		<rect width="1000" height="50" y="0" x="0" style="fill:rgba(0,0,0,0);stroke-width:3;stroke:yellow" stroke="%23000"/>\
+		-->\
+		</svg>');
+	background-repeat:no-repeat;
+  background-position:0 0;
+
+	background-size:cover;
+/* cover: Skaliert in beide Dimensionen, d.h. die Höhe des Elements hat Einfluss. */
+}
+.slider {
+width:100%;
+}
+
+
+input[type=range] {
+  -webkit-appearance: none;
+  width: 100%;
+  margin: 50px 0;
+}
+input[type=range]:focus {
+  outline: none;
+}
+input[type=range]::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 8.4px;
+  cursor: pointer;
+  box-shadow: 1px 1px 1px #000000, 0px 0px 1px #0d0d0d;
+  background: #3071a9;
+  border-radius: 1.3px;
+  border: 0.2px solid #010101;
+}
+input[type=range]::-webkit-slider-thumb {
+  height: 50px;
+  width: 50px;
+  border-radius: 3px;
+  background-color: transparent;
+  background: url(https://i.sstatic.net/QneFV.png) center center no-repeat;
+  cursor: pointer;
+  -webkit-appearance: none;
+  margin-top: -23px;
+}
+input[type=range]:focus::-webkit-slider-runnable-track {
+  background: #367ebd;
+}
+input[type=range]::-moz-range-track {
+  width: 100%;
+  height: 8.4px;
+  cursor: pointer;
+  box-shadow: 1px 1px 1px #000000, 0px 0px 1px #0d0d0d;
+  background: #3071a9;
+  border-radius: 1.3px;
+  border: 0.2px solid #010101;
+}
+input[type=range]::-moz-range-thumb {
+  height: 50px;
+  width: 50px;
+  border-radius: 3px;
+  background-color: transparent;
+  background: url(https://i.sstatic.net/QneFV.png) center center no-repeat;
+  cursor: pointer;
+  -webkit-appearance: none;
+  margin-top: -23px;
+}
+input[type=range]::-ms-track {
+  width: 100%;
+  height: 8.4px;
+  cursor: pointer;
+  background: transparent;
+  border-color: transparent;
+  color: transparent;
+}
+input[type=range]::-ms-fill-lower {
+  background: #2a6495;
+  border: 0.2px solid #010101;
+  border-radius: 2.6px;
+  box-shadow: 1px 1px 1px #000000, 0px 0px 1px #0d0d0d;
+}
+input[type=range]::-ms-fill-upper {
+  background: #3071a9;
+  border: 0.2px solid #010101;
+  border-radius: 2.6px;
+  box-shadow: 1px 1px 1px #000000, 0px 0px 1px #0d0d0d;
+}
+input[type=range]::-ms-thumb {
+  height: 50px;
+  width: 50px;
+  border-radius: 3px;
+  background-color: transparent;
+  background: url(https://i.sstatic.net/QneFV.png) center center no-repeat;
+  cursor: pointer;
+  -webkit-appearance: none;
+  margin-top: -23px;
+}
+input[type=range]:focus::-ms-fill-lower {
+  background: #3071a9;
+}
+input[type=range]:focus::-ms-fill-upper {
+  background: #367ebd;
+}
+
+		</style>
+	</head>
+	<body>
+		<input type="range" />
+	<div class="svg">ABC</div>
+	<br /><br />
+<!--	<div class="svg" style="width:100%">Breit</div>-->
+<div class="svg " style="width:75%"></div>
+	<br /><br />
+<div class="svg slim" style="width:100%"><input type="range" min="0" max="1000.0" value="0" step="any" class="slider" id="mediaPosition" title="posSlider"></div>
+	</body>
+</html>

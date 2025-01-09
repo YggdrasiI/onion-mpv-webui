@@ -17,6 +17,11 @@ var longpress = {
 
   addEventHandler: function(els, evt_type, shortpress_h, longpress_h){
     if (els.length == 0) return;
+
+		// Threat undefined handlers like null
+		if (shortpress_h === undefined) shortpress_h = null
+		if (longpress_h === undefined) longpress_h = null
+
     if (longpress_h != null && !evt_type in ['mouseup', 'pointerup']){
       console.log("Warning, touchmenu defined for event != mouseup/pointerup."
       + "Element: " + (els[0].getAttribute('id')||els[0].getAttribute('name')) )

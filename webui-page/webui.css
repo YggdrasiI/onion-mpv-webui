@@ -36,7 +36,7 @@ h1 {
 #title {
   max-height:3.5em;
   /*overflow:hidden;*/ /* cuts text lines */
-  height:inherit;
+  /*height:inherit;*/
 }
 
 h1 span.error {
@@ -159,18 +159,27 @@ table.prop-table {
 
 table.prop-table td {
   padding: 0 0.5rem 0 0;
-  overflow-y: visible;
   /*border:1px solid blue;*/
 }
 
-.slidecontainer {
+.slidercontainer {
   width: 100%;
   /*height:100%;*/ /* bad, we want keep same distance to bottom row. */
+
+  /* We need to set position for .chapter_mark_svg.
+   * Otherwise:
+   *  1. width:100% of .chapter_mark_svg will ignore the padding-right of #controlBox.
+   *  2. top:... of .chapter_mark_svg will use wrong anchor point.*/
+  position:relative;
+  top:0px;left:0px;
+  height:100%;
+  display:grid;
 }
 
+#test,
 input[type="range"] {
-  margin: auto;
-  margin-bottom: 7px;
+  margin: 0px 0px; /* horizontales Margin >0 beeinflusst 100%-Breite von .chapter_mark_svg ?! */
+  /*margin-bottom: -7px; /* Hm, only negative value removes this gap in FF?! */
   width:100%;
   height: 4vmin;
 
@@ -180,18 +189,24 @@ input[type="range"] {
 
   overflow: hidden;
   cursor: pointer;
-  /*background: var(--main-fg-color);*/
 
   -webkit-appearance: none;
 }
 
-::-webkit-slider-runnable-track {
+/*input[type="range"]:not(.chapter_mark_svg) {
   background: var(--main-bg-color);
+}*/
+input[type="range"] {
+  background-color: transparent;
+}
+
+::-webkit-slider-runnable-track {
+  /*background-color: var(--main-bg-color);*/
   height: 4vmin;
 }
 
 ::-webkit-slider-container {
-  background: var(--main-fg-color);
+  /*background-color: var(--main-bg-color);*/
 }
 
 /*
@@ -201,13 +216,13 @@ input[type="range"] {
   -webkit-appearance: none;
   width: 0; /* 1 */
   height: 40px;
-  background: #fff;
+  background-color: #fff;
   box-shadow: -100vw 0 0 100vw var(--main-fg-color);
   border: 0 solid #999; /* 1 */
 }
 
 ::-moz-range-thumb {
-  background: #fff;
+  background-color: #fff;
   height: 40px;
   width: 0;
   border: 0 solid #999;
@@ -217,16 +232,16 @@ input[type="range"] {
 }
 
 ::-moz-range-track {
-  height: 4vmin;
-  background: var(--main-bg-color);
+  /*height: 4vmin; 2024, not required?!*/
+  /*background-color: var(--main-bg-color);*/
 }
 
 ::-ms-fill-lower {
-  background: var(--main-fg-color);
+  background-color: var(--main-fg-color);
 }
 
 ::-ms-thumb {
-  background: #fff;
+  background-color: #fff;
   border: 2px solid #999;
   height: 40px;
   width: 20px;
@@ -242,7 +257,7 @@ input[type="range"] {
 }
 
 ::-ms-track {
-  background: #ddd;
+  background-color: #ddd;
   color: transparent;
   height: 4vmin;
   border: none;
@@ -253,13 +268,16 @@ input[type="range"] {
 }
 
 .slider {
-	/* class used in JS functions */
+  /* class used in JS functions */
 }
 .sliderInfoContainer {
   /*width: 100%;*/
   text-align: center;
   font-size: 4vmin;
   /*margin-bottom: 20px;*/
+  /*margin-top: 4vmin; /* Height of slider */
+
+  pointer-events:none; /* Prevent overlapping of buttons */
 }
 
 .sliderCenter {
@@ -268,7 +286,7 @@ input[type="range"] {
 }
 
 .sliderVolume {
-  margin-bottom: 20px;
+  /*margin-bottom: 20px;*/
 }
 
 #overlay, #overlay2 {
@@ -419,7 +437,7 @@ td.playlist.playing:hover {
 #controlBox {
   position: absolute;
   /*top: 0px;*/
-  left: 20px;
+  left: 0px; /* Offset now realised by padding-left. This prevents cut of chapter_mark_svg overflow. Alternative: change overflow- */
   right: 0rem;
   bottom: 0px;
   max-height:80%;
@@ -454,14 +472,14 @@ td.playlist.playing:hover {
   overflow-x:hidden;
   overflow-y:auto;
   padding-right: 40px; /* scrollbar-space?! */
-
+  padding-left: 20px; 
 }
 
 #header {
   height:100%;
 
   /*align-self:start;*/
-  overflow-y:hidden;
+  /*overflow-y:hidden;*/
 
   margin-right: 3em;
 }
@@ -489,7 +507,15 @@ td.playlist.playing:hover {
   /* Place content on bottom */
   display:grid;
   align-items:end;
+
+  /* We need to set absolute position for .chapter_mark_svg.
+   * Otherwise:
+   *  1. width:100% of .chapter_mark_svg will ignore the padding-right of #controlBox.
+   *  2. top:... of .chapter_mark_svg will use wrong anchor point.*/
+  position:absolute;
+  width:100%;
 }
+
 #leftControls1 {
   /* As subelement */
   grid-column-start:Cleft;
@@ -638,6 +664,8 @@ td.playlist.playing:hover {
   color: var(--main-fg-color);
   box-sizing: border-box; /* Border respected by width. */
   border-radius: 60px;
+  /*padding-left:1em; /* Avoid round border collision */
+  text-align:center;
 
   text-transform: capitalize;
 }
@@ -720,6 +748,23 @@ ul#sharelist li i.share_bullet {
   flex-shrink: 0;
 }
 
+/* Long chapter titles can vertially be cut by overflow:hidden
+ * Using this, class the text will be not drawn after N lines */
+.truncate-text-multiline2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.truncate-text-multiline3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+
+
 #debug {
   position:absolute;
   left:0px;
@@ -757,8 +802,8 @@ ul#sharelist li i.share_bullet {
   /*padding-top:1em; padding-bottom:1em;*/ /* For border-radius */
   border-radius:1em;
 
-	user-select:none; /* Without this click events are triggered
-										 * even if mouse moved away after mousedown */
+  user-select:none; /* Without this click events are triggered
+                     * even if mouse moved away after mousedown */
 
   background-color: var(--touchmenu-bg);
 }
@@ -782,44 +827,88 @@ ul#sharelist li i.share_bullet {
 }
 /* Touchmenu END */
 
+/* Slider chapter marks */
+.chapter_mark_svg {
+  position:absolute;
+  left:-5%; /* -5% are 50px in SVG */
+  right:-5%;
+  top:-2vmin;
+  height:8vmin;
+  z-index:-1;
+
+  /*background-color: var(--main-bg-color);*/
+
+  /* Notes:
+   * • Style defined in symbol 'mark' and then references later with multiple positions.
+   * • Escape '#' with '%23' (ocours e.g. in id names)!
+   * • Setting svg height to auto allows automatic scaling on width of the slider without 
+   *   keeping the aspect ratio but filling the correct height.
+   *   You has to set 'background-size:cover;' too.
+   • 'px' in viewBox width of 'mark' is required. Otherwise FF offsets the element.
+   • The marking line has a fixed thinkness (does not scale).
+   */
+  background-repeat:no-repeat;
+  background-position:0 0;
+  background-size:cover; /* cover: Scaling in both dimensions, but not 'shortest. */
+
+  /* The url()-arg needs to be updated by JS at runtime.
+   *
+   * Insert an <use xlink:href="%23mark" x="{VAL}" /> tag for each mark.
+   * Note that a predefined svg given by data: will be ignored unless
+   the Content-Security-Policy for 'img-src includes 'data:'. 
+   We just need an update by JS and probably do not need to open this security hole?!
+   * */
+  background-image: url('chapter_mark.template.svg');
+  background-image: none;
+}
+
+/*.chapter_mark_svg > input[type="range"]::-moz-range-track,
+.chapter_mark_svg > input[type="range"]::-webkit-slider-runnable-track,
+input[type="range"].chapter_mark_svg::-moz-range-track,
+input[type="range"].chapter_mark_svg::-webkit-slider-runnable-track
+{
+}*/
+
+  /* Slider chapter marks END */
+
 /* Smartphones and tablets with middle resolution/high dpi ?!*/
 /* Slim design with controls in one column. */
 @media all and (max-width: 35em) {
 
   #controlBox
   {
-    grid-template-columns: [Cleft] repeat(5, 1fr) [Cright];
+  grid-template-columns: [Cleft] repeat(5, 1fr) [Cright];
 
-    grid-template-rows:
-    /*minmax(min-content, 5em) /* header row */
-    [Ccycle]
-    1fr   /* cycleControls */
-    [CcycleEnd]
-    20px  /* free space */
-    [Ctop]
-    minmax(min-content, 1.5fr) /* topControls */
-    [CtopEnd]
-    20px  /* free space */
-    [Cmain1]
-    minmax(min-content, 1.5fr) /* leftControls1 */
-    [Cmain2]
-    3fr   /* leftControls2 */
-    [Cmain3]
-    1fr  /* rightControls1 */
-    [Cmain4]
-    3fr  /* rightControls2 */
-    [Cend];
-    /*justify-content:space-between;*/
-    align-items:start;
-    justify-items: stretch;
-    grid-gap:0px 20px;
+  grid-template-rows:
+  /*minmax(min-content, 5em) /* header row */
+  [Ccycle]
+  1fr   /* cycleControls */
+  [CcycleEnd]
+  20px  /* free space */
+  [Ctop]
+  minmax(min-content, 1.5fr) /* topControls */
+  [CtopEnd]
+  20px  /* free space */
+  [Cmain1]
+  minmax(min-content, 1.5fr) /* leftControls1 */
+  [Cmain2]
+  3fr   /* leftControls2 */
+  [Cmain3]
+  1fr  /* rightControls1 */
+  [Cmain4]
+  3fr  /* rightControls2 */
+  [Cend];
+  /*justify-content:space-between;*/
+  align-items:start;
+  justify-items: stretch;
+  grid-gap:0px 20px;
 
-    /*overflow:hidden;*/
-    overflow-x:hidden;
-    overflow-y:auto;
-    padding-right: 40px; /* scrollbar-space?! */
+  /*overflow:hidden;*/
+  overflow-x:hidden;
+  overflow-y:auto;
+  padding-right: 40px; /* scrollbar-space?! */
 
-  }
+}
 
   #cycleControls{
     grid-column-start:Cleft;
@@ -876,10 +965,16 @@ ul#sharelist li i.share_bullet {
 
   .button .icon-content{
     font-size: 5vh;
-    padding-top:0.1em;
-    /*padding-bottom:0.1em;*/
+    /*padding-top:0.1em;*/
+    padding-bottom:0.1em;
   }
 
+  .truncate-text-multiline3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
   /*#debug::after {
     color:navy;
     content: "slim"
@@ -913,7 +1008,7 @@ ul#sharelist li i.share_bullet {
   }
 
   .button .content, .button .content i, .icon-content i {
-    font-size: min(4.5vw, 4em);
+    /*font-size: min(4.5vw, 4em);*/ /* Macht Ärger in Volume-Zeile und führt zu ungleichmäßig hohen Buttons.*/
   }
 
   /*#debug::before {
@@ -921,7 +1016,6 @@ ul#sharelist li i.share_bullet {
     content: "wide"
   }*/
 } /* end of @media  */
-
 
 /* For debugging */
 @media all and (max-width: 0em) {
@@ -943,7 +1037,7 @@ ul#sharelist li i.share_bullet {
   #rightControls1, #rightControls2 {
     background-color:#004400;
   }
-  .slidecontainer {
+  .slidercontainer {
     background-color:#333355;
     border:1px solid black;
   }

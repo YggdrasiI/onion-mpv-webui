@@ -170,6 +170,8 @@ int cmd_quit(const char *name,
 // local files if script options allows loading
 // As default, loading of local files is disabled for
 // security reason.
+//
+// Example: curl http://localhost:9000/api/playlist_add/replace/http://[…]
 int cmd_playlist_add(const char *name,
         const char *flags, const char *url_or_path,
         char **pOutput_message);
@@ -190,11 +192,6 @@ int cmd_media_playlist_add(const char *name,
         char **pOutput_message);
 // Flags same as mpv's loadfile command, e.g
 // "replace", "append", "append-play"
-
-
-char *json_status_response();
-
-int check_mpv_err(int status);
 
 
 char *json_status_response();

@@ -551,7 +551,12 @@ int cmd_playlist_add(const char *name,
 
     // Unpause in replace-case
     if (err == MPV_ERROR_SUCCESS && 0 == strcmp("replace", flags)) {
-        cmd_play(NULL, NULL, NULL, NULL);
+        err = cmd_play(NULL, NULL, NULL, NULL);
+        check_mpv_err(err);
+    }
+
+    if (err != MPV_ERROR_SUCCESS){
+        free(*pOutput_message); *pOutput_message = strdup(mpv_error_string(err));
     }
 
     return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
@@ -584,6 +589,9 @@ int cmd_media_playlist_add(const char *name,
         check_mpv_err(err);
     }
 #endif
+    // Old API  < 0.38: loadfile <url> [<flags> [<options>]]
+    // New API => 0.38: loadfile <url> [<flags> [<index> [<options>]]]
+    // => Is using options-string we has to differ between versions.
 
     const char *cmd[] = {"loadfile", fullpath, flags, NULL};
     err = _mpv_command(mpv, cmd);

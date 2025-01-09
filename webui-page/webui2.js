@@ -1,9 +1,9 @@
 var sortings = {
   "alpha": {
     // id for direction, normally just 1 for forward and -1 for backward
-    "dirs": [-1, 1],
-    "icons": ["fa-sort-alpha-up", "fa-sort-alpha-down"],
-    "active": 0 //index of above lists
+    "dirs": [-1, 1, 2, -2],
+    "icons": ["fa-sort-alpha-up", "fa-sort-alpha-down", "fa-folder-open", "fa-folder-open"],
+    "active": 0, //index of above lists
   },
   "date": {
     "dirs": [-1, 1],
@@ -14,10 +14,11 @@ var sortings = {
 
 var shares = {
   list: null,
-  sorting: {'sname':'alpha'},
+  sorting: null /* Using input lists unsorted */, //{'sname':'alpha'},
   selected: null,
   close_event_registered: false,
-  scroll_positions: {}
+  scroll_positions: {},
+  local_sorting: {}
 }
 
 function toggleShares() {
@@ -54,6 +55,15 @@ function share_change(el){
     DEBUG && console.log("Save scroll position of share " +
       prev_dirname + " to " + sT)
     shares.scroll_positions[prev_dirname] = sT
+
+    // Backup current sorting and its direction
+    if (shares.sorting) {
+      var sname = shares.sorting.sname
+      shares.local_sorting[prev_dirname] = {
+        "sname": shares.sorting.sname,
+        "active": sortings[sname].active
+      }
+    }
   }
 
   var value = el.options[el.selectedIndex].value
@@ -139,6 +149,11 @@ function print_share_list(json){
   //DEBUG && console.log(json)
 
   var sharelist = document.getElementById("sharelist")
+
+  var pEl = sharelist.parentElement
+  /* remove from DOM during inserting*/
+  pEl.removeChild(sharelist)
+
   sharelist.replaceChildren()
 
   var file_dotdot = {list: "..", play: "..", size: -1, modified: -1}
@@ -190,6 +205,8 @@ function print_share_list(json){
 
     li.setAttribute("timestamp", file.modified)
     li.setAttribute("idx", idx)
+    //li.setAttribute("isdir", isdir) // Hm, this is always a string
+    li.isdir = isdir // this is still Boolean
 
     li.appendChild(bullet)
     li.appendChild(fname)
@@ -218,6 +235,24 @@ function print_share_list(json){
     sharelist.appendChild(add_li(files[i], i))
   }
 
+  /* Presort element before inserting into DOM */
+  var local_sorting = shares.local_sorting[json.dirname]
+  if (local_sorting !== undefined){
+    DEBUG && console.log(`Restore sorting ${local_sorting.sname} ${local_sorting.active}`)
+    // Use previous sorting option for this folder because the
+    // saved scrollingOffset matches just for this value
+    shares.sorting = {"sname": local_sorting.sname}
+    sortings[local_sorting.sname].active = local_sorting.active
+    __sortShareList(sharelist)
+  }else if(shares.sorting){
+    var sname = shares.sorting.sname
+    DEBUG && console.log(`Use sorting ${sname} ${sortings[sname].active}`)
+    __sortShareList(sharelist)
+  }
+
+  /* Reattach to DOM */
+  pEl.appendChild(sharelist)
+
   /* Reset scrollPosition on saved value, if available.
    * Assumes scarelist.style.overflow == "scroll"
    */ 
@@ -229,23 +264,14 @@ function print_share_list(json){
   }else {
     sharelist.scrollTop = 0
   }
+
   // Used name for next storage of scrollTop
   shares.scroll_positions["active_dirname"] = json.dirname
 
 }
 
-function sortShareList() {
-  var ul = document.getElementById("sharelist")
-
-  if (ul === null){
-    DEBUG && console.log("Hey, sharelist element not found.")
-    return
-  }
-
-  var pEl = ul.parentElement
-
-  /* remove from DOM during sorting*/
-  pEl.removeChild(ul)
+function __sortShareList(ul) {
+  if (shares.sorting === null) return
 
   var sname = shares.sorting.sname
   var s = sortings[sname]
@@ -267,6 +293,38 @@ function sortShareList() {
     Array.from(ul.getElementsByTagName("LI"))
       .sort((a, b) =>
         {
+          if (Number(a.attributes.idx.value) < 0) return -1
+          if (Number(b.attributes.idx.value) < 0) return 1
+          return -(a.textContent.localeCompare(b.textContent))
+        })
+        .forEach(li =>
+          ul.appendChild(li))
+  }
+
+  if (sname === "alpha" && s.dirs[s.active] == 2){
+    // A-Z
+    Array.from(ul.getElementsByTagName("LI"))
+      .sort((a, b) =>
+        {
+          //var isdir_diff_int = Boolean(b.attributes.isdir) - Boolean(a.attributes.isdir)
+          //console.log(`d: ${isdir_diff_int} ${b.attributes.isdir.value} - ${a.attributes.isdir.value}`)
+          var isdir_diff_int = b.isdir - a.isdir
+          if (isdir_diff_int) return isdir_diff_int;
+          if (Number(a.attributes.idx.value) < 0) return -1
+          if (Number(b.attributes.idx.value) < 0) return 1
+          return a.textContent.localeCompare(b.textContent)
+        })
+        .forEach(li =>
+          ul.appendChild(li))
+  }
+
+  if (sname === "alpha" && s.dirs[s.active] == -2){
+    // Z-A
+    Array.from(ul.getElementsByTagName("LI"))
+      .sort((a, b) =>
+        {
+          var isdir_diff_int = b.isdir - a.isdir
+          if (isdir_diff_int) return isdir_diff_int;
           if (Number(a.attributes.idx.value) < 0) return -1
           if (Number(b.attributes.idx.value) < 0) return 1
           return -(a.textContent.localeCompare(b.textContent))
@@ -304,6 +362,22 @@ function sortShareList() {
         .forEach(li =>
           ul.appendChild(li))
   }
+}
+
+function sortShareList() {
+  var ul = document.getElementById("sharelist")
+
+  if (ul === null){
+    DEBUG && console.log("Hey, sharelist element not found.")
+    return
+  }
+
+  var pEl = ul.parentElement
+
+  /* remove from DOM during sorting*/
+  pEl.removeChild(ul)
+
+  __sortShareList(ul)
 
   /* Reattach to DOM after sorting */
   pEl.appendChild(ul)
@@ -311,11 +385,11 @@ function sortShareList() {
 
 function share_change_sorting(sname){
   var s = sortings[sname]
-  if (shares.sorting.sname === sname){
+  if (shares.sorting && shares.sorting.sname === sname){
     // go to next index 
     s.active = (s.active + 1) % s.dirs.length
   }else{
-    shares.sorting.sname = sname
+    shares.sorting = {"sname": sname}
   }
   update_sort_buttons()
 }

@@ -61,6 +61,7 @@ SET(SOURCE_FILES
 	tools.c
 	onion_ws_status.c
 	onion_ws_time.c
+	onion_default_errors.c
 	utf8.c
 	)
 if(TERMUX)
@@ -155,7 +156,13 @@ if(TERMUX)
 	endif()
 
 else()
-	SET(WS_LIBS gnutls gcrypt)
+	if(${GNUTLS_ENABLED})
+		#SET(WS_LIBS gnutls gcrypt)
+		SET(WS_LIBS ${GCRYPT_LIBRARIES} ${GNUTLS_LIBRARIES})
+	else()
+		SET(WS_LIBS )
+	endif()
+
 endif()
 target_link_libraries(webui ${WS_LIBS})
 # target_link_libraries(onion-webui.bin ${WS_LIBS})
@@ -204,7 +211,7 @@ if(ONION_BUILD)
 	execute_process(
 		COMMAND cmake -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
 		-DCMAKE_INSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}"
-		-DONION_USE_SSL=true
+		-DONION_USE_SSL=${ONION_USE_SSL}
 		-DONION_USE_PAM=false
 		-DONION_USE_PTHREADS=true
 		-DONION_USE_PNG=false

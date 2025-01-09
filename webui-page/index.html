@@ -5,7 +5,7 @@
     <!--<meta name="viewport" content="user-scalable=no">-->
     <meta name="viewport" content="user-scalable=no,width=device-width, initial-scale=1.0">
     <meta name="author" content="Fabio Ambauen, Olaf Schulz">
-    <meta http-equiv="Content-Security-Policy" content="default-src chrome: 'self'; img-src * chrome: moz-icon:; media-src 'self'; script-src 'self'; style-src 'self';" />
+    <meta http-equiv="Content-Security-Policy" content="default-src chrome: 'self'; img-src * chrome: moz-icon: data:; media-src 'self'; script-src 'self'; style-src 'self';" />
     <title>MPV Webui</title>
     <link rel="apple-touch-icon" sizes="180x180" href="static/favicons/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="static/favicons/favicon-32x32.png">
@@ -86,7 +86,7 @@
 
     <div id="headerBox">
       <div id="header">
-        <h1 id="title"><!--Title--></h1>
+        <h1 id="title" class="truncate-text-multiline2"><!--Title--></h1>
         <div class="table">
           <table class="prop-table">
             <tr>
@@ -96,7 +96,7 @@
                 <span id="album"><!--Album--></span>
               </td>
               <td class="chapter hidden">
-                Chapter: <span id="chapterContent"></span></td>
+                <span class="truncate-text-multiline3">Chapter: <span id="chapterContent"></span></span></td>
               <td class="hidden"></td>
               <td class="hidden"></td>
             </tr>
@@ -107,7 +107,7 @@
 
     <div id="controlBox">
       <div id="topControls">
-        <div class="slidecontainer">
+        <div class="slidercontainer">
           <input type="range" min="0" max="0" value="0" step="any" class="slider" id="mediaPosition" title="posSlider">
           <div class="sliderInfoContainer">
             <div class="left">
@@ -117,10 +117,11 @@
             <div class="sliderCenter" id="position"></div>
             <div class="right" id="duration"></div>
           </div>
+          <div id="chapter_marker" class="chapter_mark_svg"></div>
         </div>
       </div>
       <div id="leftControls1" class="button_grid">
-        <div id="volSliderControl" class="slidecontainer control_full">
+        <div id="volSliderControl" class="slidercontainer control_full">
           <input type="range" min="0" max="130" value="100" step="1" class="slider" id="mediaVolume" title="volSlider">
           <div class="sliderInfoContainer sliderVolume">
             <div class="left sliderVolume"><i class="fas fa-volume-down"></i></div>

@@ -1,47 +1,110 @@
 ROOT_DIR=$(shell realpath .)
-MPV_CONFIG_DIR="${HOME}/.config/mpv/script-opts"
+MPV_CONFIG_DIR ?= ${HOME}/.config/mpv
+PREFIX ?= $(MPV_CONFIG_DIR)/onion-mpv-webui
+BUILD_DIR ?= build
+CMAKE_BUILD_TYPE ?= Release
 
+MPV_SCRIPT_DIR=$(MPV_CONFIG_DIR)/script-opts
 APK_DIR=/dev/shm/
 
-main: configure_build build
-	echo "Done"
+help:
+	@echo -e " Type\n\t\
+	• 'make all'       for all installation steps\n\t\
+	• 'make configure' to (re-)configure with cmake\n\t\
+	• 'make build'     to compile \n\t\
+	• 'make install'   to copy plugin into mpv's config dir\n\t\
+	• 'make config'    to add plugin settings into mpv's config dir\n\t\
+\n\t\
+	• 'make config_develop'  Directly use compiled plugin from\n\t\
+	                   'build/src' and web stuff from './webui-page'\n\t\
+\n\t\
+	• 'make run'       for test run of mpv with plugin\n\t\
+	• 'make bin'       testing standalone binary (webui without mpv)\n\t\
+	"
 
-configure_build:
-	test -e build || mkdir build
-	cd build && cmake -DONION_BUILD=TRUE ..
-
-build:
-	cd build && make
-
-# Not needed
-install: main build
-	cd build && make install
-
-script_opts_folder:
-	@test -e "$(MPV_CONFIG_DIR)" \
-		|| mkdir -p "$(MPV_CONFIG_DIR)"
-
-# Setup mpv config files
-config: script_opts_folder
-	@test -e "$(MPV_CONFIG_DIR)/libwebui.conf" \
-		|| cat libwebui.conf.example | envsubst \
-		> "${HOME}/.config/mpv/script-opts/libwebui.conf"
-	@grep 'libwebui.conf' "${HOME}/.config/mpv/mpv.conf" >/dev/null \
-		|| $(shell which echo) -e '# Webui\ninclude="~~/script-opts/libwebui.conf"' \
-		>> "${HOME}/.config/mpv/mpv.conf"
+all: build install
+	@echo "Done"
 	@echo "Call mpv with '--profile=webui' to enable webinterface"
 
+configure:
+	test -e "${BUILD_DIR}" || mkdir "${BUILD_DIR}"
+	cd "${BUILD_DIR}" && cmake -DONION_BUILD=TRUE -DONION_USE_SSL=TRUE \
+		-DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" \
+		-DCMAKE_INSTALL_PREFIX="${PREFIX}" \
+		..
 
-run: config
-	ONION_DEBUG=0 ONION_DEBUG0=onion_ws_status.c \
-	mpv --profile=webui --quiet\
-		"$${HOME}/Music"
+# Required for debug messages like ONION_DEBUG(..)
+configure_debug:
+	test -e "${BUILD_DIR}" || mkdir "${BUILD_DIR}"
+	cd "${BUILD_DIR}" && cmake -DONION_BUILD=TRUE -DONION_USE_SSL=TRUE \
+		-DCMAKE_BUILD_TYPE="Debug" \
+		-DCMAKE_INSTALL_PREFIX="${PREFIX}" \
+		..
+
+${BUILD_DIR}/CMakeCache.txt:
+	make configure
+
+build: ${BUILD_DIR}/CMakeCache.txt
+	cd "${BUILD_DIR}" && make
+
+install:
+	cd "${BUILD_DIR}" && make install
+	make config
+
+uninstall:
+	@echo "This will delete '${PREFIX}'. Continue? y/N"
+	read UNINSTALL \
+		&& test "${UNINSTALL}" = "y" -o "${UNINSTALL}" = "Y" \
+		&& rm -r "${PREFIX}"
+
+script_opts_folder:
+	@test -e "$(MPV_SCRIPT_DIR)" \
+		|| mkdir -p "$(MPV_SCRIPT_DIR)"
+
+# Create config file(s) from templates
+.config_defaults: script_opts_folder
+	@test -e "$(MPV_SCRIPT_DIR)/libwebui.conf" \
+		|| SCRIPT_DIR="$(PREFIX)/lib/" HTTP_DIR="$(PREFIX)/share/" cat libwebui.conf.example | envsubst \
+		> "$(MPV_SCRIPT_DIR)/libwebui.conf"
+	@grep 'libwebui.conf' "$(MPV_CONFIG_DIR)/mpv.conf" >/dev/null 2>/dev/null \
+		|| $(shell which echo) -e '# Webui\ninclude="~~/script-opts/libwebui.conf"' \
+		>> "$(MPV_CONFIG_DIR)/mpv.conf"
+
+# Setup mpv config files and link to target of 'make install'
+config: .config_defaults
+	@echo "Linking path in config to '$(PREFIX)'"
+	@sed -i 's!\(script="\).*\(libwebui.so"\)!\1$(PREFIX)/lib/\2!' "$(MPV_SCRIPT_DIR)/libwebui.conf"
+	@sed -i 's!\(script-opts-add=libwebui-root_dir="\).*\(webui-page"\)!\1$(PREFIX)/share/\2!' "$(MPV_SCRIPT_DIR)/libwebui.conf"
+
+# Setup mpv config files and link to files of this repo
+config_develop: .config_defaults
+	@echo "Linking path in config to '$(ROOT_DIR)'"
+	@sed -i 's!\(script="\).*\(libwebui.so"\)!\1$(ROOT_DIR)/$(BUILD_DIR)/src/\2!' "$(MPV_SCRIPT_DIR)/libwebui.conf"
+	@sed -i 's!\(script-opts-add=libwebui-root_dir="\).*\(webui-page"\)!\1$(ROOT_DIR)/\2!' "$(MPV_SCRIPT_DIR)/libwebui.conf"
+
+"$(MPV_SCRIPT_DIR)/libwebui.conf": .config_defaults
+
+
+# Assumes profile=webui in mpv.conf
+run: "$(MPV_SCRIPT_DIR)/libwebui.conf"
+	ONION_LOG=nodebug,noinfo \
+		mpv --quiet --pause "$$(xdg-user-dir MUSIC)"
+
+# Run 'make configure_debug' before
+#	ONION_DEBUG=127 ONION_DEBUG0='onion_ws_status.c onion_default_errors.c media.c' 
+run_debug: "$(MPV_SCRIPT_DIR)/libwebui.conf"
+	ONION_DEBUG=1 \
+	mpv --quiet --pause \
+		$$(grep "\S*profile=webui\S*" "$(MPV_CONFIG_DIR)/mpv.conf" >/dev/null 2>&1 \
+			|| echo '--profile=webui') \
+		"$$(xdg-user-dir MUSIC)"
+
 
 bin:
-	build/src/onion-webui.bin ./webui-page
+	./$(BUILD_DIR)/src/onion-webui.bin ./webui-page
 
 nemiver:
-	nemiver ./build/src/onion-webui.bin ./webui-page/
+	nemiver ./$(BUILD_DIR)/src/onion-webui.bin ./webui-page/
 
 val: config
 	valgrind --leak-check=full --log-file=/dev/shm/val.log \

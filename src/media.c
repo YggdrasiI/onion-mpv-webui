@@ -160,7 +160,10 @@ onion_connection_status media_page(
         // Fill the dictionary for html-template.
         onion_dict *d = onion_dict_new();
         onion_dict_add(d, "dirname", uri_full_path, 0);
-        if (uri_full_path[0] != '\0' && uri_full_path[1] != '\0')
+
+        // Add "Go up" link. Using uri_rel_path because
+        // uri_full_path is 'media/html/[share_name]'
+        if (uri_rel_path[0] != '\0' && uri_rel_path[1] != '\0')
             onion_dict_add(d, "go_up", "true", 0);
         //onion_dict_add(d, "share_key", share_key, 0);
         //onion_dict_add(d, "uri_rel_path", uri_rel_path, 0);
@@ -298,6 +301,9 @@ onion_connection_status list_share_json(
         // only get implemented.
         return OCS_NOT_PROCESSED;
     }
+
+    // 0. Change content type
+    onion_response_set_header(res, "Content-Type", onion_mime_get("_.json"));
 
     // 1. Setup/Create relevant paths variables
     int ret = OCS_NOT_PROCESSED;
@@ -479,7 +485,7 @@ onion_connection_status list_share_json(
         }
         closedir(dir);
 
-        onion_response_set_header(res, "Content-Type", "application/json");
+        onion_response_set_header(res, "Content-Type", onion_mime_get("_.json"));
         ret = media_json_template(d, req, res); // this frees d!
         goto media_json_end;
     }
@@ -551,7 +557,7 @@ int list_shares_json(
 
     // Convert json into block and write it to output.
     onion_block *jresb = onion_dict_to_json(to_json);
-    onion_response_set_header(res, "Content-Type", "application/json");
+    onion_response_set_header(res, "Content-Type", onion_mime_get("_.json"));
     snprintf(to_json_length, 22, "%ld", onion_block_size(jresb));
     onion_response_set_header(res, "Content-Length",to_json_length);
     onion_response_write(res, onion_block_data(jresb), onion_block_size(jresb));
@@ -572,6 +578,9 @@ onion_connection_status api_playlist_add(
 {
 
     onion_connection_status ret = OCS_NOT_PROCESSED;
+
+    // 0. Change content type
+    onion_response_set_header(res, "Content-Type", onion_mime_get("_.json"));
 
     // Note: Some arguments of fullpath are already consumed.
     // Do not parse (parts of) fullpath for portability,
@@ -598,7 +607,7 @@ onion_connection_status api_playlist_add(
         onion_response_printf(res,
                 "{\"message\": \"Command '%s' not defined.\"}",
                 command_name);
-				ret = OCS_PROCESSED;
+        ret = OCS_PROCESSED;
         goto api_playlist_add_end;
     }
 
@@ -678,6 +687,9 @@ onion_connection_status api_playlist_play(
 {
 
     onion_connection_status ret = OCS_NOT_PROCESSED;
+
+    // 0. Change content type
+    onion_response_set_header(res, "Content-Type", onion_mime_get("_.json"));
 
     // Note: Some arguments of fullpath are already consumed.
     // Do not parse (parts of) fullpath for portability,
