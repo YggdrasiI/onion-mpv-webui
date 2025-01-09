@@ -190,7 +190,7 @@ function print_share_list(json){
 
       if( idx >= 0 ){
         fname.addEventListener("click", function() {
-          share_add_file(play_link, true)
+          share_add_file(encode(play_link), true)
         })
       }
     }
@@ -200,7 +200,7 @@ function print_share_list(json){
     action1.classList.add('fa-plus-square')
     //action1.textContent = "  [+]"
     action1.addEventListener("click", function() {
-      share_add_file(play_link, false)
+      share_add_file(encode(play_link), false)
     })
 
     li.setAttribute("timestamp", file.modified)
@@ -471,10 +471,16 @@ function decode(s){
     return doc.documentElement.textContent;
     */
   // or
-  s = s.replace('&amp;', '&')
-  s = s.replace('&#39;', '\'').replace('&quot;','"')
-  s = s.replace('&lt;', '<').replace('&gt;', '>')
-  return s;
+  s = s.replaceAll('&amp;', '&')
+  s = s.replaceAll('&#39;', '\'').replaceAll('&quot;','"')
+  s = s.replaceAll('&lt;', '<').replaceAll('&gt;', '>')
+  return s
+}
+
+function encode(s){
+	// Encode spaces. Is this enough?!
+  s = s.replaceAll(' ', '%20')
+	return s
 }
 
 // From simple-mpv-webui
