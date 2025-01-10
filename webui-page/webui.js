@@ -63,7 +63,7 @@ function send_ws(command, ...params){
     param2: (params[1] == undefined?"":params[1]),
   }
 
-  //DEBUG && console.log('Sending command: ' + api.command + ' - param1: ' + api.param1 + ' - param2: ' + api.param2)
+  DEBUG && console.log(`Sending command: '${api.command}' param1: '${api.param1}' param2: '${api.param2}'`)
 
   if (ws){
     // TODO: Implement json-parser on server side?!
@@ -143,13 +143,15 @@ function basename(path){
   return lpath[lpath.length - 1]
 }
 
-function send(command, param){
-  if( true ) return send_ws(command, param)
+function send(command, param1, param2){
+  if( true ) return send_ws(command, param1, param2)
 
-  DEBUG && console.log('Sending command: ' + command + ' - param: ' + param)
+  DEBUG && console.log(`Sending command: '${command}' param1: '${param1}' param2: '${param2}'`)
   var path = 'api/' + command
-  if (param !== undefined)
-    path += "/" + param
+  if (param1 !== undefined)
+    path += "/" + param1
+  if (param2 !== undefined)
+    path += "/" + param2
 
   var request = new XMLHttpRequest();
   request.open("post", path)
@@ -377,9 +379,36 @@ function updatePlaylist(new_playlist, old_playlist, new_pause) {
 
 }
 
+// TODO: Is it possible to use this as static function of KeyBindings class?!
+function unfold_bindings(bindings){
+  // 1. Split into two sub-arrays by the shift-flag:
+  // The resulting object has the keys "true" and "false"…
+  const split_by_modifier_shift = bindings.reduce((result, obj) => {
+    const key = (obj.shift?true:false) // merges false and undefined
+    result[key] = result[key] || []
+    result[key].push(obj);
+    return result;
+  }, {});
 
-function webui_keydown(evt) {
-  const bindings = [
+  // For both sub-lists, create map for key code and key name.
+  // => [shift][keyname] or [shift][keycode] can be used to access available keybindigs.
+  return {
+    false: Object.assign({},
+      Object.groupBy(split_by_modifier_shift[false], (b) => b.code ),
+      Object.groupBy(split_by_modifier_shift[false], (b) => b.key ),
+    ),
+    true: Object.assign({},
+      Object.groupBy(split_by_modifier_shift[true], (b) => b.code ),
+      Object.groupBy(split_by_modifier_shift[true], (b) => b.key ),
+    ),
+  }
+}
+
+class KeyBindings {
+  /* This class will construct two static maps, one for keyCodes and one for keyNames.
+   * The constructor takes an Event-object and returns the matching binding or null
+   */
+  static bindings = [
     {
       "key": " ",
       "code": 32,
@@ -389,13 +418,53 @@ function webui_keydown(evt) {
       "key": "ArrowRight",
       "code": 39,
       "command": "seek",
-      "param1": "10"
+      "param1": "5"
     },
     {
       "key": "ArrowLeft",
       "code": 37,
       "command": "seek",
-      "param1": "-10"
+      "param1": "-5"
+    },
+    {
+      "key": "ArrowUp",
+      "code": 38,
+      "command": "seek",
+      "param1": "60"
+    },
+    {
+      "key": "ArrowDown",
+      "code": 40,
+      "command": "seek",
+      "param1": "-60"
+    },
+    {
+      "key": "ArrowRight",
+      "code": 39,
+      "shift": true,
+      "command": "seek",
+      "param1": "1"
+    },
+    {
+      "key": "ArrowLeft",
+      "code": 37,
+      "shift": true,
+      "command": "seek",
+      "param1": "-1"
+    },
+    {
+      "key": "ArrowUp",
+      "code": 38,
+      "shift": true,
+      "command": "seek",
+      "param1": "5"
+    },
+    {
+      "key": "ArrowDown",
+      "code": 40,
+      "shift": true,
+      "command": "seek",
+      "param1": "-5"
     },
     {
       "key": "PageDown",
@@ -443,28 +512,46 @@ function webui_keydown(evt) {
     },
   ]
 
+  static bindings2 = unfold_bindings(this.bindings)
+
+  static for_event(evt) {
+    const binding = this.bindings2[evt.shiftKey][evt.keyCode] || this.bindings2[evt.shiftKey][evt.key]
+    if (binding === undefined) return null
+    // Due the construction by groupBy(...) 'binding' is an one-element array. (or multiple if key is used multiple times…)
+    return Object.assign(new KeyBindings(), binding[0])
+  }
+}
+
+function webui_keydown(evt) {
+
   // We have no shortcuts below that use these combos, so don't capture them.
   // We allow Shift key as some keyboards require that to trigger the keys.
   // For example, a US QWERTY uses Shift+/ to get ?.
   // Additionally, we want to ignore any keystrokes if an input element is focussed.
-  if (
-    evt.altKey ||
-    evt.ctrlKey ||
-    evt.metaKey ||
-    document.activeElement.tagName.toLowerCase() === "input"
-  ) {
+  if ( evt.altKey || evt.ctrlKey || evt.metaKey) {
     return;
   }
+  DEBUG && console.log("Key pressed: " + evt.keyCode + " " + evt.key )
+  DEBUG && console.log(evt)
 
-  for (var i = 0; i < bindings.length; i++) {
-    if (evt.keyCode === bindings[i].code || evt.key === bindings[i].key) {
-      send(bindings[i].command, bindings[i].param1, bindings[i].param2)
-      evt.stopPropagation()
-      evt.preventDefault()  // e.g. avoids 'scrolling by space key'
-      break
+  binding = KeyBindings.for_event(evt) // null or Object assigned to this key+modifier combination.
+  if (binding === null) return
+
+  if (document.activeElement.localName === "input") /* localName == tagName.toLowerCase() */
+  {
+    if (document.activeElement.type !== "range"){
+      return // Avoid double interpreation of keystroke in normal input fields
+    }
+    else { // range slider handling
+      // Abort if it's a known key for the slider (= ArrowKeys,?)
+      //if (evt.keyCode in [37, 38, 39 ,40]) return // Javascript fooling around ……… :facepalm:
+      if ([37, 38, 39, 40].includes(evt.keyCode)) return
     }
   }
-  //console.log("Key pressed: " + evt.keyCode + " " + evt.key )
+
+  send(binding.command, binding.param1, binding.param2)
+  evt.stopPropagation()
+  evt.preventDefault()  // e.g. avoids 'scrolling by space key'
 }
 
 function format_time(seconds){
@@ -799,28 +886,27 @@ function setChapter(num_chapters, chapter, metadata) {
 }
 
 function updateCapterMarks(num_chapters, chapter, metadata, chapter_list, duration) {
-  /* Enrich the position slider by the chapter marks. Currently 
+  /* Enrich the position slider by the chapter marks. Currently
    * this is realized by drawing the marks into a SVG background-image.
    */
   var chapter_marker = document.getElementById('chapter_marker')
   if (num_chapters === 0) {
     chapter_marker.style.backgroundImage = 'none'
   }else{
-		if( chapter == -1 ){
-			/* If mpv is paused and the played file is changed, duration of the previous file is 
-			 * still the active. We need to wait until chapter >= 0 to guarantee that the correct
-			 * time was extracted from the file. (*4)
-			 * 
-			 */
-			return;
-		}
+    if( chapter == -1 ){
+      /* If mpv is paused and the played file is changed, duration of the previous file is
+       * still the active. We need to wait until chapter >= 0 to guarantee that the correct
+       * time was extracted from the file. (*4)
+       *
+       */
+      return;
+    }
 
-		var svg_chapter_list = []
-		console.log(duration)
+    var svg_chapter_list = []
     for (var i = 0; i < chapter_list.length; i++){
-			const pos_promille = (1000 * chapter_list[i]['time']/duration).toFixed(2)
-			svg_chapter_list.push(`<use xlink:href="%23markB" x="${pos_promille}" width="50" height="100%" />\\`)
-		}
+      const pos_promille = (1000 * chapter_list[i]['time']/duration).toFixed(2)
+      svg_chapter_list.push(`<use xlink:href="%23markB" x="${pos_promille}" width="50" height="100%" />\\`)
+    }
     chapter_marker.style.backgroundImage = `url('data:image/svg+xml,\\
 <svg version="1.1" \\
 xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" \\
@@ -838,7 +924,7 @@ stroke="%23555544" stroke-width="1" vector-effect="non-scaling-stroke"\\
 </symbol>\\
 </defs>\\
 <g transform="translate(25 0)">\\
-		${svg_chapter_list.join('\n')}
+    ${svg_chapter_list.join('\n')}
 </g>\\
 </svg>')`
   }
@@ -930,8 +1016,8 @@ function handleStatusResponse(json) {
     setupNotification()
   }
 
-	updateCapterMarks(json['chapters'], json['chapter'], json['chapter-metadata'],
-		json['chapter-list'], json['duration'])
+  updateCapterMarks(json['chapters'], json['chapter'], json['chapter-metadata'],
+    json['chapter-list'], json['duration'])
 }
 
 function handleStatusUpdate(status_updates) {
@@ -991,12 +1077,12 @@ function handleStatusUpdate(status_updates) {
     setChapter(new_status['chapters'], new_status['chapter'], new_status['chapter-metadata'])
   }
 
-	if ("chapter" in status_updates && mpv_status['chapter'] == -1){ /* See (4*) */
-		updateCapterMarks(new_status['chapters'], new_status['chapter'], new_status['chapter-metadata'],
-			new_status['chapter-list'], new_status['duration'])
-	} else if ("chapters" in status_updates){
+  if ("chapter" in status_updates && mpv_status['chapter'] == -1){ /* See (4*) */
     updateCapterMarks(new_status['chapters'], new_status['chapter'], new_status['chapter-metadata'],
-			new_status['chapter-list'], new_status['duration'])
+      new_status['chapter-list'], new_status['duration'])
+  } else if ("chapters" in status_updates){
+    updateCapterMarks(new_status['chapters'], new_status['chapter'], new_status['chapter-metadata'],
+      new_status['chapter-list'], new_status['duration'])
   }
   if ("playlist" in status_updates){
     updateNotification(new_status)
@@ -1463,17 +1549,7 @@ function add_button_listener() {
   })
 }
 
-function setup_keybinding_listening() {
-	window.addEventListener('keydown', webui_keydown, true) /* capture to skip scrolling on overlays*/
-
-	// Clicking on a slider will catching the keypress events. Add listener to this elements, too.
-  var input_slider = document.getElementsByClassName('slider');
-	[].slice.call(input_slider).forEach(function (el) {
-	el.addEventListener('keydown', webui_keydown, true)
-	})
-}
-
-setup_keybinding_listening()
+window.addEventListener('keydown', webui_keydown, true) /* capture to skip scrolling on overlays*/
 window.addEventListener('load', status_init_ws, false)
 window.addEventListener('load', add_button_listener, false)
 //status_ws()
