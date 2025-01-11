@@ -5,11 +5,21 @@ TEMP_BRANCH=temp/with_patches
 WEBUI_BRANCH=onion-mpv-webui
 
 help:
-	@echo "Dummy"
+	@echo "Script to update libonion with own patches."
+	@echo -e "To update the patch bundle:\n" \
+	"  1. Commit your changes. \n" \
+	"  2. Create new patch files, see target 'create_patches' \n" \
+	"  3. Stash uncommited changes and run 'make update_bundle. \n"
 
-test:
+create_patches:
+	echo 'Example: git format-patch --start-number 10 HEAD~3'
 
 apply_patches:
+			cd onion && git checkout master && ( git branch -D ${TEMP_BRANCH} || true )\
+				&& git checkout -b ${TEMP_BRANCH} \
+				&& git am -p1 ../*.patch
+
+apply_patches_loop:
 			cd onion && git checkout master && ( git branch -D ${TEMP_BRANCH} || true )\
 				&& git checkout -b ${TEMP_BRANCH} \
 				&& for i in ../*.patch ; do \
@@ -25,5 +35,5 @@ apply_bundle:
 # Re-Creating *.bundle from above patches
 update_bundle:
 	make apply_patches
-	cd onion && git bundle create --version=3 "../${BUNDLE_NAME}" master..HEAD
+	cd onion && git bundle create "../${BUNDLE_NAME}" master..HEAD
 

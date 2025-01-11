@@ -1,0 +1,109 @@
+From 3db551fb3a344086ade5f91996b4a632420072a0 Mon Sep 17 00:00:00 2001
+From: Olaf Schulz <947069+YggdrasiI@users.noreply.github.com>
+Date: Sat, 11 Jan 2025 22:35:20 +0100
+Subject: [PATCH 12/12] i18n: Add argument substitution for translation
+
+The i18n plugin is extended by a variable substitution. It supports
+two variants:
+ 1. Strings in "-quotes will be inserted in the translated text.
+ 2. Variables in single {}-brackets will be read from the context dict.
+
+Example:
+  {% trans "Template constant %s and context variable %s" "X" {varname} %}
+---
+ tools/otemplate/templatetags/i18n.c | 70 +++++++++++++++++++++++++++--
+ 1 file changed, 67 insertions(+), 3 deletions(-)
+
+diff --git a/tools/otemplate/templatetags/i18n.c b/tools/otemplate/templatetags/i18n.c
+index 73b652b..48229b9 100644
+--- a/tools/otemplate/templatetags/i18n.c
++++ b/tools/otemplate/templatetags/i18n.c
+@@ -22,8 +22,11 @@
+ */
+ 
+ #include <stdlib.h>
++#include <string.h>
++#include <assert.h>
+ 
+ #include <onion/codecs.h>
++#include <onion/log.h>
+ 
+ #include "../tags.h"
+ #include "../functions.h"
+@@ -31,9 +34,70 @@
+ /// Following text is for gettext
+ void tag_trans(parser_status * st, list * l) {
+   char *s = onion_c_quote_new(tag_value_arg(l, 1));
+-  function_add_code(st,
+-                    "  onion_response_write0(res, dgettext(onion_dict_get(context, \"LANG\"), %s));\n",
+-                    s);
++
++  int sprintf_args = 0;
++  const char *t = tag_value_arg(l, sprintf_args+2);
++  while(t != NULL) {
++      sprintf_args += 1;
++      t = tag_value_arg(l, sprintf_args+2);
++  }
++  if (sprintf_args == 0){
++      function_add_code(st,
++              "  onion_response_write0(res, dgettext(onion_dict_get(context, \"LANG\"), %s));\n",
++              s);
++  }else{
++      char tmpname[32]; // arg_%d
++      char s_args[512]; // , arg1 [, arg2 […]]
++      char *pos = s_args; // start position for snprintf
++      int bytes_left = sizeof(s_args); // available space after pos
++      int i;
++      char *quoted_arg = NULL;
++
++      function_add_code(st, "  {\n");
++      for (i=0; i<sprintf_args; ++i){
++          const char *arg = tag_value_arg(l, i+2);
++          snprintf(tmpname, sizeof(tmpname), "arg_%d", i);
++
++          assert(bytes_left >= 0);
++          int bytes_written = snprintf(pos, bytes_left, ", %s", tmpname);
++          if (bytes_written >= bytes_left){
++              ONION_ERROR("trans argument list too long.");
++              goto abort;
++          }
++          bytes_left -= bytes_written;
++          pos += bytes_written;
++
++          if (arg[0] == '{'){ // Lockback into dict at runtime
++              int len = strlen(arg);
++              if (arg[len-1] != '}'){
++                  ONION_ERROR("trans argument not ends with '}'");
++                  goto abort;
++              }
++
++              // '%.*s' construction to insert var for {var}.
++              function_add_code(st,
++                      "    const char *%s = onion_dict_get_dict(context, %.*s);\n",
++                      tmpname, len-2, arg+1);
++          }else{ // Instert string given by template.
++              free(quoted_arg);
++              quoted_arg = onion_c_quote_new(arg);
++
++             function_add_code(st, "    const char *arg_%d = %s;", i, quoted_arg);
++          }
++      }
++
++      function_add_code(st,
++              "    char tmp[4096];\n"
++              "    if (sizeof(tmp) <= snprintf(tmp, sizeof(tmp), dgettext(onion_dict_get(context, \"LANG\"), %s)%s))\n"
++              "      onion_response_write0(res, \"Failed to evaluate '\" %s \"'\");\n"
++              "    else\n"
++              "      onion_response_write0(res, tmp);\n",
++              s, s_args, s);
++      function_add_code(st, "  }\n");
++
++abort:
++    free(quoted_arg);
++  }
+   free(s);
+ }
+ 
+-- 
+2.25.1
+

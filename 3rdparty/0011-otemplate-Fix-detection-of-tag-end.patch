@@ -1,0 +1,52 @@
+From bb224c1c5f12ad33b054e0507d576d683d339c7b Mon Sep 17 00:00:00 2001
+From: Olaf Schulz <947069+YggdrasiI@users.noreply.github.com>
+Date: Sat, 11 Jan 2025 13:05:19 +0100
+Subject: [PATCH 11/12] otemplate: Fix detection of %} tag end
+
+Before this change the substring "%XYZ}" was handled like "%}"
+with the side effect that every char between '%' and '}' was
+prefixed with '%'.
+---
+ tools/otemplate/parser.c | 6 +++++-
+ tools/otemplate/parser.h | 1 +
+ 2 files changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/tools/otemplate/parser.c b/tools/otemplate/parser.c
+index efb3cad..bbd9da6 100644
+--- a/tools/otemplate/parser.c
++++ b/tools/otemplate/parser.c
+@@ -85,6 +85,7 @@ void parse_template(parser_status * status) {
+       else
+         add_char(status, c);
+       break;
++    case END_TAG_AFTER_PERCENTAGE:
+     case TAG:
+       if (c == '%')
+         set_mode(status, END_TAG);
+@@ -104,7 +105,10 @@ void parse_template(parser_status * status) {
+       if (c == '}')
+         set_mode(status, TEXT);
+       else {
+-        set_mode(status, END_TAG);
++        /* Here, we can not go back to TAG because
++         * TAG < TRANSITIONAL_MODE_THRESHOLD and next call of
++         * set_mode(..., END_TAG) has side effects. */
++        set_mode(status, END_TAG_AFTER_PERCENTAGE);
+         add_char(status, '%');
+         add_char(status, c);
+       }
+diff --git a/tools/otemplate/parser.h b/tools/otemplate/parser.h
+index d0e6268..a7050f8 100644
+--- a/tools/otemplate/parser.h
++++ b/tools/otemplate/parser.h
+@@ -45,6 +45,7 @@ typedef enum parser_mode_e {
+   END_TAG = 19,
+   COMMENT = 20,                 // inside comments
+   COMMENTHASH = 21,             // got an hash in a comment
++  END_TAG_AFTER_PERCENTAGE = 22,
+ 
+ } parser_mode;
+ 
+-- 
+2.25.1
+
