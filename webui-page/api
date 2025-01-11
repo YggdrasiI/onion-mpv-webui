@@ -1,0 +1,23 @@
+Overview about all urls:
+
+URI                                 |     COMMENT
+————————————————————————————————————————————————————————
+/, /index.html                      |
+/version                            |
+/ws                                 |  Websocket (recives and returns JSON)
+                                    |
+/api                                |  This page
+/api/status                         |  API (returns JSON messages)
+/api/{command}/[param1]/[param2]    |
+                                    |
+/api/media/                         |  Like /media/api
+
+/api.html                           |  Debugging page to enter api commands
+/api2                               |
+                                    |
+/media.html, /media/html            |  Shows files of folders configured in
+/media/html/{sharepath}             |  .config/mpv/script-opts/libwebui.conf
+                                    |
+/media/api/list                     |  List shares
+/media/api/playlist_add/[sharepath] |  
+/media/api/playlist_play/[sharepath]|

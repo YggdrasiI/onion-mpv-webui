@@ -1430,6 +1430,15 @@ char * utf8_quote_with_escape(char *src, char quote_char){
     int num_quote_char = 0;
     const int src_len = strlen(src);
 
+#define SATISFY_VALGRIND
+    /* Valgrind shows an invalid read of size 1 for
+    ==374334==    at 0x16226B2B: u8_inc (utf8.c:228)
+    ==374334==    by 0x16225AE2: utf8_quote_with_escape (onion_ws_status.c:15XX)
+
+    Lets try to copy the last bytes...
+    */
+
+#ifndef SATISFY_VALGRIND
     i = 0; j = 0;
     for( ; i<src_len; i=j)
     {
@@ -1438,6 +1447,48 @@ char * utf8_quote_with_escape(char *src, char quote_char){
             ++num_quote_char;
         }
     }
+#else
+    // Valgrind didn't like the reading of the last bytes
+    // u8_inc could potential read 4 bytes, if just one is available.
+    // To avoid this without re-allocation, thread the last four bytes special.
+    const int src_len_minus4 = src_len - 4;
+
+    i = 0; j = 0;
+    for( ; i<src_len_minus4; i=j)
+    {
+        u8_inc(src,&j), d=j-i;
+        if( d == 1 && *(src+i) == quote_char){
+            ++num_quote_char;
+        }
+    }
+
+    // Copy tail into a bigger string.
+    j = 0;
+    char tail[8] = {0}; // At least 4+3 bytes
+    switch(src_len - i){
+        case 4:
+            tail[j++] = src[i++];
+        case 3:
+            tail[j++] = src[i++];
+        case 2:
+            tail[j++] = src[i++];
+        case 1:
+            tail[j++] = src[i++];
+            break;
+        default:
+            fprintf(stderr, "Error in %s: Index not in last four bytes. Len: %d Position: %d\n", "utf8_quote_with_escape", src_len, i);
+    }
+
+    // Continue with last step in copy.
+    i = 0; j = 0;
+    for( ; i<4; i=j)
+    {
+        u8_inc(tail,&j), d=j-i;
+        if( d == 1 && tail[i] == quote_char){
+            ++num_quote_char;
+        }
+    }
+#endif
 
     // 2. Alloc enough space for result
     const int out_len = src_len + num_quote_char + 2;
@@ -1455,6 +1506,7 @@ char * utf8_quote_with_escape(char *src, char quote_char){
         i = 0; j = 0;
 
         *pos++ = quote_char;
+#ifndef SATISFY_VALGRIND
         for( u8_inc(src,&j), d=j-i;
                 i<src_len;
                 i=j, u8_inc(src,&j), d=j-i )
@@ -1469,11 +1521,42 @@ char * utf8_quote_with_escape(char *src, char quote_char){
                 *pos++ = *(src + i++);
             }
         }
+#else
+        for( ; i<src_len_minus4; i=j)
+        {
+            u8_inc(src,&j); d=j-i;
+            // " ==> \"
+            if( d == 1 && *(src+i) == quote_char){
+                *pos++ = '\\';
+            }
+
+            // copy 1, 2, 3, or 4 bytes
+            while( d-- > 0 ){
+                *pos++ = *(src + i++);
+            }
+        }
+
+        // Continue with last step in copy.
+        i = i-src_len_minus4; j = i;
+        // For d>1, the above while-loop will copy chars behind
+        // the src_len_minus4 barrier.
+        // Thus, we can not start at tail[0]
+        for( ; i<4; i=j)
+        {
+            u8_inc(tail,&j), d=j-i;
+            if( d == 1 && tail[i] == quote_char){
+                *pos++ = '\\';
+            }
+            while( d-- > 0 ){
+                *pos++ = tail[i++];
+            }
+        }
+#endif
         *pos++ = quote_char;
         assert( pos-out == out_len );
     }
 
-    // Finallize string
+    // Finalize string
     out[out_len] = '\0';
 
     return out;
