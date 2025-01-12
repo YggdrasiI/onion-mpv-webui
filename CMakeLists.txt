@@ -34,17 +34,17 @@ endif()
 find_package(ZLIB)
 
 if (${ONION_USE_SSL})
-# This requires -dev Packages, but we're just wanna know if libs are installed.
-#	find_package(GnuTLS)
-#	find_package(GCrypt)
-#	if (GNUTLS_FOUND AND GCRYPT_FOUND)
-#		set(GNUTLS_ENABLED true)
-#		message(STATUS "SSL support is compiled in.")
-#	else()
-#		message("Gnutls or gcrypt not found. SSL support is not compiled in.")
-#	endif()
+	# This requires -dev Packages, but we're just wanna know if libs are installed.
+	#	find_package(GnuTLS)
+	#	find_package(GCrypt)
+	#	if (GNUTLS_FOUND AND GCRYPT_FOUND)
+	#		set(GNUTLS_ENABLED true)
+	#		message(STATUS "SSL support is compiled in.")
+	#	else()
+	#		message("Gnutls or gcrypt not found. SSL support is not compiled in.")
+	#	endif()
 
-# Search *.so files. (Currently not needed but it synchronized the linking between libwebui and libonion.)
+	# Search *.so files. (Currently not needed but it synchronized the linking between libwebui and libonion.)
 	find_library(GNUTLS_LIBRARIES NAMES gnutls libgnutls)  # '-IES' ending to get same var name as Onion's Cmake.
 	find_library(GCRYPT_LIBRARIES NAMES gcrypt libgcrypt)
 	if ( "${GNUTLS_LIBRARIES}" STREQUAL "GNUTLS_LIBRARIES-NOTFOUND" OR "${GCRYPT_LIBRARIES}" STREQUAL "GNUTLS_LIBRARIES-NOTFOUND")
@@ -52,7 +52,7 @@ if (${ONION_USE_SSL})
 	else()
 		set(GNUTLS_ENABLED true)
 	endif()
-  message(STATUS ${GNUTLS_LIBRARIES})
+	message(STATUS ${GNUTLS_LIBRARIES})
 endif(${ONION_USE_SSL})
 
 
@@ -60,4 +60,5 @@ endif(${ONION_USE_SSL})
 find_program(HAVE_MSGFMT msgfmt)
 
 
+add_subdirectory(3rdparty)
 add_subdirectory(src)
