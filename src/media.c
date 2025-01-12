@@ -74,7 +74,7 @@ void __share_data_free (
 
 
 
-onion_connection_status media_page(
+onion_connection_status list_share_page(
         __share_data_t *privdata,
         onion_request * req,
         onion_response * res)
@@ -131,19 +131,19 @@ onion_connection_status media_page(
             share_path, uri_rel_path);
     if (ps < 0 || ps >= __tmp_path_len){
         ret = OCS_INTERNAL_ERROR;  // snprintf failed
-        goto media_page_end;
+        goto media_share_html_end;
     }
 
     if ( !path_available(__tmp_path) ){
         /* File or parent folders is hidden .*/
         ret = OCS_INTERNAL_ERROR; 
-        goto media_page_end;
+        goto media_share_html_end;
     }
 
     real_local_path = realpath(__tmp_path, NULL);
     if (!real_local_path){
         ret = OCS_INTERNAL_ERROR;
-        goto media_page_end;
+        goto media_share_html_end;
     }
 
     // Save this subfolder as last used. 
@@ -263,9 +263,9 @@ onion_connection_status media_page(
         closedir(dir);
 
         onion_response_set_header(res, "Content-Type",
-                onion_mime_get("media.html"));
-        ret = media_html_template(d, req, res); // this frees d!
-        goto media_page_end;
+                onion_mime_get("_.html"));
+        ret = media_share_html_template(d, req, res); // this frees d!
+        goto media_share_html_end;
     }
 
     // 3. Return file or print access denined message
@@ -284,7 +284,7 @@ onion_connection_status media_page(
                 , HTTP_FORBIDDEN, req, res);
     }
 
-media_page_end:  // cleanup allocations
+media_share_html_end:  // cleanup allocations
     free(real_local_path);
     free(uri_rel_path);
     free(uri_full_path);
@@ -353,19 +353,19 @@ onion_connection_status list_share_json(
             share_path, uri_rel_path);
     if (ps < 0 || ps >= __tmp_path_len){
         ret = OCS_INTERNAL_ERROR;  // snprintf failed
-        goto media_json_end;
+        goto media_api_json_end;
     }
 
     if ( !path_available(__tmp_path) ){
         /* File or parent folders is hidden .*/
         ret = OCS_INTERNAL_ERROR; 
-        goto media_json_end;
+        goto media_api_json_end;
     }
 
     real_local_path = realpath(__tmp_path, NULL);
     if (!real_local_path){
         ret = OCS_INTERNAL_ERROR;
-        goto media_json_end;
+        goto media_api_json_end;
     }
 
     // Save this subfolder as last used. 
@@ -486,8 +486,8 @@ onion_connection_status list_share_json(
         closedir(dir);
 
         onion_response_set_header(res, "Content-Type", onion_mime_get("_.json"));
-        ret = media_json_template(d, req, res); // this frees d!
-        goto media_json_end;
+        ret = media_api_json_template(d, req, res); // this frees d!
+        goto media_api_json_end;
     }
 
     // 3. Return file or print access denined message
@@ -506,7 +506,7 @@ onion_connection_status list_share_json(
                 , HTTP_FORBIDDEN, req, res);
     }
 
-media_json_end:  // cleanup allocations
+media_api_json_end:  // cleanup allocations
     free(real_local_path);
     free(uri_rel_path);
     free(uri_full_path);
@@ -514,6 +514,50 @@ media_json_end:  // cleanup allocations
     return ret;
 }
 
+
+void __invert_key_value(
+        onion_dict *to_json,
+        const char *key, const void *value, int flags)
+{
+    onion_dict_add(to_json, value, key, 0);
+}
+
+// Begin page /media/html lists all shares
+int list_media_html(
+        __share_data_t *privdata,
+        onion_request * req,
+        onion_response * res)
+{
+    if ((onion_request_get_flags(req) & OR_METHODS) != OR_GET) {
+        // only get implemented.
+        return OCS_NOT_PROCESSED;
+    }
+
+    // The key->folder map
+    onion_dict *shared_folders = (onion_dict *)privdata;
+
+    // Derive key->key map for template
+    onion_dict *shares = onion_dict_new(); // free'd together with to_json
+    onion_dict_preorder(shared_folders, __invert_key_value, shares);
+
+    const char *ad = onion_dict_get(options, "allow_download_in_shares");
+
+    // Setup variables for template.
+    onion_dict *d = onion_dict_new();
+    onion_dict_add(d, "page_title", onion_dict_get(options, "page_title"), 0);
+    onion_dict_add(d, "shares", shares, OD_DICT | OD_FREE_VALUE);
+    onion_dict_add(d, "allow_download_in_shares",
+            (ad && ad[0] != '0')?"1":"0", 0);
+
+    onion_response_set_header(res, "Content-Type", onion_mime_get("_.html"));
+    int ret = media_html_template(d, req, res); // this frees d!
+
+    return ret;
+}
+// End page /media/html lists all shares
+
+
+// Begin json /media/api/list json of all shares
 void __list_share_func(
         onion_dict *to_json,
         const char *key, const void *value, int flags)
@@ -564,12 +608,14 @@ int list_shares_json(
     ret = OCS_PROCESSED;
 
 
-media_json_end:  // cleanup allocations
+media_api_json_end:  // cleanup allocations
     onion_block_free(jresb);
     onion_dict_free(to_json);
 
     return ret;
 }
+// End json /media/api/list json of all shares
+
 
 onion_connection_status api_playlist_add(
         __share_data_t *privdata,
@@ -855,11 +901,11 @@ void __share_func(
     asprintf(&url_pattern1, "^media/html/%s([/]+|$)", key);
     ONION_DEBUG("Connect url '%s' with '%s'", url_pattern1, media_folder);
 
-    onion_handler *list_media = onion_handler_new(
-            (onion_handler_handler) media_page,
+    onion_handler *list_share = onion_handler_new(
+            (onion_handler_handler) list_share_page,
             handler_data1,
             (onion_handler_private_data_free) __share_data_free);
-    onion_url_add_handler(data->urls, url_pattern1, list_media);
+    onion_url_add_handler(data->urls, url_pattern1, list_share);
 
     // Url pattern to provide list of files as json
     char *url_pattern3=NULL;
@@ -947,6 +993,12 @@ int webui_onion_share_media_folders(
     onion_dict_preorder(shared_folders, __share_func, &data);
 
     // Overview over avail shares
+    onion_handler *media_html = onion_handler_new(
+            (onion_handler_handler) list_media_html,
+            shared_folders,
+            NULL);
+    onion_url_add_handler(urls,  "^media(.html|/html([/]*))$", media_html);
+
     onion_handler *shares_json = onion_handler_new(
             (onion_handler_handler) list_shares_json,
             shared_folders,

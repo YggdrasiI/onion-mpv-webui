@@ -2,7 +2,10 @@ MACRO(compile_template _name)
 	STRING(REPLACE "." "_" _name2 "${_name}")
 	add_custom_command(
 		OUTPUT ${_name2}.c
-		COMMAND ${OTEMPLATE} --no-libintl -t "${OTEMPLATE_TAGSDIR}" "${CMAKE_SOURCE_DIR}/templates/${_name}"
+    # Without translation (for Bionic build)
+    #COMMAND ${OTEMPLATE} --no-libintl -t "${OTEMPLATE_TAGSDIR}" "${CMAKE_SOURCE_DIR}/templates/${_name}"
+    # With translation by gettext
+    COMMAND ${OTEMPLATE} -t "${OTEMPLATE_TAGSDIR}" "${CMAKE_SOURCE_DIR}/templates/${_name}"
 		"${CMAKE_CURRENT_BINARY_DIR}/${_name2}.c"
 		DEPENDS "${CMAKE_SOURCE_DIR}/templates/${_name}"
 		)
@@ -50,13 +53,16 @@ endif()
 #############################################################################
 SET(SOURCE_FILES
 	webui_onion.c
-	fileserver_html.c
 	defines.c
 	buffer_pool.c
 	fileserver.c
 	media.c
-	media_html.c
-	media_json.c
+  style_include.c
+  footer_include.c
+	fileserver_html.c
+  media_html.c
+	media_share_html.c
+	media_api_json.c
 	mpv_script_options.c
 	tools.c
 	onion_ws_status.c
@@ -306,9 +312,12 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/webui.pc"
 
 #############################################################################
 # Templates
+compile_template(style.include)
+compile_template(footer.include)
 compile_template(fileserver.html)
 compile_template(media.html)
-compile_template(media.json)
+compile_template(media_api.json)
+compile_template(media_share.html)
 
 if(HAVE_MSGFMT)
 	# Localization

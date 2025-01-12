@@ -1,0 +1,1 @@
+<div id="copyright"><a href="https://github.com/YggdrasiI/onion-mpv-webui">MPV onion-mpv-webui</a> {% if LANG %}<span id="lang">{{LANG}}</span>{% endif %}</div>

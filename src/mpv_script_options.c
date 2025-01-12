@@ -22,7 +22,6 @@ onion_dict *get_default_options(){
   onion_dict_add(opt, "paused", "1", 0);
   onion_dict_add(opt, "daemon", "1", 0);
 
-  //TODO
   onion_dict_add(opt, "ws_interval", "500", 0); // minimal distance between property updates
 
   // Enable console output
@@ -33,8 +32,8 @@ onion_dict *get_default_options(){
   onion_dict_add(opt, "block_non_shared_files", "1", 0);
 
   // Media shares. Names should not contain '/'.
-  onion_dict_add(shared_folders, "share1", "/home/olaf/Music",
-          OD_FREE_ALL|OD_DUP_ALL);
+  //onion_dict_add(shared_folders, "share1", "/home/olaf/Music",
+  //        OD_FREE_ALL|OD_DUP_ALL);
 
   onion_dict_add(opt, "shared_folders", shared_folders,
           OD_FREE_VALUE|OD_DICT); // free sub-dict with opt

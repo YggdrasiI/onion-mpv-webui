@@ -3,56 +3,46 @@
 <html lang="{% if LANG %}{{LANG}}{%else%}en{% endif %}">
 <head>
  <meta content="text/html; charset=UTF-8" http-equiv="content-type"/> 
- <title>{% trans "Current directory: " %} {{dirname}}</title>
-<style>
-body{ background: #000; color: #aaa; font-family: sans-serif; margin-left: 5%; margin-right: 5%; }
-table{ background: #333; width: 100%; border: 1px solid #aaa; border-radius: 5px; }
-th{ background: rgba(60, 50, 50, 30); }
-tr.dir td{ rgba(40, 40, 40, 30); }
-tbody tr:hover td{ background: rgba(60, 60, 60, 30); }
-table a{ display: block; } th{ cursor: pointer} h1,h2{ text-align: center; }
-a{ color: red; text-decoration: none; }
-a.fname, a.dname { max-width:30em; overflow: hidden; text-overflow: ellipsis; }
-#copyright{ text-align: center; font-size: 0.7em; }
-#lang{ width: 0.6em; color: #aaa; }
-.icon{ width:1.3em; font-weight:bold; text-align:right; }
-.add{ width:3em; font-weight:bold; text-align:center; }
-.size{ text-align:right; }
-</style>
+ <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+ <title>{% trans "List of shares on" %} {{page_title}}</title>
+ {% include "style.include" %}
 </head>
 <body> 
 
-<h1>{{dirname}}</h1>
-
-{% if go_up %}<a href="..">{% trans "Go up" %}</a>{%endif%}
+<h1>{{page_title}}</h1>
 
 <table>
 <thead>
-	<tr><th></th><th>{% trans "Filename" %}</th><th>{% trans "Size" %}</th><th>{% trans "Add" %}</th></tr>
+    <tr><th></th><th>{% trans "Share" %}</th></tr>
 </thead>
 <tbody>
-{% for file in files %}
+{% for share in shares %}
  <tr>
-   <td class="icon">{% if file.type == "dir" %}
-		 &#x1F4C1;
-     {% else %}
-		 &#x1F4C4;
-     {% endif %}
-	 </td>
-   <td>{% if file.type == "dir" %}
-		 <a class="dname" href="/media/html/{{share_key}}{{uri_rel_path}}{{file.name}}/">{{file.name}}</a>
-     {% else %}
-     <a class="fname" target="_api" href="/media/api/playlist_play/{{share_key}}{{uri_rel_path}}{{file.name}}">{{file.name}}</a>
-     {% endif %}
-	 </td>
-	 <td class="size">{% if file.type != "dir" %} {{file.size2}} {% endif %}</td>
-	<td class="add"><a target="_api" href="/media/api/playlist_add/{{share_key}}{{uri_rel_path}}{{file.name}}">+</a></td>
+     <td>
+         &#x1F4C1;
+     </td>
+   <td>
+       <a class="dname" href="/media/html/{{share}}/">{{share}}</a>
+   </td>
  </tr>
-{% endfor %}
+ {% endfor %}
 </tbody>
 </table>
+<div class="spacer"></div>
+<div>
+    Notes:<ul>
+        <li>{% trans "List of shared folders can be edited by '%s'" "script-opts-add=libwebui-shared_folders=[share_name1:path1,[…]]" %}
+        </li><li>           
+{% if allow_download_in_shares != "0" %}
+<span>{% trans "Shared files are downloadable." %} </span>
+{% else %}
+<span>{% trans "Shared are not downloadabe." %} </span>
+{% endif %}
+<span>{% trans "This can be changed by '%s' in '%s'" "script-opts-add=allow_download_in_shares=[0|1]" "libwebui.conf\"ho ho\"" %}</span>
+        </li>
+    </ul>
+</div>
 
-<div id="copyright"><a href="https://github.com/YggdrasiI/simple-mpv-webui">MPV simple webui</a> {% if LANG %}<span id="lang">{{LANG}}</span>{% endif %}</div>
- <iframe name="_api" style="border:0px;height:200px;width:600px;display:none" title="Displays api return values"></iframe> 
+{% include "footer.include" %}
 </body>
 </html>

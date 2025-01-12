@@ -19,11 +19,14 @@ void __share_data_free (
         __share_data_t *privdata);
 
 // Generated from 'otemplate'
+
+int media_share_html_template(onion_dict * context, onion_request * req,
+                             onion_response * res);
 int media_html_template(onion_dict * context, onion_request * req,
                              onion_response * res);
-
-int media_json_template(onion_dict * context, onion_request * req,
+int media_api_json_template(onion_dict * context, onion_request * req,
                              onion_response * res);
+//footer.include   style.include
 
 /* Handlers for '/media' section */
 // Return list of filenames, but not allow downloading them

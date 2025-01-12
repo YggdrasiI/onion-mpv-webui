@@ -1,0 +1,46 @@
+{% load i18n %}
+<!DOCTYPE html>
+<html lang="{% if LANG %}{{LANG}}{%else%}en{% endif %}">
+<head>
+ <meta content="text/html; charset=UTF-8" http-equiv="content-type"/> 
+ <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+ <title>{% trans "Current directory: " %} {{dirname}}</title>
+ {% include "style.include" %}
+</head>
+<body> 
+
+<h1>{{dirname}}</h1>
+
+{% if go_up %}<a href="..">{% trans "Go up" %}</a>{%endif%}
+
+<table>
+<thead>
+	<tr><th></th><th>{% trans "Filename" %}</th><th>{% trans "Size" %}</th><th>{% trans "Add" %}</th></tr>
+</thead>
+<tbody>
+{% for file in files %}
+ <tr>
+   <td class="icon">{% if file.type == "dir" %}
+		 &#x1F4C1;
+     {% else %}
+		 &#x1F4C4;
+     {% endif %}
+	 </td>
+   <td>{% if file.type == "dir" %}
+		 <a class="dname" href="/media/html/{{share_key}}{{uri_rel_path}}{{file.name}}/">{{file.name}}</a>
+     {% else %}
+     <a class="fname" target="_api" href="/media/api/playlist_play/{{share_key}}{{uri_rel_path}}{{file.name}}">{{file.name}}</a>
+     {% endif %}
+	 </td>
+	 <td class="size">{% if file.type != "dir" %} {{file.size2}} {% endif %}</td>
+	<td class="add"><a target="_api" href="/media/api/playlist_add/{{share_key}}{{uri_rel_path}}{{file.name}}">+</a></td>
+ </tr>
+{% endfor %}
+</tbody>
+</table>
+
+<div class="spacer"></div>
+<iframe name="_api" style="border:0px;height:200px;width:600px;display:none" title="Displays api return values"></iframe> 
+{% include "footer.include" %}
+</body>
+</html>
