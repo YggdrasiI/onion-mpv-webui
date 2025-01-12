@@ -653,6 +653,7 @@ onion_connection_status api_playlist_add(
     CommandHandler cmd = (CommandHandler) onion_dict_get(
             media_commands, command_name);
 
+    onion_response_set_header(res, "Content-Type", onion_mime_get("_.json"));
     if (!cmd){
         onion_response_set_code(res, HTTP_BAD_REQUEST);
         onion_response_printf(res,
