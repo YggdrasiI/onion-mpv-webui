@@ -159,11 +159,16 @@ onion_connection_status list_share_page(
     if (dir) {
         // Fill the dictionary for html-template.
         onion_dict *d = onion_dict_new();
-        onion_dict_add(d, "dirname", uri_full_path, 0);
+        onion_dict_add(d, "dirname", basename(uri_full_path), // GNU's basename
+                OD_DUP_VALUE|OD_FREE_VALUE);
+        onion_dict_add(d, "path", uri_rel_path, 0);
+        onion_dict_add(d, "uri", uri_full_path, 0);
+        onion_dict_add(d, "page_title", onion_dict_get(options, "page_title"), 0);
 
         // Add "Go up" link. Using uri_rel_path because
         // uri_full_path is 'media/html/[share_name]'
-        if (uri_rel_path[0] != '\0' && uri_rel_path[1] != '\0')
+        //if (uri_rel_path[0] != '\0' && uri_rel_path[1] != '\0')
+        if (1)
             onion_dict_add(d, "go_up", "true", 0);
         //onion_dict_add(d, "share_key", share_key, 0);
         //onion_dict_add(d, "uri_rel_path", uri_rel_path, 0);

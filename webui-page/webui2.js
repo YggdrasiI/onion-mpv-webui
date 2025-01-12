@@ -48,6 +48,16 @@ function toggleShares() {
 
 }
 
+function browseShares() {
+  /* Open current folder in new tab */
+  var cur_dir = `/media/html/${basename(shares.list[shares.selected].url)}/`
+    + `${shares.list[shares.selected].dir}`
+  cur_dir = cur_dir.replace(/[/]+$/gm,"")
+
+  DEBUG && console.log(`Open ${cur_dir}`)
+  window.open(cur_dir, window.metadata.title).focus()
+}
+
 function share_change(el){
   /* Save current scroll position */
   var sharelist = document.getElementById("sharelist")

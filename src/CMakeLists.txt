@@ -58,6 +58,7 @@ SET(SOURCE_FILES
 	fileserver.c
 	media.c
   style_include.c
+  js_include.c
   footer_include.c
 	fileserver_html.c
   media_html.c
@@ -313,6 +314,7 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/webui.pc"
 #############################################################################
 # Templates
 compile_template(style.include)
+compile_template(js.include)
 compile_template(footer.include)
 compile_template(fileserver.html)
 compile_template(media.html)

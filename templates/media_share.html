@@ -4,12 +4,13 @@
 <head>
  <meta content="text/html; charset=UTF-8" http-equiv="content-type"/> 
  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
- <title>{% trans "Current directory: " %} {{dirname}}</title>
+ <title>{{page_title}}: {{dirname}}</title>
  {% include "style.include" %}
+ {% include "js.include" %}
 </head>
 <body> 
 
-<h1>{{dirname}}</h1>
+<h1><a href="/" target="{{page_title}}">{{dirname}}</a></h1>
 
 {% if go_up %}<a href="..">{% trans "Go up" %}</a>{%endif%}
 

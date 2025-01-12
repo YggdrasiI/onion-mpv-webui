@@ -165,6 +165,18 @@ function togglePlaylist() {
   el.style.visibility = (el.style.visibility === "visible") ? "hidden" : "visible"
 }
 
+function hide_overlays(){
+  overlays = {
+    "overlay": togglePlaylist,
+    "overlay2": toggleShares,
+  }
+  for (id in overlays){
+    var el = document.getElementById(id)
+    if (el && el.style.visibility === "visible") overlays[id]()
+  }
+}
+
+
 function createPlaylistTable(entry, position, pause, first) {
   function setActive(set) {
     if (set === true) {
@@ -1198,6 +1210,7 @@ function status_init_ws(){
       connected = false;
       if (ev.code != 1001 /* GOING_AWAY reply. No need for further rendering */){
         print_disconnected()
+        hide_overlays()
       }
     }
 
@@ -1464,6 +1477,7 @@ function add_button_listener() {
     ['share_selector', 'change', function (evt) {share_change(evt.target) }],
     ['shareSortingAlpha', 'click', function (evt) {share_change_sorting('alpha'); sortShareList(); }],
     ['shareSortingDate', 'click', function (evt) {share_change_sorting('date'); sortShareList(); }],
+    ['browseShares', 'click', function (evt) {browseShares() }],
     ['toggleShares', 'click', function (evt) {toggleShares() }],
     ['playlistPrev', 'pointerup', function (evt) {send('playlist_prev') },
       function(evt) {touchmenu.prev_files(evt)} ],
