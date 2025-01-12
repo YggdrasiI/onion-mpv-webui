@@ -33,14 +33,14 @@
 <div class="spacer"></div>
 <div>
     Notes:<ul>
-        <li>{% trans "List of shared folders can be edited by '%s'" "script-opts-add=libwebui-shared_folders=[share_name1:path1,[…]]" %}
+        <li>{% trans "List of shared folders can be edited by '%s'" "script-opts-add=\"libwebui-shared_folders=[share_name1:path1,[…]]\"" %}
         </li><li>           
 {% if allow_download_in_shares != "0" %}
 <span>{% trans "Shared files are downloadable." %} </span>
 {% else %}
 <span>{% trans "Shared are not downloadabe." %} </span>
 {% endif %}
-<span>{% trans "This can be changed by '%s' in '%s'" "script-opts-add=allow_download_in_shares=[0|1]" "libwebui.conf\"ho ho\"" %}</span>
+<span>{% trans "This can be changed by '%s' in '%s'" "script-opts-add=allow_download_in_shares=[0|1]" "libwebui.conf" %}</span>
         </li>
     </ul>
 </div>
