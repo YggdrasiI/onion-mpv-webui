@@ -85,7 +85,7 @@ function share_change(el){
   var request = new XMLHttpRequest();
 
   shares.selected = el.selectedIndex
-  request.open("get", s["url"] + "/" + s["dir"] )
+  request.open("get", s["url"] + "/" + encodeURIComponent(s["dir"]) )
 
   request.onreadystatechange = function() {
     if (request.readyState === 4 && request.status === 200) {
@@ -100,7 +100,7 @@ function share_change(el){
 
 function share_change_dir(list_link){
   if (list_link === "..") {
-    var cur_dir = shares.list[shares.selected].url + "/" 
+    var cur_dir = shares.list[shares.selected].url + "/"
       + shares.list[shares.selected].dir
       .replace(/[/]+$/gm,""); // remove '/' at end
 
@@ -117,7 +117,7 @@ function share_change_dir(list_link){
 }
 
 function share_get_subdir(dirname){
-  /* strips prefix /media/api/list/<sharename> from dirname 
+  /* strips prefix /media/api/list/<sharename> from dirname
    * and remove leading and trailing '/'.
    */
 
@@ -144,7 +144,7 @@ function share_add_file(add_link, bPlay){
   }
 
   var request = new XMLHttpRequest();
-  request.open("get", add_link )
+  request.open("get", encode(add_link))  // TODO encoding-wrap depends on input from server. I should encode it there...
 
   request.onreadystatechange = function() {
     if (request.readyState === 4 && request.status === 200) {
@@ -203,7 +203,7 @@ function print_share_list(json){
 
       if( idx >= 0 ){
         fname.addEventListener("click", function() {
-          share_add_file(encode(play_link), true)
+          share_add_file(play_link, true)
         })
       }
     }
@@ -213,7 +213,7 @@ function print_share_list(json){
     action1.classList.add('fa-plus-square')
     //action1.textContent = "  [+]"
     action1.addEventListener("click", function() {
-      share_add_file(encode(play_link), false)
+      share_add_file(play_link, false)
     })
 
     li.setAttribute("timestamp", file.modified)
@@ -269,9 +269,9 @@ function print_share_list(json){
 
   /* Reset scrollPosition on saved value, if available.
    * Assumes scarelist.style.overflow == "scroll"
-   */ 
+   */
   var sT = shares.scroll_positions[json.dirname]
-  DEBUG && console.log("Set scroll position of share " + 
+  DEBUG && console.log("Set scroll position of share " +
     json.dirname + " to " + sT)
   if (sT !== undefined){
     sharelist.scrollTop = sT
@@ -493,10 +493,47 @@ function decode(s){
   return s
 }
 
+
+function encodeResolveDifference(s){
+  /* This should be equivalent to encodeURIComponent(decodeURI(x))
+   * (Source: * https://www.mediaevent.de/javascript/encodeUri.htm )
+   * List of extra affected chars of encodeURIComponent:
+   * MEH, KI-Halluziationen... Die angaben stimmen vorne und hinten nicht.
+   */
+  const critical_chars = Array.from("#$&+,/:;=?@")
+  map = {};
+  critical_chars.forEach((el) => {map[el] = encodeURIComponent(el)}) // Schmerz…
+
+  function replacer(match, offset, string) {
+    console.log("X" + match + " => " + map[match])
+    return map[match]
+  }
+  const r = RegExp("["+Object.keys(map)+"]", "g")
+  console.log(Object.keys(map))
+  return s.replace(r, replacer);
+}
+
 function encode(s){
-  // Encode spaces. Is this enough?!
-  s = s.replaceAll(' ', '%20')
-  return s
+  // Convert reative and absolute urls in same form.
+  // Encodes everything behind the hostname.
+  //
+  var url = new URL(s, window.location)
+  /* Notes: • url.href. is already encoded, but with the 'wrong' variant.
+   *        • This approach encodes all slashes!
+   */
+  //url.pathname = encodeResolveDifference(url.href.slice(1+url.origin.length))
+  //or
+  url.pathname = encodeURIComponent(decodeURI(url.href.slice(1+url.origin.length)))
+
+  return url.href
+}
+
+function encode_old(s){
+  // onion runs decode() on every %XX-string.
+  // Encode '%' itsself and then ' ' and '+' to get correct
+  // filename handling.
+  return s.replaceAll("%", "%25").replaceAll(" ", "%20").replaceAll("+", "%2B)
+  // The should fix error for files with '%', ' ', '+'. 
 }
 
 // From simple-mpv-webui
