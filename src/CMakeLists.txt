@@ -1,4 +1,4 @@
-MACRO(compile_template _name)
+MACRO(compile_template _name _target)
 	STRING(REPLACE "." "_" _name2 "${_name}")
 	add_custom_command(
 		OUTPUT ${_name2}.c
@@ -9,6 +9,9 @@ MACRO(compile_template _name)
 		"${CMAKE_CURRENT_BINARY_DIR}/${_name2}.c"
 		DEPENDS "${CMAKE_SOURCE_DIR}/templates/${_name}"
 	)
+
+	# Add generated file to sources of binary
+	target_sources("${_target}" PRIVATE "${_name2}.c")
 ENDMACRO()
 
 MACRO(compile_localization _lang)
@@ -57,15 +60,11 @@ SET(SOURCE_FILES
 	buffer_pool.c
 	fileserver.c
 	media.c
-	style_include.c
-	js_include.c
-	footer_include.c
-	fileserver_html.c
-	media_html.c
-	media_share_html.c
-	media_api_json.c
+	#media_html_handler.c
+	#media_api_handler1.c
 	mpv_script_options.c
 	tools.c
+	percent_encoding.c
 	onion_ws_status.c
 	onion_ws_time.c
 	onion_default_errors.c
@@ -196,13 +195,13 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/webui.pc"
 
 #############################################################################
 # Templates
-compile_template(style.include)
-compile_template(js.include)
-compile_template(footer.include)
-compile_template(fileserver.html)
-compile_template(media.html)
-compile_template(media_api.json)
-compile_template(media_share.html)
+compile_template(style.include webui)
+compile_template(js.include webui)
+compile_template(footer.include webui)
+compile_template(fileserver.html webui)
+compile_template(media.html webui)
+compile_template(media_api_list.json webui)
+compile_template(media_share.html webui)
 
 if(HAVE_MSGFMT)
 	# Localization

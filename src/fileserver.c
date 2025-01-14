@@ -37,6 +37,7 @@
 #include "buffer_pool.h"
 
 #include "fileserver.h"
+#include "percent_encoding.h"
 
 extern buffer_pool_t *path_buffers;
 
@@ -71,6 +72,9 @@ onion_connection_status fileserver_page(
     }
 
     onion_connection_status ret = OCS_NOT_PROCESSED;
+#if TEMPLATES_WITH_SHORTEN_NAMES > 0
+    const size_t max_display_filename_len = TEMPLATES_WITH_SHORTEN_NAMES;
+#endif
 
     const char * const basepath = privdata->root_dir;
 
@@ -104,11 +108,15 @@ onion_connection_status fileserver_page(
     DIR *dir = opendir(realp);
     if (dir) {                  // its a dir, fill the dictionary.
         onion_dict *d = onion_dict_new();
-        onion_dict_add(d, "dirname", path, 0);
+        onion_dict_add(d, "path", path, 0);
         if (path[0] != '\0' && path[1] != '\0')
             onion_dict_add(d, "go_up", "true", 0);
         onion_dict *files = onion_dict_new();
         onion_dict_add(d, "files", files, OD_DICT | OD_FREE_VALUE);
+#ifdef TEMPLATES_WITH_ENCODED_NAMES
+        onion_dict_add(d, "path_encoded",
+                encodeURIComponent(path), OD_FREE_VALUE);
+#endif
 
         struct dirent *de;
         while ((de = readdir(dir))) {     // Fill one files.[filename] per file.
@@ -120,6 +128,21 @@ onion_connection_status fileserver_page(
                     OD_DUP_KEY | OD_DICT | OD_FREE_VALUE);
 
             onion_dict_add(file, "name", de->d_name, OD_DUP_VALUE);
+#if TEMPLATES_WITH_SHORTEN_NAMES
+            // Add shorten name to avoid long lines
+            if (strlen(de->d_name) > max_display_filename_len) {
+                de->d_name[max_display_filename_len-1] = '\0';
+                de->d_name[max_display_filename_len-2] = '.';
+                de->d_name[max_display_filename_len-3] = '.';
+                de->d_name[max_display_filename_len-4] = '.';
+            }
+            onion_dict_add(file, "name_short", de->d_name, OD_DUP_VALUE);
+#endif
+#ifdef TEMPLATES_WITH_ENCODED_NAMES
+            // Encode filename
+            onion_dict_add(file, "name_encoded",
+                    encodeURIComponent(de->d_name), OD_FREE_VALUE);
+#endif
 
             struct stat st;
             int ps = snprintf(tmp_path2, tmp_path_len, "%s/%s", realp, de->d_name);

@@ -28,13 +28,13 @@
      {% endif %}
 	 </td>
    <td>{% if file.type == "dir" %}
-		 <a class="dname" href="/media/html/{{share_key}}{{uri_rel_path}}{{file.name}}/">{{file.name}}</a>
+		 <a class="dname" href="/media/html/{{share_key}}/{{uri_rel_path_encoded}}/{{file.name_encoded}}/">{{file.name}}</a>
      {% else %}
-     <a class="fname" target="_api" href="/media/api/playlist_play/{{share_key}}{{uri_rel_path}}{{file.name}}">{{file.name}}</a>
+     <a class="fname" target="_api" href="/media/api/playlist_play/{{share_key}}/{{uri_rel_path_encoded}}/{{file.name_encoded}}">{{file.name}}</a>
      {% endif %}
 	 </td>
 	 <td class="size">{% if file.type != "dir" %} {{file.size2}} {% endif %}</td>
-	<td class="add"><a target="_api" href="/media/api/playlist_add/{{share_key}}{{uri_rel_path}}{{file.name}}">+</a></td>
+	<td class="add"><a target="_api" href="/media/api/playlist_add/{{share_key}}/{{uri_rel_path_encoded}}/{{file.name_encoded}}">+</a></td>
  </tr>
 {% endfor %}
 </tbody>

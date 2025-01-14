@@ -3,12 +3,12 @@
 <html lang="{% if LANG %}{{LANG}}{%else%}en{% endif %}">
 <head>
  <meta content="text/html; charset=UTF-8" http-equiv="content-type"/> 
- <title>{% trans "Current directory: " %} {{dirname}}</title>
+ <title>{% trans "Current directory: " %} {{path}}</title>
  {% include "style.include" %}
 </head>
 <body>
 
-<h1>{{dirname}}</h1>
+<h1>{{path}}</h1>
 
 {% if go_up %}<a href="..">{% trans "Go up" %}</a>{%endif%}
 
@@ -19,7 +19,7 @@
 <tbody>
 {% for file in files %}
  <tr>
-	 <td><a href="{{dirname}}/{{file.name}}{% if file.type == "dir" %}/{% endif %}">{{file.name}}</a></td>
+	 <td><a href="{{path_encoded}}/{{file.name_encoded}}{% if file.type == "dir" %}/{% endif %}">{{file.name_short}}</a></td>
   <td>{{file.size}}</td>
   <td>{{file.owner}}</td>
  </tr>

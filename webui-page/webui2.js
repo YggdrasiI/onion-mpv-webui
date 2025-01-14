@@ -50,11 +50,13 @@ function toggleShares() {
 
 function browseShares() {
   /* Open current folder in new tab */
-  var cur_dir = `/media/html/${basename(shares.list[shares.selected].url)}/`
-    + `${shares.list[shares.selected].dir}`
-  cur_dir = cur_dir.replace(/[/]+$/gm,"")
+	var url = basename(shares.list[shares.selected].url);
+	var dir = shares.list[shares.selected].dir
+	var local_path =	encodeURIComponent(`${url}/${dir}`)
+  var cur_dir = `/media/html/${local_path}`
+	cur_dir = cur_dir.replace(/[/]+$/gm,"")
 
-  DEBUG && console.log(`Open ${cur_dir}`)
+  true | DEBUG && console.log(`Open ${cur_dir}`)
   window.open(cur_dir, window.metadata.title).focus()
 }
 
@@ -85,6 +87,8 @@ function share_change(el){
   var request = new XMLHttpRequest();
 
   shares.selected = el.selectedIndex
+	console.log("AAA" + s["dir"])
+  //request.open("get", s["url"] + "/" + s["dir"])
   request.open("get", s["url"] + "/" + encodeURIComponent(s["dir"]) )
 
   request.onreadystatechange = function() {
@@ -144,7 +148,11 @@ function share_add_file(add_link, bPlay){
   }
 
   var request = new XMLHttpRequest();
-  request.open("get", encode(add_link))  // TODO encoding-wrap depends on input from server. I should encode it there...
+	console.log("XXX "+add_link)
+  //request.open("get", add_link)
+	add_link = preserve_special_chars(add_link)
+  request.open("get", add_link)
+  //request.open("get", encode_raw_link(add_link))  // This can be used if the server not percent encoded on it's own.
 
   request.onreadystatechange = function() {
     if (request.readyState === 4 && request.status === 200) {
@@ -179,7 +187,8 @@ function print_share_list(json){
     var fname = document.createElement("SPAN")
     var action1 = document.createElement("I")
 
-    var play_link = decode(file.play)
+    var play_link = decode(file.play || "" )
+    var list_link = decode(file.list || "")
 
     li.classList.add('gray')
     bullet.classList.add('share_bullet')
@@ -191,11 +200,12 @@ function print_share_list(json){
       bullet.classList.add('fa-file')
     }
 
-    fname.textContent = basename(play_link)
+    fname.textContent = basename(play_link) // if play_link is not percentage encoded.
+    //fname.textContent = file.name || decodeURIComponent(basename(play_link))
     if (isdir) {
       fname.classList.add('share_dir')
       fname.addEventListener("click", function() {
-        share_change_dir(file.list)
+        share_change_dir(list_link)
         share_change(document.getElementById("share_selector"))
       })
     }else{
@@ -480,16 +490,17 @@ function decode(s){
    * encoded html chars.
    *
    * Without changing otemplate tool we just
-   * can undo this by reverting onion_html_add_enc().
+   * can undo this by reverting onion_html_add_enc()
+	 * (called in otemplate/variables.c by  onion_response_write_html_safe(…) ).
    */
 
   /*var doc = new DOMParser().parseFromString(s, "text/html");
     return doc.documentElement.textContent;
     */
   // or
-  s = s.replaceAll('&amp;', '&')
   s = s.replaceAll('&#39;', '\'').replaceAll('&quot;','"')
   s = s.replaceAll('&lt;', '<').replaceAll('&gt;', '>')
+  s = s.replaceAll('&amp;', '&')
   return s
 }
 
@@ -513,8 +524,8 @@ function encodeResolveDifference(s){
   return s.replace(r, replacer);
 }
 
-function encode(s){
-  // Convert reative and absolute urls in same form.
+function encode_raw_link(s){
+  // Converts reative and absolute urls in same form.
   // Encodes everything behind the hostname.
   //
   var url = new URL(s, window.location)
@@ -528,11 +539,12 @@ function encode(s){
   return url.href
 }
 
-function encode_old(s){
+function preserve_special_chars(s){
   // onion runs decode() on every %XX-string.
-  // Encode '%' itsself and then ' ' and '+' to get correct
-  // filename handling.
-  return s.replaceAll("%", "%25").replaceAll(" ", "%20").replaceAll("+", "%2B)
+  // Encode '%' itsself and then ' ' and '+' should be good enough
+	// to get correct filenames on server side after decoding.
+	// Well, using encodeURIComponent() should also work.
+  return s.replaceAll("%", "%25").replaceAll("+", "%2B").replaceAll(" ", "%20")
   // The should fix error for files with '%', ' ', '+'. 
 }
 

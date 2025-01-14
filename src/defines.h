@@ -16,3 +16,11 @@ int cmd_dummy(const char *name,
 #define CMD(NAME) #NAME, (void *)cmd_dummy
 #define MEDIA_CMD(NAME) #NAME, (void *)cmd_dummy
 #endif
+
+// adding name_short variable to context in fileserver.c and media.c
+// if value > 0
+#define TEMPLATES_WITH_SHORTEN_NAMES 60
+
+// adding path_encoded and name_encoded in fileserver.c and media.c
+// if defined
+#define TEMPLATES_WITH_ENCODED_NAMES

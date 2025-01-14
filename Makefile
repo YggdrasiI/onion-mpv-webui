@@ -166,5 +166,9 @@ apk_copy_config2:
 apk_copy_page:
 	adb push webui-page sdcard/mpv/
 
+mpv:
+	vim -p \
+		$$HOME/.config/mpv/script-opts/libwebui.conf \
+		$$HOME/.config/mpv/mpv.conf
 
 .PHONY: build
