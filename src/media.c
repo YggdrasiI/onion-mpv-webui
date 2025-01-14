@@ -142,7 +142,8 @@ void __share_func(
     handler_data1->key = strdup(key);
     handler_data1->media_path = strdup(value);
 
-    asprintf(&url_pattern1, "^media/html/%s([/]+|$)", key);
+    //asprintf(&url_pattern1, "^media/html/%s([/]+|$)", key);
+    asprintf(&url_pattern1, "^media/html[/]+[^/]+([/]+|$)", key);
     ONION_DEBUG("Connect url '%s' with '%s'", url_pattern1, media_folder);
 
     onion_handler *list_share = onion_handler_new(
@@ -158,7 +159,7 @@ void __share_func(
     handler_data3->media_path = strdup(value);
 
     //asprintf(&url_pattern3, "^media/api/list/%s([/]+|$)", key);
-    asprintf(&url_pattern3, "^media/api/list/%s([/]+|$)", key);
+    asprintf(&url_pattern3, "^media/api/list[/]+[^/]+([/]+|$)", key);
     ONION_DEBUG("Connect url '%s' with '%s'", url_pattern3, media_folder);
 
     onion_handler *json_media = onion_handler_new(
@@ -173,7 +174,7 @@ void __share_func(
     handler_data2->key = strdup(key);
     handler_data2->media_path = strdup(value);
 
-    asprintf(&url_pattern2, "^media/api/playlist_add/%s[/]+", key);
+    asprintf(&url_pattern2, "^media/api/playlist_add[/]+[^/]+[/]+", key);
     //printf("Connect pattern '%s'\n", url_pattern2);
 
     onion_handler *add_media = onion_handler_new(
@@ -188,7 +189,7 @@ void __share_func(
     handler_data4->key = strdup(key);
     handler_data4->media_path = strdup(value);
 
-    asprintf(&url_pattern4, "^media/api/playlist_play/%s[/]+", key);
+    asprintf(&url_pattern4, "^media/api/playlist_play[/]+[^/]+[/]+", key);
     //printf("Connect pattern '%s'\n", url_pattern4);
 
     onion_handler *add_media4 = onion_handler_new(
@@ -236,6 +237,9 @@ int webui_onion_share_media_folders(
 
     // sub levels: 
     onion_dict_preorder(shared_folders, __share_func, &data);
+
+    // /media, /media/html and /media/api levels
+    //onion_url *media = onion_url_new();
 
     // root level: Overview over avail shares
     onion_handler *media_html = onion_handler_new(

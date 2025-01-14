@@ -68,7 +68,6 @@ function send_ws(command, ...params){
   if (ws){
     // TODO: Implement json-parser on server side?!
     // At the moment we send simply send the url scheme and the input is threated like send().
-		console.log("YYY "+api.param2)
     //uri = String(api.command) + "/" + String(api.param1) + "/" + String(api.param2)
     uri = String(api.command) + "/" + String(api.param1) + "/" + String(encodeURIComponent(api.param2))
     DEBUG && console.log("Send " + uri)
@@ -158,7 +157,6 @@ function send(command, param1, param2){
      * On the server side, onion's codec.c will decode every %XX char on the fly.
      * Thus a file named "%2F" would be inaccesible if it's not encoded.
      */
-		console.log("ZZZ "+param2)
     //path += "/" + encodeURI(param2)
 		path += "/" + encodeURIComponent(param2)
   }

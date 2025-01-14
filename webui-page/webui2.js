@@ -87,7 +87,6 @@ function share_change(el){
   var request = new XMLHttpRequest();
 
   shares.selected = el.selectedIndex
-	console.log("AAA" + s["dir"])
   //request.open("get", s["url"] + "/" + s["dir"])
   request.open("get", s["url"] + "/" + encodeURIComponent(s["dir"]) )
 
@@ -148,7 +147,6 @@ function share_add_file(add_link, bPlay){
   }
 
   var request = new XMLHttpRequest();
-	console.log("XXX "+add_link)
   //request.open("get", add_link)
 	add_link = preserve_special_chars(add_link)
   request.open("get", add_link)
@@ -241,6 +239,7 @@ function print_share_list(json){
   }
 
   if (shares.list[shares.selected].dir === ".current"){
+    console.log(json)
     DEBUG && console.log("Replace .current by "
       + share_get_subdir(json.dirname))
     shares.list[shares.selected].dir = share_get_subdir(json.dirname)
@@ -506,11 +505,6 @@ function decode(s){
 
 
 function encodeResolveDifference(s){
-  /* This should be equivalent to encodeURIComponent(decodeURI(x))
-   * (Source: * https://www.mediaevent.de/javascript/encodeUri.htm )
-   * List of extra affected chars of encodeURIComponent:
-   * MEH, KI-Halluziationen... Die angaben stimmen vorne und hinten nicht.
-   */
   const critical_chars = Array.from("#$&+,/:;=?@")
   map = {};
   critical_chars.forEach((el) => {map[el] = encodeURIComponent(el)}) // Schmerz…
