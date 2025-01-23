@@ -23,7 +23,7 @@
 
 
 typedef struct media_track_paths_t {
-    share_info_t *shares;
+    onion_dict *shares;
     //char *current_share; // "" or key from shares.
     share_info_t *current_share_info;
       // share_info["current_directory"] Stores relative paths to share root.
@@ -55,7 +55,7 @@ void media_track_paths_free(media_track_paths_t *mtp){
 
 void media_track_paths_set_shares(
         media_track_paths_t *mtp,
-        share_info_t *shares)
+        onion_dict *shares)
 {
     mtp->shares = shares;
 }
@@ -151,7 +151,7 @@ void _media_track_paths_update(
     }
 
     if (mtp->current_share_info && 0 == strstarts(new_path,
-                onion_dict_get(mtp->current_share_info, "path"))){
+                onion_dict_get((onion_dict*)mtp->current_share_info, "path"))){
         char *translated_directory = translate_path(mtp->current_share_info, new_directory);
         // New path is included in current share
         onion_dict_add((onion_dict *)mtp->current_share_info, "current_directory", 

@@ -9,7 +9,7 @@ void media_track_paths_free(
 
 void media_track_paths_set_shares(
         media_track_paths_t *mtp,
-        share_info_t *shares);
+        onion_dict *shares);
 
 // Called from mpv_plugin loop.
 void media_track_paths_set(
