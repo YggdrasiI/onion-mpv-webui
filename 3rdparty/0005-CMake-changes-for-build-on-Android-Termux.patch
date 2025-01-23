@@ -1,7 +1,7 @@
-From d9fee615b4ed048a49bbaf241d5f686a138ad437 Mon Sep 17 00:00:00 2001
+From 3e1b8ef8836128dadd7a6483b20cce4fec1fcdcd Mon Sep 17 00:00:00 2001
 From: Olaf Schulz <olaf_schulz@posteo.de>
 Date: Fri, 13 Nov 2020 12:40:02 +0100
-Subject: [PATCH 5/5] CMake changes for build on Android/Termux
+Subject: [PATCH 05/11] CMake changes for build on Android/Termux
 
 On Android we need to link to liblog but remove
 linking on libpthread and librt.
@@ -59,14 +59,10 @@ index f4ba1da..40a7ac5 100644
  if (${ONION_USE_XML2})
  	find_package(LibXml2)
 diff --git a/src/onion/CMakeLists.txt b/src/onion/CMakeLists.txt
-index af1d8b9..4a8a271 100644
+index 1aff218..1278906 100644
 --- a/src/onion/CMakeLists.txt
 +++ b/src/onion/CMakeLists.txt
-@@ -13,13 +13,15 @@ set(SOURCES onion.c codecs.c dict.c low.c request.c response.c handler.c log.c s
- 	)
- 
- set(LIBRARIES)
- 
+@@ -17,7 +17,9 @@ set(LIBRARIES)
  # Link to librt on the platform supports it.
  find_library(RT_LIB rt)
  if (NOT ${RT_LIB} STREQUAL "RT_LIB-NOTFOUND")
@@ -77,9 +73,6 @@ index af1d8b9..4a8a271 100644
  else()
  	message("librt NOT found. Your target platform may just not supported it. Skipping.")
  endif()
- 
- ## optional add sources and libraries depeding on features
- 
 diff --git a/src/onion/low.c b/src/onion/low.c
 index 87f376e..a30414f 100644
 --- a/src/onion/low.c
@@ -117,5 +110,5 @@ index 87f376e..a30414f 100644
  static onion_low_pthread_exit_sigt *threxit_onion_f = pthread_exit;
  static onion_low_pthread_sigmask_sigt *thrsigmask_onion_f = pthread_sigmask;
 -- 
-2.25.1
+2.47.1
 

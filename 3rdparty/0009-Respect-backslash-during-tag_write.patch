@@ -1,56 +1,16 @@
-From 817f99c57070988dc37721dcfd462d5c2c14c7d0 Mon Sep 17 00:00:00 2001
+From 27b93263c85967b8c2d05a71e0b654b014502ead Mon Sep 17 00:00:00 2001
 From: Olaf Schulz <947069+YggdrasiI@users.noreply.github.com>
 Date: Sat, 11 Jan 2025 12:29:42 +0100
-Subject: [PATCH 10/12] Respect backslash during tag_write()
+Subject: [PATCH 09/11] Respect backslash during tag_write()
 
 Before this change the tokens of a tag were splitted by \".
 Now, "-quoted tokens will not break apart at \" substring.
 ---
- tools/otemplate/tags.c | 12 +++++++++---
- 1 file changed, 59 insertions(+), 9 deletions(-)
+ tools/otemplate/tags.c | 61 +++++++++++++++++++++++++++++++++++++-----
+ 1 file changed, 55 insertions(+), 6 deletions(-)
 
 diff --git a/tools/otemplate/tags.c b/tools/otemplate/tags.c
-index c435a24..cfe6a87 100644
---- a/tools/otemplate/tags.c
-+++ b/tools/otemplate/tags.c
-@@ -89,6 +89,7 @@ void tag_write(parser_status * st, onion_block * b) {
-   list *command = list_new((void *)tag_token_free);
- 
-   char mode = 0;                // 0 skip spaces, 1 in single var, 2 in quotes
-+  char backslash = 0;           // for mode=2: 0 no escaping, 1 escaping
- 
-   // Split into elements for the list
-   int i, li = 0;
-@@ -101,6 +102,7 @@ void tag_write(parser_status * st, onion_block * b) {
-       if (!isspace(c)) {
-         if (c == '"') {
-           mode = 2;
-+          backslash = 0;
-           li = i + 1;
-         } else {
-           mode = 1;
-@@ -115,10 +117,14 @@ void tag_write(parser_status * st, onion_block * b) {
-       }
-       break;
-     case 2:
--      if (c == '"') {
--        mode = 0;
--        list_add(command, tag_token_new(&data[li], i - li, T_STRING));
-+      if (c == '"' && !backslash) {
-+          mode = 0;
-+          list_add(command, tag_token_new(&data[li], i - li, T_STRING));
-       }
-+      if (c == '\\')
-+          backslash = 1-backslash;
-+      else
-+          backslash = 0;
-       break;
-     }
-   }
--- 
-2.25.1
-diff --git a/tools/otemplate/tags.c b/tools/otemplate/tags.c
-index cfe6a87..92e42fe 100644
+index c435a24..92e42fe 100644
 --- a/tools/otemplate/tags.c
 +++ b/tools/otemplate/tags.c
 @@ -29,6 +29,7 @@
@@ -83,23 +43,25 @@ index cfe6a87..92e42fe 100644
    tag_token *ret = malloc(sizeof(tag_token));
    ret->data = strndup(data, l);
    ret->type = t;
-@@ -90,6 +101,7 @@ void tag_write(parser_status * st, onion_block * b) {
+@@ -89,6 +100,8 @@ void tag_write(parser_status * st, onion_block * b) {
+   list *command = list_new((void *)tag_token_free);
  
    char mode = 0;                // 0 skip spaces, 1 in single var, 2 in quotes
-   char backslash = 0;           // for mode=2: 0 no escaping, 1 escaping
++  char backslash = 0;           // for mode=2: 0 no escaping, 1 escaping
 +  char unquote = 0;              // 1 if backslash was triggered once in token
  
    // Split into elements for the list
    int i, li = 0;
-@@ -103,6 +115,7 @@ void tag_write(parser_status * st, onion_block * b) {
+@@ -101,6 +114,8 @@ void tag_write(parser_status * st, onion_block * b) {
+       if (!isspace(c)) {
          if (c == '"') {
            mode = 2;
-           backslash = 0;
++          backslash = 0;
 +          unquote = 0;
            li = i + 1;
          } else {
            mode = 1;
-@@ -113,13 +126,17 @@ void tag_write(parser_status * st, onion_block * b) {
+@@ -111,19 +126,27 @@ void tag_write(parser_status * st, onion_block * b) {
      case 1:
        if (isspace(c)) {
          mode = 0;
@@ -108,9 +70,9 @@ index cfe6a87..92e42fe 100644
        }
        break;
      case 2:
--      if (c == '"' && !backslash) {
--          mode = 0;
--          list_add(command, tag_token_new(&data[li], i - li, T_STRING));
+-      if (c == '"') {
+-        mode = 0;
+-        list_add(command, tag_token_new(&data[li], i - li, T_STRING));
 +      if (c == '"'){
 +          if (backslash)
 +              unquote = 1;
@@ -119,9 +81,11 @@ index cfe6a87..92e42fe 100644
 +              list_add(command, tag_token_new(&data[li], i - li, T_STRING, unquote));
 +          }
        }
-       if (c == '\\')
-           backslash = 1-backslash;
-@@ -129,7 +146,7 @@ void tag_write(parser_status * st, onion_block * b) {
++      if (c == '\\')
++          backslash = 1-backslash;
++      else
++          backslash = 0;
+       break;
      }
    }
    if (mode == 1)
@@ -130,7 +94,7 @@ index cfe6a87..92e42fe 100644
  
    if (!command->head) {
      ONION_ERROR("%s:%d Incomplete command", st->infilename, st->line);
-@@ -190,3 +207,29 @@ void tag_init() {
+@@ -184,3 +207,29 @@ void tag_init() {
    tags = onion_dict_new();
    tag_init_builtins();
  }
@@ -161,5 +125,5 @@ index cfe6a87..92e42fe 100644
 +    *pos_out = '\0';
 +}
 -- 
-2.25.1
+2.47.1
 

@@ -1,16 +1,16 @@
-From e6c19ad77983c7c7d368dbcf88cf4e4c332f7d41 Mon Sep 17 00:00:00 2001
+From ea6f631bd736c436687a592e9aa4f7c068f49f74 Mon Sep 17 00:00:00 2001
 From: Olaf Schulz <olaf_schulz@posteo.de>
 Date: Wed, 26 Oct 2022 00:44:49 +0200
-Subject: [PATCH] Add websocket_multiclient example program
+Subject: [PATCH 08/11] Add websocket_multiclient example program
 
 ---
- examples/websockets/CMakeLists.txt           |   3 +
+ examples/websockets/CMakeLists.txt           |   2 +
  examples/websockets/websockets_multiclient.c | 326 +++++++++++++++++++
- 2 files changed, 329 insertions(+)
+ 2 files changed, 328 insertions(+)
  create mode 100644 examples/websockets/websockets_multiclient.c
 
 diff --git a/examples/websockets/CMakeLists.txt b/examples/websockets/CMakeLists.txt
-index c9f8b01..aa5573b 100644
+index c9f8b01..27c2db9 100644
 --- a/examples/websockets/CMakeLists.txt
 +++ b/examples/websockets/CMakeLists.txt
 @@ -1,3 +1,5 @@
@@ -21,7 +21,7 @@ index c9f8b01..aa5573b 100644
 +target_link_libraries(websockets_multiclient onion)
 diff --git a/examples/websockets/websockets_multiclient.c b/examples/websockets/websockets_multiclient.c
 new file mode 100644
-index 0000000..c916d6a
+index 0000000..618d33a
 --- /dev/null
 +++ b/examples/websockets/websockets_multiclient.c
 @@ -0,0 +1,326 @@
@@ -352,5 +352,5 @@ index 0000000..c916d6a
 +  return 0;
 +}
 -- 
-2.25.1
+2.47.1
 

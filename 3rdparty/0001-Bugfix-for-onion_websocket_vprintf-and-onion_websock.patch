@@ -1,7 +1,7 @@
-From e206405bdfe98cc9330684ac2163a087b601db45 Mon Sep 17 00:00:00 2001
+From 72b48b328c6fbe24d2d5c672da86de7e692cbb27 Mon Sep 17 00:00:00 2001
 From: Olaf Schulz <olaf_schulz@posteo.de>
 Date: Wed, 11 Nov 2020 11:04:19 +0100
-Subject: [PATCH 1/5] Bugfix for onion_websocket_vprintf and
+Subject: [PATCH 01/11] Bugfix for onion_websocket_vprintf and
  onion_websocket_write.
 
 This commit resolves two bugs:
@@ -54,5 +54,5 @@ index cf49bef..ef723f1 100644
      onion_low_free(buf);
      return s;
 -- 
-2.25.1
+2.47.1
 

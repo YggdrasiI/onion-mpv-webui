@@ -1,6 +1,6 @@
-From 622547c96d2400e2acc96d6a65d62e1c62bb2221 Mon Sep 17 00:00:00 2001
+From 586b88abf8116cc180a7461266f742c722168eaa Mon Sep 17 00:00:00 2001
 From: Olaf Schulz <947069+YggdrasiI@users.noreply.github.com>
-Date: Sat, 11 Jan 2025 22:35:20 +0100
+Date: Thu, 23 Jan 2025 20:39:03 +0100
 Subject: [PATCH] i18n: Add argument substitution for translation
 
 The i18n plugin is extended by a variable substitution. It supports
@@ -11,60 +11,11 @@ two variants:
 Example:
   {% trans "Template constant %s and context variable %s" "X" {varname} %}
 ---
- tools/otemplate/otemplate.c         | 33 +++++++++++---
- tools/otemplate/templatetags/i18n.c | 70 +++++++++++++++++++++++++++--
- 2 files changed, 95 insertions(+), 8 deletions(-)
+ tools/otemplate/templatetags/i18n.c | 79 +++++++++++++++++++++++++++--
+ 1 file changed, 76 insertions(+), 3 deletions(-)
 
-diff --git a/tools/otemplate/otemplate.c b/tools/otemplate/otemplate.c
-index ea309ce..82c83ab 100644
---- a/tools/otemplate/otemplate.c
-+++ b/tools/otemplate/otemplate.c
-@@ -247,15 +247,38 @@ int work(const char *infilename, const char *outfilename,
-           "#include <onion/dict.h>\n"
-           "\n"
-           "typedef struct loop_meta_t{\n"
--          "	int loop0;\n"
--          "	int loop;\n"
-+          "    int loop0;\n"
-+          "    int loop;\n"
-           "}loop_meta;\n"
-           " static loop_meta ONION_TEMPLATE_META_INIT = {.loop0 = -1, .loop = 0 };\n"
-           "\n"
-           "typedef struct dict_res_t{\n"
--          "	onion_dict *dict;\n"
--          "	onion_response *res;\n"
--          "	loop_meta meta;\n" "}dict_res;\n" "\n" "\n");
-+          "    onion_dict *dict;\n"
-+          "    onion_response *res;\n"
-+          "    loop_meta meta;\n"
-+          "}dict_res;\n\n");
-+
-+  fprintf(status.out,
-+          "#include <stdarg.h>\n"
-+          "const char * dgettext2 (char *out, size_t out_len, const char * domainname, const char * msgid, ...){\n"
-+          "    const char *unformated_message = dgettext(domainname, msgid);\n"
-+          "    va_list args;\n"
-+          "    va_start(args, msgid);\n"
-+          "    int ret = vsnprintf(out, out_len, unformated_message, args);\n"
-+          "    va_end(args);\n"
-+          "    if (ret < 0 || ret >= out_len){\n"
-+          "        if (strlen(unformated_message) + 64 < out_len){\n"
-+          "            char *p = out;\n"
-+          "            p = strcpy(p, \"dgettext2 failed for '\");\n"
-+          "            p = strcpy(p, unformated_message);\n"
-+          "            p = strcpy(p, \"'\");\n"
-+          "            return out;\n"
-+          "        }\n"
-+          "        return \"dgettext2 failed\";\n"
-+          "    }\n"
-+          "    return out;\n"
-+          "}\n"
-+         );
- 
-   functions_write_declarations_assets(&status, assets);
- 
 diff --git a/tools/otemplate/templatetags/i18n.c b/tools/otemplate/templatetags/i18n.c
-index 73b652b..197ed01 100644
+index 73b652b..fde2d0f 100644
 --- a/tools/otemplate/templatetags/i18n.c
 +++ b/tools/otemplate/templatetags/i18n.c
 @@ -22,8 +22,11 @@
@@ -79,7 +30,7 @@ index 73b652b..197ed01 100644
  
  #include "../tags.h"
  #include "../functions.h"
-@@ -31,9 +34,70 @@
+@@ -31,9 +34,79 @@
  /// Following text is for gettext
  void tag_trans(parser_status * st, list * l) {
    char *s = onion_c_quote_new(tag_value_arg(l, 1));
@@ -140,11 +91,20 @@ index 73b652b..197ed01 100644
 +
 +      function_add_code(st,
 +              "    char tmp[4096];\n"
-+              "    dgettext2(tmp, sizeof(tmp), onion_dict_get(context, \"LANG\"),\n"
-+              "        %s\n"      // Text with '%s's
-+              "        %s);\n"    // Args
++              "    const char *unformated_message = dgettext(onion_dict_get(context, \"LANG\"), %s);\n"
++              "    int ret = snprintf(tmp, sizeof(tmp), unformated_message %s);\n"
++              "    if (ret < 0 || ret >= sizeof(tmp)){\n"
++              "        if (strlen(unformated_message) + 64 < sizeof(tmp)){\n"
++              "            char *p = tmp;\n"
++              "            p = strcpy(p, \"snprintf failed for '\");\n"
++              "            p = strcpy(p, unformated_message);\n"
++              "            p = strcpy(p, \"'\");\n"
++              "        }else{\n"
++              "          tmp[0] = '?'; tmp[1] = 0;\n"
++              "        }\n"
++              "    }\n"
 +              "    onion_response_write0(res, tmp);\n",
-+              s, s_args, s);
++              s, s_args);
 +      function_add_code(st, "  }\n");
 +
 +abort:
@@ -154,5 +114,5 @@ index 73b652b..197ed01 100644
  }
  
 -- 
-2.47.1
+2.25.1
 

@@ -1,7 +1,7 @@
-From 0d86d827a300e1b47490405c0c4088d158403a95 Mon Sep 17 00:00:00 2001
+From 33b80e888667edfca07bcc358f921760b71610f2 Mon Sep 17 00:00:00 2001
 From: Olaf Schulz <olaf_schulz@posteo.de>
 Date: Wed, 26 Oct 2022 00:22:15 +0200
-Subject: [PATCH] Websocket changes
+Subject: [PATCH 07/11] Websocket changes
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
@@ -103,5 +103,5 @@ index 7a95a8c..83a57cc 100644
        size_t last_d_l;
        do {
 -- 
-2.25.1
+2.47.1
 

@@ -1,7 +1,7 @@
-From 58712b784ae917f6c4031cc5008f3dc6c446963a Mon Sep 17 00:00:00 2001
+From f11eca54b3f18a472e3fb2e519b5a2493e9e0ce5 Mon Sep 17 00:00:00 2001
 From: Olaf Schulz <olaf_schulz@posteo.de>
 Date: Sat, 21 Nov 2020 00:59:28 +0100
-Subject: [PATCH 4/5] Websocket header generation: Omit overflow of ssize_t
+Subject: [PATCH 04/11] Websocket header generation: Omit overflow of ssize_t
  variable in unrealistic case
 
 ---
@@ -22,5 +22,5 @@ index ef723f1..7a95a8c 100644
          header[3 + 8 - i] = tlen & 0x0FF;
          tlen >>= 8;
 -- 
-2.25.1
+2.47.1
 

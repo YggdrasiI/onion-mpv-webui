@@ -1,7 +1,7 @@
-From 9c174af88ed90acbb1343354a6b7af43b8466633 Mon Sep 17 00:00:00 2001
+From 6857f68d5784da75bebdf828fcd1c2db39dc2102 Mon Sep 17 00:00:00 2001
 From: Olaf Schulz <olaf_schulz@posteo.de>
 Date: Mon, 8 Nov 2021 17:17:07 +0100
-Subject: [PATCH] Add --no-libintl option to otemplate tool
+Subject: [PATCH 06/11] Add --no-libintl option to otemplate tool
 
 In Bionic/Android environments is libintl not included.
 This commit adds the option to avoid the dependency to libintl.
@@ -9,26 +9,11 @@ This commit adds the option to avoid the dependency to libintl.
 This disables the functionality of 'gettext'. If this is needed you
 need to compile libintl with your Android SDK.
 ---
- CMakeLists.txt              |  2 +-
- src/onion/CMakeLists.txt    |  4 ++--
  tools/otemplate/otemplate.c | 14 ++++++++++++--
- 3 files changed, 15 insertions(+), 5 deletions(-)
+ 1 file changed, 12 insertions(+), 2 deletions(-)
 
-diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 40a7ac5..2688b2f 100644
---- a/CMakeLists.txt
-+++ b/CMakeLists.txt
-@@ -16,7 +16,7 @@ SET(ONION_USE_GC true CACHE BOOL "Compile Boehm GC examples")
- SET(ONION_USE_TESTS true CACHE BOOL "Compile the tests")
- SET(ONION_EXAMPLES true CACHE BOOL "Compile the examples")
- SET(ONION_USE_BINDINGS_CPP true CACHE BOOL "Compile the CPP bindings")
--SET(ONION_POLLER default CACHE string "Default poller to use: default | epoll | libev | libevent")
-+SET(ONION_POLLER default CACHE STRING "Default poller to use: default | epoll | libev | libevent")
- SET(TERMUX false CACHE BOOL "Compiling on Android/Boinc")
- ########
- 
 diff --git a/tools/otemplate/otemplate.c b/tools/otemplate/otemplate.c
-index 6a7c8e4..96d06f8 100644
+index d7e968c..f33104c 100644
 --- a/tools/otemplate/otemplate.c
 +++ b/tools/otemplate/otemplate.c
 @@ -39,6 +39,7 @@
@@ -70,9 +55,9 @@ index 6a7c8e4..96d06f8 100644
 +      fprintf(status.out, "#define dgettext(DICT, KEY) (KEY)\n");
 +  }
 +  fprintf(status.out,
+           "#include <stdio.h>\n"
            "#include <string.h>\n\n"
            "#include <onion/onion.h>\n"
-           "#include <onion/dict.h>\n"
 -- 
-2.25.1
+2.47.1
 

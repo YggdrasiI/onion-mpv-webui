@@ -1,7 +1,7 @@
-From bb224c1c5f12ad33b054e0507d576d683d339c7b Mon Sep 17 00:00:00 2001
+From 487b532de424a2bd2d7eb7d754ba215158be56b4 Mon Sep 17 00:00:00 2001
 From: Olaf Schulz <947069+YggdrasiI@users.noreply.github.com>
 Date: Sat, 11 Jan 2025 13:05:19 +0100
-Subject: [PATCH 11/12] otemplate: Fix detection of %} tag end
+Subject: [PATCH 10/11] otemplate: Fix detection of %} tag end
 
 Before this change the substring "%XYZ}" was handled like "%}"
 with the side effect that every char between '%' and '}' was
@@ -36,7 +36,7 @@ index efb3cad..bbd9da6 100644
          add_char(status, c);
        }
 diff --git a/tools/otemplate/parser.h b/tools/otemplate/parser.h
-index d0e6268..a7050f8 100644
+index 18ede96..abadacf 100644
 --- a/tools/otemplate/parser.h
 +++ b/tools/otemplate/parser.h
 @@ -45,6 +45,7 @@ typedef enum parser_mode_e {
@@ -48,5 +48,5 @@ index d0e6268..a7050f8 100644
  } parser_mode;
  
 -- 
-2.25.1
+2.47.1
 
