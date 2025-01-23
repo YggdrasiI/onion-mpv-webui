@@ -98,8 +98,9 @@ onion_connection_status handle_status_get(void *d, onion_request * req, onion_re
  * It checks if its a HEAD in which case it writes the headers,
  * and if not just printfs the user data.
  */
-onion_connection_status handle_api_post_data(void *_, onion_request * req,
-                                  onion_response * res) {
+onion_connection_status handle_api_get_or_post_data(
+        void *_, onion_request * req, onion_response * res)
+{
   if (onion_request_get_flags(req) & OR_HEAD) {
     onion_response_write_headers(res);
     return OCS_PROCESSED;
@@ -109,7 +110,7 @@ onion_connection_status handle_api_post_data(void *_, onion_request * req,
 
   /* Get data */
   // Default variant: Api command encoded in path
-  const char *api_args = onion_request_get_path(req);
+  const char *api_args = consume_leading_slashs(onion_request_get_path(req));
 
   // Debugging variant:  Get string provided by form on api.html
   const char *api_args_by_form = onion_request_get_post(req, "api_args");
@@ -246,11 +247,26 @@ onion_connection_status handle_api_post_data(void *_, onion_request * req,
 onion_connection_status handle_api_post_data2(void *_, onion_request * req,
         onion_response * res) {
 
-    handle_api_post_data(NULL, req, res);
-    return onion_shortcut_internal_redirect("api.html", req, res);
+    onion_connection_status ret = onion_shortcut_redirect("api.html", req, res);
+
+    // TODO This will produce an unwanted a second reply...
+    handle_api_get_or_post_data(NULL, req, res);
+    return ret;
 }
 
-// similar to handle_api_post_data
+// Sugar: Swap wrong argument order /api/media => /media/api
+onion_connection_status swap_args_redirect(const char *new_prefix,
+        onion_request * req,
+        onion_response * res) {
+
+    char *new_url = strdup(onion_request_get_fullpath(req));
+    memcpy(new_url, new_prefix, strnlen(new_prefix, 20));
+    onion_connection_status ret = onion_shortcut_redirect(new_url, req, res);
+    free(new_url);
+    return ret;
+}
+
+// similar to handle_api_get_or_post_data
 char *handle_command_p2(
         const char *api_args)
 /*        const char *command,
@@ -469,17 +485,23 @@ int webui_onion_init(onion_dict *_options) {
 
   //Connect url pattern with handlers. Also added the empty rule that redirects to static/index.html
   onion_url *urls = onion_url_new();
+  onion_url *media = onion_url_new();
+  onion_url *api = onion_url_new();
+
+  onion_url_add_url(urls, "^media", media);
+  onion_url_add_url(urls, "^api", api);
 
   /* Dynamic content */
-  onion_url_add_static(urls, "version", VERSION, HTTP_OK);
-  onion_url_add(urls, "api/status", handle_status_get);
   onion_url_add(urls, "ws", ws_status_start);  // websocket
-  onion_url_add(urls, "^api/", handle_api_post_data);
-  onion_url_add(urls, "^api2$", handle_api_post_data2);
+  onion_url_add_static(api, "/version", VERSION, HTTP_OK);
+  onion_url_add(api, "/status", handle_status_get);
+  onion_url_add(api, "2", handle_api_post_data2); // "/api2"
+  onion_url_add(api, "", handle_api_get_or_post_data);   // "/api"
   /* /api2 evaluates POST content of api.html and redirects to api.html
    * after handling command */
 
-  onion_url_add_static(urls, "api.html",
+  // TODO: Remove json reply before html of redirection
+  onion_url_add_static(api, ".html",
                        "<html>\n"
                        "<head>\n"
                        " <title>Gen Api post string</title>\n"
@@ -493,11 +515,14 @@ int webui_onion_init(onion_dict *_options) {
 
   /* Add handlers for each shared folder */
   /* /media/<share>/.* and /media/api/<cmd>/<share>/.* */
-  webui_onion_share_media_folders(options, urls);
+  webui_onion_share_media_folders(media, options);
 
   /* Redirect on index.html on top level */
   onion_url_add_with_data(urls, "", onion_shortcut_internal_redirect, "/index.html", NULL);
   //onion_url_add_with_data(urls, "", onion_shortcut_response_file, "webui-page/index.html", NULL);
+
+  onion_url_add_with_data(api, "^/media", swap_args_redirect, "/media/api", NULL);
+  //onion_url_add_with_data(api, "^/media", onion_shortcut_internal_redirect, "/index.html", NULL);
 
   // Finally, one handler for all other requests
   webui_onion_static_files(

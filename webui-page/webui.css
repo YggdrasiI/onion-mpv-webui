@@ -377,7 +377,6 @@ table.playlist {
 }
 
 td.playlist.playing {
-  cursor: auto;
 }
 
 #playlist table:first-child td:nth-child(3){
@@ -394,6 +393,7 @@ td.playlist:nth-child(2) {
   overflow-wrap: break-word;
   font-size: 4vmin;
   width: initial;
+  cursor: auto;
 }
 
 td.playlist {

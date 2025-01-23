@@ -60,9 +60,8 @@ SET(SOURCE_FILES
 	buffer_pool.c
 	fileserver.c
 	media.c
-	#media_html_handler.c
-	#media_api_handler1.c
 	mpv_script_options.c
+  media_track_paths.c
 	tools.c
 	percent_encoding.c
 	onion_ws_status.c
@@ -83,6 +82,10 @@ target_link_libraries(webui onion_static m)
 target_compile_options(webui PUBLIC -fPIC)
 target_compile_options(webui PUBLIC -DWITH_MPV=1)
 target_compile_options(webui PUBLIC -DMPV_PLUGIN_NAME=libwebui)  # mpv option prefix
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+	target_compile_options(webui PUBLIC -D__DEBUG__)
+endif()
 
 ## Test executable without mpv dependecies.
 #add_executable(onion-webui.bin standalone.c ${SOURCE_FILES})

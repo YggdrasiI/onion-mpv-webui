@@ -16,3 +16,9 @@ void update_options(
         mpv_handle *mpv,
         const char *mpv_plugin_name,
         onion_dict *options);
+
+/* Expands environment variables in given path.
+ * 
+ * Returns NULL if folder is not readable. */
+char *expand_directory_path(
+        const char *path);

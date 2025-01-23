@@ -6,6 +6,7 @@
 #include <signal.h>
 #include <string.h>
 #include <unistd.h>
+#include <libgen.h>  // dirname
 #include <pthread.h>
 
 #include <mpv/client.h>
@@ -18,15 +19,18 @@ pthread_mutex_t mpv_lock = PTHREAD_MUTEX_INITIALIZER;
 #include "webui_onion.h"
 #include "mpv_api_commands.h"
 #include "mpv_script_options.h"
+//#include "mpv_plugin.h"
 #include "onion_ws_status.h"
 #include "tools.h"
+#include "media.h"
+#include "media_track_paths.h"
 
 extern onion *o;
 extern __status *status;
 extern __clients *websockets;
 
 int ws_interval = MINIMAL_TIME_BETWEEN_PROPERTY_UPDATE;
-
+media_track_paths_t *mtp = NULL;
 
 int mpv_open_cplugin(mpv_handle *handle)
 {
@@ -56,8 +60,16 @@ int mpv_open_cplugin(mpv_handle *handle)
 #endif
     printf("Webui plugin loaded as '%s'!\n", mpv_plugin_name);
 
+    mtp = media_track_paths_new(); // static var…
+                                 // Needs to be initialized before update_options
+                                 // loops over all shares.
+
     onion_dict *options = get_default_options();
     update_options(mpv, mpv_plugin_name, options);
+
+    // For media.c extension
+    onion_dict *shared_folders = onion_dict_get_dict(options, "shared_folders");
+    media_track_paths_set_shares(mtp, shared_folders);
 
     // Debug flag
     log_debug = ('0' != onion_dict_get(options, "debug")[0]); 
@@ -137,6 +149,12 @@ int mpv_open_cplugin(mpv_handle *handle)
             }
         } else if (event->event_id == MPV_EVENT_UNPAUSE) {
             pause = 0;
+        } else if (event->event_id == MPV_EVENT_START_FILE) {
+            char *path = NULL;
+            err = mpv_get_property(mpv, "path", MPV_FORMAT_STRING, &path);
+            media_track_paths_set(mtp, path);
+            printf("XXXXXXXX %s\n\n", dirname(path));
+            mpv_free(path);
         } else {
             LOG("Got event: %d\n", event->event_id);
         }
@@ -154,10 +172,13 @@ int mpv_open_cplugin(mpv_handle *handle)
     webui_onion_end_signal(0); // includes onion_listen_stop(o);
 
     webui_onion_uninit(o);
+    media_track_paths_free(mtp);
     onion_dict_free(options);
+
 
     // Returing do not quit the main mpv thread, but this plugin.
     // Quitting mpv is triggered in webui_onion_uninit()
     return EXIT_SUCCESS;
 }
+
 

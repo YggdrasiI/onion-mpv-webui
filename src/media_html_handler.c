@@ -1,4 +1,5 @@
 
+#if 0
 // Begin page /media.html, /media/html lists all shares
 void __invert_key_value(
         onion_dict *to_json,
@@ -6,9 +7,20 @@ void __invert_key_value(
 {
     onion_dict_add(to_json, value, key, 0);
 }
+// Map on {"name": key and "encoded: key_encoded}
+void __invert_key_value2(
+        onion_dict *to_json,
+        const char *key, const void *value, int flags)
+{
+    onion_dict *d = onion_dict_new();
+    onion_dict_add(d, "name", key, 0);
+    onion_dict_add(d, "encoded", encodeURIComponent(key), OD_FREE_VALUE);
+    onion_dict_add(to_json, value, d, OD_DICT | OD_FREE_VALUE);
+}
+#endif
 
-int media_html_root(
-        __share_data_t *privdata,
+onion_connection_status media_html_root(
+        onion_dict *shared_folders,
         onion_request * req,
         onion_response * res)
 {
@@ -17,19 +29,19 @@ int media_html_root(
         return OCS_NOT_PROCESSED;
     }
 
-    // The key->folder map
-    onion_dict *shared_folders = (onion_dict *)privdata;
+    // The key->share_info map
+    //onion_dict *shared_folders = (onion_dict *)privdata;
 
     // Derive key->key map for template
-    onion_dict *shares = onion_dict_new(); // free'd together with to_json
-    onion_dict_preorder(shared_folders, __invert_key_value, shares);
+    //onion_dict *shares = onion_dict_new(); // free'd together with to_json
+    //onion_dict_preorder(shared_folders, __invert_key_value2, shares);
 
     const char *ad = onion_dict_get(options, "allow_download_in_shares");
 
     // Setup variables for template.
     onion_dict *d = onion_dict_new();
     onion_dict_add(d, "page_title", onion_dict_get(options, "page_title"), 0);
-    onion_dict_add(d, "shares", shares, OD_DICT | OD_FREE_VALUE);
+    onion_dict_add(d, "shares", shared_folders, OD_DICT);
     onion_dict_add(d, "allow_download_in_shares",
             (ad && ad[0] != '0')?"1":"0", 0);
 
@@ -45,7 +57,7 @@ int media_html_root(
 // For /media/html/{share name}[/]*
 //     =>  Template file: media_share.html
 onion_connection_status list_share_page(
-        __share_data_t *privdata,
+        __share_data_media_html_t *privdata,
         onion_request * req,
         onion_response * res)
 {
@@ -60,30 +72,34 @@ onion_connection_status list_share_page(
     const size_t max_display_filename_len = TEMPLATES_WITH_SHORTEN_NAMES;
 #endif
 
-    char *uri_full_path = strdup(onion_request_get_fullpath(req));
+    //char *uri_full_path = strdup(onion_request_get_fullpath(req));
     // Example: '/media/html/example/folder/subfolder/'
     //       or '/media/html/example/folder/subfolder'
 
-    char *uri_rel_path = strdup(onion_request_get_path(req));
-    // Example: 'folder/subfolder/'
-    //       or 'folder/subfolder'
+    // Take from /media/html/example////folder… the substring
+    //          "" or "/folder…"
+    char *uri_rel_path = left_slashed_string_if_not_empty(onion_request_get_path(req));
 
-    const char * share_key = privdata->key;
+    if( strcmp("/.current", uri_rel_path) == 0 ){
+      const char *tmp = onion_dict_get((onion_dict *)privdata->share_info, "current_directory");
+      if (tmp != NULL){
+          pthread_mutex_lock(&privdata->share_lock);
+          free(uri_rel_path);
+          //uri_rel_path = onion_low_strdup(privdata->last_requested_subdir);
+          uri_rel_path = onion_low_strdup(tmp);
+          printf("YYYYYY '%s'\n", uri_rel_path);
+          pthread_mutex_unlock(&privdata->share_lock);
+      }else{
+          uri_rel_path = onion_low_strdup("/");
+      }
+    }
+
+    const char * share_key = privdata->share_info->key;
+    const char * share_key_encoded = privdata->share_info->key_encoded;
     // Example: 'example'
 
-    const char * share_path = privdata->media_path;
+    const char * share_path = privdata->share_info->path;;
     // Example: '/some/dir'
-
-    if( strcmp(".current", uri_rel_path) == 0 ){
-      pthread_mutex_lock(&privdata->share_lock);
-      free(uri_rel_path);
-      uri_rel_path = strdup(privdata->last_requested_subdir);
-      pthread_mutex_unlock(&privdata->share_lock);
-
-      free(uri_full_path);
-      asprintf(&uri_full_path, "/media/html/%s/%s",
-          share_key, uri_rel_path);
-    }
 
 
     // Holds file/folder destination of 'share_path/uri_rel_path', etc
@@ -94,34 +110,32 @@ onion_connection_status list_share_page(
     // To resolve symbolic links/relative paths.
     char *real_local_path = NULL;
 
-    // Strip '/' to normalize 'folder/' and 'folder' paths.
-    strip_slash(uri_full_path);
-    strip_slash(uri_rel_path);
-
     int ps = snprintf(__tmp_path, __tmp_path_len,
-            "%s/%s",
+            "%s%s",
             share_path, uri_rel_path);
     if (ps < 0 || ps >= __tmp_path_len){
         ret = OCS_INTERNAL_ERROR;  // snprintf failed
-        goto media_share_html_end;
+        goto media_share_html_error;
     }
 
     if ( !path_available(__tmp_path) ){
         /* File or parent folders is hidden .*/
         ret = OCS_INTERNAL_ERROR; 
-        goto media_share_html_end;
+        goto media_share_html_error;
     }
 
     real_local_path = realpath(__tmp_path, NULL);
     if (!real_local_path){
         ret = OCS_INTERNAL_ERROR;
-        goto media_share_html_end;
+        goto media_share_html_error;
     }
 
     // Save this subfolder as last used. 
     pthread_mutex_lock(&privdata->share_lock);
-    free(privdata->last_requested_subdir);
-    privdata->last_requested_subdir = strdup(uri_rel_path);
+    printf("ZZZZZZ '%s'\n", uri_rel_path);
+    //free(privdata->last_requested_subdir);
+    //privdata->last_requested_subdir = uri_rel_path;
+    onion_dict_add((onion_dict *)privdata->share_info, "current_directory", uri_rel_path, OD_FREE_VALUE|OD_REPLACE);
     pthread_mutex_unlock(&privdata->share_lock);
 
     /* 2. List, if real_local_path is directory.
@@ -131,9 +145,6 @@ onion_connection_status list_share_page(
     if (dir) {
         // Fill the dictionary for html-template.
         onion_dict *d = onion_dict_new();
-        onion_dict_add(d, "dirname", basename(uri_full_path), // GNU's basename
-                OD_DUP_VALUE|OD_FREE_VALUE);
-        //onion_dict_add(d, "path", uri_rel_path, 0); // Not used, but key "uri_rel_path"
         //onion_dict_add(d, "uri", uri_full_path, 0);
         onion_dict_add(d, "page_title", onion_dict_get(options, "page_title"), 0);
 
@@ -144,19 +155,33 @@ onion_connection_status list_share_page(
             onion_dict_add(d, "go_up", "true", 0);
 
         onion_dict_add(d, "share_key", share_key, 0);
-        onion_dict_add(d, "uri_rel_path", uri_rel_path, 0);
-        // TODO Adding slashes was no good idea. Just use normalized paths without
-        // slashes and add slashes in template.
-        //onion_dict_add(d, "share_key", add_slash_if_notempty(share_key),
-        //    OD_FREE_VALUE);
-        //onion_dict_add(d, "uri_rel_path", add_slash_if_notempty(uri_rel_path),
-        //    OD_FREE_VALUE);
+        onion_dict_add(d, "share_key_encoded", share_key_encoded, 0);
+        //onion_dict_add(d, "uri_rel_path", uri_rel_path, 0);
+
+        /* uri_rel_path ist immer noch schwierig zu behandeln:
+         * 1. decode()-Prozess von onion entschlüsselt alle %-Encoding.
+         * 2a. wenn ich es mit encodeURIComponent() encodiere erwische ich alle
+         * Slashs.
+         * 2b. wenn ich encodeURI() nehme, vergesse ich '+'.  
+         * => Benutze encodeURIComponentNoSlash(…)
+         */
+        
+        if (uri_rel_path[0] == '\0' || uri_rel_path[1] == '\0') { // To avoid empty dir string "/"
+            onion_dict_add(d, "dirname", share_key, 0);
+            onion_dict_add(d, "uri_rel_path", "", 0);
+#ifdef TEMPLATES_WITH_ENCODED_NAMES
+        onion_dict_add(d, "uri_rel_path_encoded", "", 0);
+#endif
+        }else{
+            /* See comment in media_api_list(…) about usage of basename()
+             * TLDR: Using it here is ok.*/
+            onion_dict_add(d, "dirname", basename(uri_rel_path), OD_DUP_VALUE);
+            onion_dict_add(d, "uri_rel_path", uri_rel_path, 0);
 #ifdef TEMPLATES_WITH_ENCODED_NAMES
         onion_dict_add(d, "uri_rel_path_encoded",
-                encodeURIComponent(uri_rel_path), OD_FREE_VALUE);
-        //onion_dict_add(d, "uri_full_path_encoded",
-        //        encodeURIComponent(uri_full_path), OD_FREE_VALUE);
+                encodeURIComponentNoSlash(uri_rel_path), OD_FREE_VALUE);
 #endif
+        }
 
         onion_dict *files = onion_dict_new();
         onion_dict_add(d, "files", files, OD_DICT | OD_FREE_VALUE);
@@ -179,28 +204,17 @@ onion_connection_status list_share_page(
             onion_dict_add(files, de->d_name, file,
                     OD_DUP_KEY | OD_DICT | OD_FREE_VALUE);
 
-            onion_dict_add(file, "name", de->d_name, OD_DUP_VALUE);
-#if TEMPLATES_WITH_SHORTEN_NAMES
-            // Add shorten name to avoid long lines
-            if (strlen(de->d_name) > max_display_filename_len) {
-                de->d_name[max_display_filename_len-1] = '\0';
-                de->d_name[max_display_filename_len-2] = '.';
-                de->d_name[max_display_filename_len-3] = '.';
-                de->d_name[max_display_filename_len-4] = '.';
-            }
-            onion_dict_add(file, "name_short", de->d_name, OD_DUP_VALUE);
-#endif
+            const char *name = onion_low_strdup(de->d_name);
+            onion_dict_add(file, "name", name, OD_FREE_VALUE);
 #ifdef TEMPLATES_WITH_ENCODED_NAMES
             // Encode filename
             onion_dict_add(file, "name_encoded",
                     encodeURIComponent(de->d_name), OD_FREE_VALUE);
 #endif
 
-
             struct stat st;
-            if( ps >= 0 && ps < __tmp_path_len ){
-                stat(__tmp_path, &st);
-
+            if( ps >= 0 && ps < __tmp_path_len && 0 == stat(__tmp_path, &st) )
+            {
                 int s = st.st_size;
 
                 ps = snprintf(__tmp_path, __tmp_path_len,
@@ -260,6 +274,18 @@ onion_connection_status list_share_page(
                 onion_dict_add(file, "type", "?", 0);
             }
 
+#if TEMPLATES_WITH_SHORTEN_NAMES
+            // Add shorten name to avoid long lines
+            if (strlen(de->d_name) > max_display_filename_len) {
+                de->d_name[max_display_filename_len-1] = '\0';
+                de->d_name[max_display_filename_len-2] = '.';
+                de->d_name[max_display_filename_len-3] = '.';
+                de->d_name[max_display_filename_len-4] = '.';
+                onion_dict_add(file, "name_short", de->d_name, OD_DUP_VALUE);
+            }else{
+                onion_dict_add(file, "name_short", name, 0); // Second reference
+            }
+#endif
         }
         closedir(dir);
 
@@ -284,11 +310,55 @@ onion_connection_status list_share_page(
                 "<body>Download not allowed</body></html>"
                 , HTTP_FORBIDDEN, req, res);
     }
+    goto media_share_html_end;
 
+media_share_html_error:
+    free(uri_rel_path); // In non-error case stored as
+                        // => share_info["current_directory"]
 media_share_html_end:  // cleanup allocations
     free(real_local_path);
-    free(uri_rel_path);
-    free(uri_full_path);
+    //free(uri_full_path);
     buffer_pool_release(path_buffers, __tmp_path);
+    return ret;
+}
+
+onion_connection_status media_html_redirect_current(
+        onion_dict *shared_folders,
+        onion_request * req,
+        onion_response * res)
+{
+    if ((onion_request_get_flags(req) & OR_METHODS) != OR_GET) {
+        // only get implemented.
+        return OCS_NOT_PROCESSED;
+    }
+
+    share_info_t *share_info = media_track_paths_get_current_share(mtp);
+    if (NULL == share_info){
+        //onion_response_set_header(res, "Content-Type", onion_mime_get("_.json"));
+        return onion_shortcut_response(
+                //"{\"message\":\"No shares defined.\"}",
+                "<h1>No shares defined.</h1>",
+                HTTP_BAD_REQUEST, req, res);
+    }
+
+    // Consumed prefix:  "/media/html/.current[/]*", 
+    char *redirect_url=NULL;
+    const char *uri_rel_path = onion_request_get_path(req);
+#if 1
+    const char *prefix = share_info->key;
+    asprintf(&redirect_url, "media/html/%s/%s", prefix, uri_rel_path);
+    ONION_DEBUG("Internal redirect to '%s'\n", redirect_url);
+    /* Differences between onion_shortcut_internal_redirect and onion_shortcut_redirect:
+     *   1. newurl without leading slash...
+     *   2. url in decoded state (decoding step skipped) */
+    onion_connection_status ret = onion_shortcut_internal_redirect(redirect_url, req, res);
+#else
+    const char *prefix = share_info->key_encoded;
+    char *tmp = encodeURIComponentNoSlash(uri_rel_path);
+    asprintf(&redirect_url, "/media/html/%s/%s", prefix, tmp);
+    onion_connection_status ret = onion_shortcut_redirect(redirect_url, req, res);
+    free(tmp);
+#endif
+    free(redirect_url);
     return ret;
 }

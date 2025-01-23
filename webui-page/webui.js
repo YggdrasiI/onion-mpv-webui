@@ -1,4 +1,4 @@
-var DEBUG = false,
+var DEBUG = true,
     DEBUG_MOBILE = false,
     use_dummy_audio_element = false, /* for controls on lock screen. */
     metadata = {},
@@ -243,12 +243,12 @@ function createPlaylistTable(entry, position, pause, first) {
       td_left.innerHTML = '<i class="fas fa-play"></i>'
     }
 
-    td_left.classList.add('playing')
-    td_left.classList.add('violet')
-    td_2.classList.add('playing')
-    td_2.classList.add('violet')
+    td_left.classList.add('playing', 'violet')
+    td_2.classList.add('playing', 'violet')
     td_3.classList.add('violet')
     td_right.classList.add('violet')
+
+    td_left.addEventListener('click', () => { togglePlayPause() })
 
   } else {
     td_left.classList.add('gray')

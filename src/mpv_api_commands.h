@@ -192,6 +192,10 @@ int cmd_media_playlist_add(const char *name,
         char **pOutput_message);
 // Flags same as mpv's loadfile command, e.g
 // "replace", "append", "append-play"
+//
+int cmd_media_playlist_play(const char *name,
+        const char *flags, const char *fullpath,
+        char **pOutput_message);
 
 
 char *json_status_response();

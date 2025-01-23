@@ -3,6 +3,8 @@
 #include <string.h>
 #include <assert.h>
 
+#include <onion/low.h>
+
 #include "tools.h"
 
 int log_debug = 1;
@@ -305,14 +307,36 @@ int path_available (const char *path){
   return 1;
 }
 
-void strip_slash(
+int rstrip_slash(
         char *path)
 {
-    size_t p = strlen(path);
-    while(p > 0 && path[p-1] == '/'){
-        path[p-1] = '\0';
-        --p;
+    if (*path == '\0') return 0;
+    size_t p = strlen(path); // >= 1
+    char *last_char = path+p-1;
+    if (*last_char != '/') return 0;
+    do {
+        *last_char-- = '\0';
+    }while(*last_char == '/' && last_char >= path);
+    return 1;
+}
+
+char *left_slashed_string_if_not_empty(
+        const char *path)
+{
+    if (path[0] == '\0' || path[0] == '/' && path[1] == '\0' ){
+        return onion_low_calloc(1, sizeof(char));
     }
+    // strip all leading /
+    while (path[0] == '/') { ++path; };
+
+    // Copy plus space for prefix '/'
+    char *ret = onion_low_strdup(path-1);
+    ret[0] = '/';
+
+    // Remove tailing. (Can still lead to empty string) 
+    rstrip_slash(ret); 
+
+    return ret;
 }
 
 char *add_slash_if_notempty(
@@ -328,6 +352,53 @@ char *add_slash_if_notempty(
    return ret;
 }
 
+char *add_slash_if_next_notempty(
+        const char *path,
+        const char *next)
+{
+   if (*next == '\0') return strdup(path);
+   size_t path_len = strlen(path);
+
+   char *ret = malloc(sizeof(char) * (path_len+2)); // +2 for '/' and '\0'
+   char *end = stpcpy(ret, path);
+   *end++ = '/'; *end = '\0';
+
+   return ret;
+}
+
+// Convert a₁a₂… into [a₁][a₂]…
+// Does not respect utf-8...
+char *regex_encapsule_chars(
+        const char *word)
+{
+   size_t path_len = strlen(word);
+   if (path_len == 0) return strdup("");
+
+   char *ret = malloc(sizeof(char) * (3*path_len+1)); // +1 and '\0'
+   if (ret == NULL) return NULL;
+
+   size_t i, j;
+   for (i=0,j=0; i<path_len; ++i){
+       ret[j++] = '[';
+       ret[j++] = word[i];
+       ret[j++] = ']';
+   }
+   ret[j] = '\0';
+
+   return ret;
+}
+
+
+const char *consume_leading_slashs(
+        const char *in)
+{
+    if(in == NULL) return NULL;
+    while (*in == '/' ){
+        ++in;
+    }
+    return in;
+}
+
 int check_mpv_err(
         int status)
 {
@@ -337,3 +408,24 @@ int check_mpv_err(
     }
     return status; // == 0 for MPV_ERROR_SUCCESS
 }
+
+// "shareX" or "/X"
+char *enumerated_name(
+        int n)
+{
+    char _name[20]; // share1, etc
+    int written = snprintf(_name, sizeof(_name),
+            "%s%d", "share", n);
+    if (written > 0 && written < sizeof(_name)){
+        return strdup(_name);
+    }
+    return NULL;
+}
+
+int strstarts(
+        const char *str,
+        const char *prefix)
+{
+     return strncmp(str, prefix, strlen(prefix));
+}
+

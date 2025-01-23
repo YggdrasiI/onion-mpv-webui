@@ -50,11 +50,12 @@ function toggleShares() {
 
 function browseShares() {
   /* Open current folder in new tab */
-	var url = basename(shares.list[shares.selected].url);
-	var dir = shares.list[shares.selected].dir
-	var local_path =	encodeURIComponent(`${url}/${dir}`)
+  var url = basename(shares.list[shares.selected].url);
+  var dir = shares.list[shares.selected].dir
+  //var local_path = encodeURIComponent(`${url}/${dir}`)
+  var local_path = `${url}/${dir}`
   var cur_dir = `/media/html/${local_path}`
-	cur_dir = cur_dir.replace(/[/]+$/gm,"")
+  cur_dir = cur_dir.replace(/[/]+$/gm,"")
 
   true | DEBUG && console.log(`Open ${cur_dir}`)
   window.open(cur_dir, window.metadata.title).focus()
@@ -81,18 +82,24 @@ function share_change(el){
     }
   }
 
-  var value = el.options[el.selectedIndex].value
-  var text = el.options[el.selectedIndex].text
-  var s = shares.list[el.selectedIndex]
-  var request = new XMLHttpRequest();
-
-  shares.selected = el.selectedIndex
-  //request.open("get", s["url"] + "/" + s["dir"])
-  request.open("get", s["url"] + "/" + encodeURIComponent(s["dir"]) )
+  var iSel = el.selectedIndex
+  var request = new XMLHttpRequest()
+  find_share = false
+  if (iSel == -1){
+    find_share = true
+    request.open("get", "/media/api/list/.current/.current")
+  }else{
+    //var value = el.options[el.selectedIndex].value
+    //var text = el.options[el.selectedIndex].text
+    var s = shares.list[el.selectedIndex]
+    request.open("get", s["url"] + "/" + s["dir"])
+    //request.open("get", s["url"] + "/" + encodeURIComponent(s["dir"]) )
+  }
 
   request.onreadystatechange = function() {
     if (request.readyState === 4 && request.status === 200) {
       var json = JSON.parse(request.responseText)
+      update_selected_share(json, find_share);
       print_share_list(json)
     } else if (request.status === 0) {
       DEBUG && console.log("Fetching share list failed")
@@ -101,7 +108,29 @@ function share_change(el){
   request.send(null)
 }
 
+function update_selected_share(json, find_share){
+  if (find_share){
+    for(var i = 0; i < shares.list.length; ++i) {
+      if (json.dirname.startsWith(shares.list[i].url)){
+        shares.selected = i
+        document.getElementById("share_selector").options.selectedIndex = i
+        DEBUG && console.log(`Selecting share ${i} (${shares.list[i].url})`)
+        break
+      }
+    }
+  }
+
+  if (shares.list[shares.selected].dir === ".current"){
+    console.log(json)
+    DEBUG && console.log(`Replace .current by '${share_get_subdir(json.dirname)}'`)
+    shares.list[shares.selected].dir = share_get_subdir(json.dirname)
+  }
+
+    //shares.selected = el.selectedIndex
+}
+
 function share_change_dir(list_link){
+  DEBUG && console.log(`Selected share index: '${shares.selected}'`)
   if (list_link === "..") {
     var cur_dir = shares.list[shares.selected].url + "/"
       + shares.list[shares.selected].dir
@@ -111,10 +140,13 @@ function share_change_dir(list_link){
     var parent_dir = cur_dir.substring(0, cur_dir.length - last_token.length)
     list_link = parent_dir
   }
-  DEBUG && console.log("Link of new share dir: " + list_link)
+  if (list_link === "/") {
+    list_link  = shares.list[shares.selected].url + "/"
+  }
+  DEBUG && console.log(`Link of new share dir: '${list_link}'`)
 
   var new_dir = share_get_subdir(list_link);
-  DEBUG && console.log("Relative dir of new share dir: " + new_dir)
+  DEBUG && console.log(`Relative dir of new share dir: '${new_dir}'`)
 
   shares.list[shares.selected].dir = new_dir
 }
@@ -125,7 +157,7 @@ function share_get_subdir(dirname){
    */
 
   var root = shares.list[shares.selected].url
-  if (!dirname.startsWith(root)) return false
+  if (!dirname.startsWith(root)) return ""
 
   var relative_dir = dirname.replace(root, "")
     .replace(/^[/]+|[/]+$/gm,'');  // Remove '/' at begin and end
@@ -148,7 +180,7 @@ function share_add_file(add_link, bPlay){
 
   var request = new XMLHttpRequest();
   //request.open("get", add_link)
-	add_link = preserve_special_chars(add_link)
+  //add_link = preserve_special_chars(add_link)
   request.open("get", add_link)
   //request.open("get", encode_raw_link(add_link))  // This can be used if the server not percent encoded on it's own.
 
@@ -183,7 +215,6 @@ function print_share_list(json){
     var li = document.createElement("LI")
     var bullet = document.createElement("I")
     var fname = document.createElement("SPAN")
-    var action1 = document.createElement("I")
 
     var play_link = decode(file.play || "" )
     var list_link = decode(file.list || "")
@@ -191,15 +222,13 @@ function print_share_list(json){
     li.classList.add('gray')
     bullet.classList.add('share_bullet')
     if (isdir) {
-      bullet.classList.add('fas')
-      bullet.classList.add('fa-folder')
+      bullet.classList.add('fas', 'fa-folder')
     }else{
-      bullet.classList.add('fas')
-      bullet.classList.add('fa-file')
+      bullet.classList.add('fas', 'fa-file')
     }
 
-    fname.textContent = basename(play_link) // if play_link is not percentage encoded.
-    //fname.textContent = file.name || decodeURIComponent(basename(play_link))
+    //fname.textContent = basename(play_link) // if play_link is not percentage encoded.
+    fname.textContent = file.name || decodeURIComponent(basename(play_link))
     if (isdir) {
       fname.classList.add('share_dir')
       fname.addEventListener("click", function() {
@@ -216,14 +245,6 @@ function print_share_list(json){
       }
     }
 
-    action1.classList.add('share_action')
-    action1.classList.add('fas')
-    action1.classList.add('fa-plus-square')
-    //action1.textContent = "  [+]"
-    action1.addEventListener("click", function() {
-      share_add_file(play_link, false)
-    })
-
     li.setAttribute("timestamp", file.modified)
     li.setAttribute("idx", idx)
     //li.setAttribute("isdir", isdir) // Hm, this is always a string
@@ -232,22 +253,35 @@ function print_share_list(json){
     li.appendChild(bullet)
     li.appendChild(fname)
     if ( idx >= 0 ){
+      var action1 = document.createElement("I")
+
+      action1.classList.add('share_action', 'fas', 'fa-plus-square')
+      //action1.textContent = "  [+]"
+      action1.addEventListener("click", function() {
+        share_add_file(play_link, false)
+      })
+
       li.appendChild(action1)
+    }
+    if (idx == -2){ // Add button to go up to root dir.
+      var bullet2 = document.createElement("I")
+      bullet2.classList.add('share_bullet', 'fas', 'fa-folder')
+      var go_top = document.createElement("SPAN")
+      go_top.textContent = "/"
+      go_top.classList.add('share_dir')
+      go_top.addEventListener("click", function() {
+        share_change_dir("/")
+        share_change(document.getElementById("share_selector"))
+      })
+      li.appendChild(bullet2)
+      li.appendChild(go_top)
     }
 
     return li
   }
-
-  if (shares.list[shares.selected].dir === ".current"){
-    console.log(json)
-    DEBUG && console.log("Replace .current by "
-      + share_get_subdir(json.dirname))
-    shares.list[shares.selected].dir = share_get_subdir(json.dirname)
-  }
-
   // Add .. if not root dir of share
   if (json.dirname !== shares.list[shares.selected].url){
-    var li_dotdot = add_li(file_dotdot, -1)
+    var li_dotdot = add_li(file_dotdot, -2)
     li_dotdot.classList.add('dir_up')
     sharelist.appendChild(li_dotdot)
   }
@@ -281,12 +315,8 @@ function print_share_list(json){
    */
   var sT = shares.scroll_positions[json.dirname]
   DEBUG && console.log("Set scroll position of share " +
-    json.dirname + " to " + sT)
-  if (sT !== undefined){
-    sharelist.scrollTop = sT
-  }else {
-    sharelist.scrollTop = 0
-  }
+    json.dirname + " to " + (sT||0))
+  sharelist.scrollTop = sT || 0  // sT could be undefined
 
   // Used name for next storage of scrollTop
   shares.scroll_positions["active_dirname"] = json.dirname
@@ -469,6 +499,8 @@ function refresh_share_list(){
       share_selector.appendChild(opt)
     }
 
+    share_selector.options.selectedIndex = -1; // Starting unselect
+    // to ask server for .current
     share_change(share_selector)
   }
 
@@ -490,7 +522,7 @@ function decode(s){
    *
    * Without changing otemplate tool we just
    * can undo this by reverting onion_html_add_enc()
-	 * (called in otemplate/variables.c by  onion_response_write_html_safe(…) ).
+   * (called in otemplate/variables.c by  onion_response_write_html_safe(…) ).
    */
 
   /*var doc = new DOMParser().parseFromString(s, "text/html");
@@ -536,8 +568,8 @@ function encode_raw_link(s){
 function preserve_special_chars(s){
   // onion runs decode() on every %XX-string.
   // Encode '%' itsself and then ' ' and '+' should be good enough
-	// to get correct filenames on server side after decoding.
-	// Well, using encodeURIComponent() should also work.
+  // to get correct filenames on server side after decoding.
+  // Well, using encodeURIComponent() should also work.
   return s.replaceAll("%", "%25").replaceAll("+", "%2B").replaceAll(" ", "%20")
   // The should fix error for files with '%', ' ', '+'. 
 }

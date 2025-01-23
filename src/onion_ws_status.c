@@ -565,7 +565,7 @@ void parse_value(
 
     if (out->value.format == MPV_FORMAT_STRING) {
         if (out->json == out->value.u.string) {
-            ONION_DEBUG("Double parsing of same string. Probably some logic is broken.")
+            ONION_DEBUG("Double parsing of same string. Probably some logic is broken.");
             return;
         }
 
@@ -894,7 +894,7 @@ void property_update(
     }
 
     if( status->num_updated == 0 ){
-        ONION_DEBUG("Init: %d/%d", status->num_initialized, status->num_props);
+        ONION_DEBUG0("Init: %d/%d", status->num_initialized, status->num_props);
         // Ignore update_interval_ms
         // during initialization, but parse directly.
         parse_value(out);
@@ -1634,3 +1634,4 @@ int __chunked_websocket_printf(onion_websocket * ws, const char *fmt, ...) {
   va_end(ap);
   return l;
 }
+

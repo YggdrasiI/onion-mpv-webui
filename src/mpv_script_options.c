@@ -2,13 +2,24 @@
 
 #include <stdio.h>
 #include <assert.h>
+#include <wordexp.h>
+#include <dirent.h>
+#include <sys/stat.h>
 
+#include <onion/dict.h> // onion_dict_t for share_info_t needed
+//#define HAVE_PTHREADS // to read correct struct sizes from types_internal.h
+//#include <onion/types_internal.h> // onion_dict_t for share_info_t needed
 #include <onion/log.h>
 
 #include "defines.h"
 #include "mpv_script_options.h"
 #include "mpv_api_commands.h"
 #include "tools.h"
+#include "percent_encoding.h"
+#include "media.h"
+#include "media_track_paths.h"
+
+extern media_track_paths_t *mtp;
 
 onion_dict *get_default_options(){
   onion_dict *opt = onion_dict_new();
@@ -32,9 +43,12 @@ onion_dict *get_default_options(){
   onion_dict_add(opt, "block_non_shared_files", "1", 0);
 
   // Media shares. Names should not contain '/'.
-  //onion_dict_add(shared_folders, "share1", "/home/olaf/Music",
-  //        OD_FREE_ALL|OD_DUP_ALL);
+#if 1
+  share_info_t *example = share_info_new("", "/usr/share/sounds", 1);
+  //onion_dict_add((onion_dict *)example, "key_encoded", example->key_encoded, OD_FREE_VALUE);
 
+  onion_dict_add(shared_folders, onion_dict_get((onion_dict *)example, "key_enumerated"), (onion_dict *)example, OD_DICT|OD_DUP_KEY|OD_FREE_VALUE);
+#endif
   onion_dict_add(opt, "shared_folders", shared_folders,
           OD_FREE_VALUE|OD_DICT); // free sub-dict with opt
 
@@ -104,7 +118,7 @@ int __update_shared_folders(onion_dict *options,  const char *value,
 
     if (extend_existing_list == 0){
         // Remove previous/default entries
-        /*onion_dict_free(shared_folders);*/
+        /*onion_dict_free(shared_folders); -> OD_REPLACE-flag*/
         shared_folders = onion_dict_new();
         onion_dict_add(options, "shared_folders", shared_folders,
                 OD_FREE_VALUE|OD_DICT|OD_REPLACE);
@@ -123,27 +137,76 @@ int __update_shared_folders(onion_dict *options,  const char *value,
         assert( opts->key != NULL );
         assert( opts->val != NULL );
 
-        if (opts->key[0] != '\0'){
-            // L.1 Add share over key name
-            onion_dict_add(shared_folders, opts->key, opts->val,
-                    OD_DUP_ALL|OD_FREE_ALL|OD_REPLACE);
-        }else{
-            // L.2 Add share over enumerated name
-            char enumerated_name[20]; // share1, etc
-            int written = snprintf(enumerated_name, sizeof(enumerated_name),
-                    "%s%d",
-                    "share", n_share);
-            if (written > 0 && written < sizeof(enumerated_name)){
-                onion_dict_add(shared_folders, enumerated_name, opts->val,
-                        OD_DUP_ALL|OD_FREE_ALL|OD_REPLACE);
-            }
+        if (NULL != strstr( opts->key, "/")){
+            ONION_ERROR("Skipping share '%s'. Names with slashes not supported.", opts->key);
+            ++opts;
+            continue;
         }
+
+        char *media_folder = expand_directory_path(opts->val);
+        //printf("MMMMM '%s' => '%s'\n", opts->val, media_folder);
+        if (NULL == media_folder){
+            ONION_ERROR("Skipping share '%s'. Target directory not readable.", opts->key);
+            ++opts;
+            continue;
+        }
+
+        // Generate collision free dummy key if none given
+
+        // Generate dict with infos often needed, {key:key, path:val, key_encoded: key_encoded}
+        share_info_t *infos = share_info_new(opts->key, media_folder, n_share);
+
+        // Insert/Update new dict
+        onion_dict_add(shared_folders, onion_dict_get((onion_dict *)infos, "key_enumerated"), infos,
+                OD_DUP_KEY|OD_FREE_ALL|OD_REPLACE|OD_DICT); // duplicate key-string
+
+        // Use first share as default one (.current)
+        if (mtp && NULL == media_track_paths_get_current_share(mtp)){
+            media_track_paths_set_directory(mtp, media_folder);
+        }
+
+        free(media_folder);
         ++n_share;
         ++opts;
     }
+    // After this loop strings of the keys and enumerated keys can be intersect. This will be resolved later.
+
+
     free_options(opt_tuples);
 
     return 0;
+}
+
+char *expand_directory_path(
+        const char *path)
+{
+    // 1. Expand environment variables
+    char *expanded_value;
+    wordexp_t p;
+    int expand_fail = wordexp( path, &p, WRDE_NOCMD);
+    if (expand_fail || p.we_wordc < 1 ){
+        expanded_value = strdup(path);
+    }else{
+        expanded_value = strdup(p.we_wordv[0]);
+    }
+    wordfree( &p );
+
+    // 2. Check if folder exists
+    char *media_folder = realpath(expanded_value, NULL);
+    free(expanded_value);
+
+    if (!media_folder) return NULL;
+
+    DIR *dir = opendir(media_folder);
+    if (!dir) {
+        free(media_folder);
+        return NULL;
+    }
+    // Fetch content of directory here if required.
+    // […]
+    closedir(dir);
+
+    return media_folder;
 }
 
 

@@ -77,6 +77,25 @@ const unsigned char bitmap_hex[16] = {
     0b00000000, /*  x    y    z    {    |    }    ~   \x7f */
 };              /* Comment swapped endianess */
 
+const unsigned char bitmap_encodeURIComponentNoSlash[16] = {
+    0b11111111, /* \x00 \x01 \x02 \x03 \x04 \x05 \x06 \x07 */
+    0b11111111, /* \x08  \t   \n  \x0b \x0c  \r  \x0e \x0f */
+    0b11111111, /* \x10 \x11 \x12 \x13 \x14 \x15 \x16 \x17 */
+    0b11111111, /* \x18 \x19 \x1a \x1b \x1c \x1d \x1e \x1f */
+    0b01111101, /*       !    "    #    $    %    &    '   */
+    0b00011000, /*  (    )    *    +    ,    -    .    /   */
+    0b00000000, /*  0    1    2    3    4    5    6    7   */
+    0b11111100, /*  8    9    :    ;    <    =    >    ?   */
+    0b00000001, /*  @    A    B    C    D    E    F    G   */
+    0b00000000, /*  H    I    J    K    L    M    N    O   */
+    0b00000000, /*  P    Q    R    S    T    U    V    W   */
+    0b01111000, /*  X    Y    Z    [    \\   ]    ^    _   */
+    0b00000001, /*  `    a    b    c    d    e    f    g   */
+    0b00000000, /*  h    i    j    k    l    m    n    o   */
+    0b00000000, /*  p    q    r    s    t    u    v    w   */
+    0b10111000, /*  x    y    z    {    |    }    ~   \x7f */
+};              /* Comment swapped endianess */
+
 char *__encode_by_map(const char *text, const unsigned char *ascii_includes){
     // allocate memory for the worst possible case (all characters need to be encoded)
     const size_t len_text = strlen(text);
@@ -129,6 +148,17 @@ char *encodeNonCharNum(const char* text)
     return __encode_by_map(text, bitmap_encodeNonCharNum);
 }
 #endif
+
+/*
+ * Encodes everything EXCEPT
+ *     A–Z a–z 0–9 - _ . ! ~ * ' ( ) /
+ *
+ * Matching Javascript's encodeURIComponent()
+ */
+char *encodeURIComponentNoSlash(const char *text){
+    return __encode_by_map(text, bitmap_encodeURIComponentNoSlash);
+}
+
 
 /* Invert function to decode() which encodes EVERYTHING!*/
 char *encode(const char* text)

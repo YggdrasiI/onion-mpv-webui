@@ -14,6 +14,12 @@ char *encodeURIComponent(const char *text);
 // Just for testing a non-standard case of encoding
 char *encodeNonCharNum(const char *text);
 #endif
+// Filenames with Slashes are not allowd. This 
+// modification of the standard encodeURIComponent ignores '/'.
+// during the encoding.
+// This leads to better readable links (with the same result.)
+char *encodeURIComponentNoSlash(const char *text);
+
 char *encode(const char *text);
 
 /* …  and it's counterparts.

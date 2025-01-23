@@ -612,6 +612,56 @@ int cmd_media_playlist_add(const char *name,
     return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
 }
 
+int cmd_media_playlist_play(const char *name,
+        const char *flags, const char *fullpath,
+        char **pOutput_message)
+{
+    int err = MPV_ERROR_GENERIC;
+
+    // Avoid hidden folders/files and all paths which goes up.
+    if( strlen(fullpath) == 0 || strstr(fullpath, "/.") != NULL ){
+        free(*pOutput_message); *pOutput_message = strdup("Wrong path?!");
+        return CMD_FAIL;
+    }
+
+    if (flags == NULL){
+        flags = "";
+    }
+
+#if 0
+    // Workaround for non-working 'replace' variant in mpv:
+    // It looks like replace does not differs from 'append'?!
+    int use_replace_workaround = ( 0 == strcmp("replace", flags) );
+    // Workorund, step 1/2
+    if ( use_replace_workaround ) {
+        const char *cmd_clear[] = {"playlist-clear", NULL};
+        err = _mpv_command(mpv, cmd_clear);
+        check_mpv_err(err);
+    }
+#endif
+    // Old API  < 0.38: loadfile <url> [<flags> [<options>]]
+    // New API => 0.38: loadfile <url> [<flags> [<index> [<options>]]]
+    // => Is using options-string we has to differ between versions.
+
+    const char *cmd[] = {"loadfile", fullpath, flags, NULL};
+    err = _mpv_command(mpv, cmd);
+    check_mpv_err(err);
+
+    // Workaround, step 2/2
+#if 0
+    if ( use_replace_workaround ) {
+        cmd_play(NULL, NULL, NULL, NULL);
+    }
+#endif
+
+    // Unpause in replace-case
+    if (err == MPV_ERROR_SUCCESS && 0 == strcmp("replace", flags)) {
+        cmd_play(NULL, NULL, NULL, NULL);
+    }
+
+    return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
+}
+
 /*
 int cmd_(const char *name,
         const char *param1, const char *param2,

@@ -15,6 +15,7 @@
 
 #include <onion/onion.h>
 #include <onion/log.h>
+#include <onion/low.h>
 #include <onion/dict.h>
 #include <onion/url.h>
 #include <onion/mime.h>
@@ -80,7 +81,7 @@ onion_connection_status fileserver_page(
 
     char *path = strdup(onion_request_get_path(req));
     // Strip '/' to normalize 'folder/' and 'folder' paths.
-    strip_slash(path);
+    rstrip_slash(path);
 
     ONION_DEBUG("PATH: '%s'\n", path);
     //ONION_DEBUG("FULLPATH: '%s'\n", path);
@@ -127,17 +128,8 @@ onion_connection_status fileserver_page(
             onion_dict_add(files, de->d_name, file,
                     OD_DUP_KEY | OD_DICT | OD_FREE_VALUE);
 
-            onion_dict_add(file, "name", de->d_name, OD_DUP_VALUE);
-#if TEMPLATES_WITH_SHORTEN_NAMES
-            // Add shorten name to avoid long lines
-            if (strlen(de->d_name) > max_display_filename_len) {
-                de->d_name[max_display_filename_len-1] = '\0';
-                de->d_name[max_display_filename_len-2] = '.';
-                de->d_name[max_display_filename_len-3] = '.';
-                de->d_name[max_display_filename_len-4] = '.';
-            }
-            onion_dict_add(file, "name_short", de->d_name, OD_DUP_VALUE);
-#endif
+            const char *name = onion_low_strdup(de->d_name);
+            onion_dict_add(file, "name", de->d_name, OD_FREE_VALUE);
 #ifdef TEMPLATES_WITH_ENCODED_NAMES
             // Encode filename
             onion_dict_add(file, "name_encoded",
@@ -146,8 +138,8 @@ onion_connection_status fileserver_page(
 
             struct stat st;
             int ps = snprintf(tmp_path2, tmp_path_len, "%s/%s", realp, de->d_name);
-            if( ps >= 0 && ps < tmp_path_len ){
-                stat(tmp_path2, &st);
+            if( ps >= 0 && ps < tmp_path_len && 0 == stat(tmp_path2, &st))
+            {
 
                 ps = snprintf(tmp_path2, tmp_path_len, "%d", (int)st.st_size);
                 if( ps >= 0 && ps < tmp_path_len ){
@@ -175,6 +167,18 @@ onion_connection_status fileserver_page(
                 onion_dict_add(file, "type", "?", 0);
             }
 
+#if TEMPLATES_WITH_SHORTEN_NAMES
+            // Add shorten name to avoid long lines
+            if (strlen(de->d_name) > max_display_filename_len) {
+                de->d_name[max_display_filename_len-1] = '\0';
+                de->d_name[max_display_filename_len-2] = '.';
+                de->d_name[max_display_filename_len-3] = '.';
+                de->d_name[max_display_filename_len-4] = '.';
+                onion_dict_add(file, "name_short", de->d_name, OD_DUP_VALUE);
+            }else{
+                onion_dict_add(file, "name_short", name, 0); // Second reference
+            }
+#endif
         }
         closedir(dir);
 

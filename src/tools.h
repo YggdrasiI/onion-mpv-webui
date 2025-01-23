@@ -70,17 +70,50 @@ int path_available(
 
 /*
  * Remove pending '/' chars.
+ *
+ * Return 0 if path was not altered, and 1 otherwise.
  */
-void strip_slash(
+int rstrip_slash(
         char *path);
 
+/* Normalize path/subfolder names:  "" or "/path…"
+ *
+ * ATTENTION: This function assumes that path points inside of bigger string and path[-1] exists.
+ *
+ * X := [^/]+
+ * ""   => ""
+ * "[/]+"  => ""
+ * "[/]+X" => "/X"
+ * "X"  => "/X"
+ * "X[/]+" => "/X"
+ */
+char *left_slashed_string_if_not_empty(
+        const char *path);
+    
 /*
  * Returns new string 'path/' if path is non-empty and '' otherwise.
  */
 char *add_slash_if_notempty(
         const char *path);
 
+char *add_slash_if_next_notempty(
+        const char *path,
+        const char *next);
+
+char *regex_encapsule_chars(
+        const char *word);
+
+const char *consume_leading_slashs(
+        const char *in);
+
 /*
  */
 int check_mpv_err(
         int status);
+
+char *enumerated_name(
+        int n);
+
+int strstarts(
+        const char *str,
+        const char *prefix);
