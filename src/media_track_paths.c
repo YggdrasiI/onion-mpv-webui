@@ -70,7 +70,6 @@ void media_track_paths_set_shares(
 char *translate_path(share_info_t *share_info, const char *path){
   const char *prefix = share_info_get_path(share_info);
   assert(prefix != NULL);
-  printf("AAAAA '%s' => '%s'\n", path, path + strlen(prefix));
   if (path == NULL) return NULL;
   return strdup(path + strlen(prefix));
 }

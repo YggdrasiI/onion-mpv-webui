@@ -87,7 +87,6 @@ onion_connection_status list_share_page(
           free(uri_rel_path);
           //uri_rel_path = onion_low_strdup(privdata->last_requested_subdir);
           uri_rel_path = onion_low_strdup(tmp);
-          printf("YYYYYY '%s'\n", uri_rel_path);
           pthread_mutex_unlock(&privdata->share_lock);
       }else{
           uri_rel_path = onion_low_strdup("/");
@@ -132,7 +131,6 @@ onion_connection_status list_share_page(
 
     // Save this subfolder as last used. 
     pthread_mutex_lock(&privdata->share_lock);
-    printf("ZZZZZZ '%s'\n", uri_rel_path);
     //free(privdata->last_requested_subdir);
     //privdata->last_requested_subdir = uri_rel_path;
     onion_dict_add((onion_dict *)privdata->share_info, "current_directory", uri_rel_path, OD_FREE_VALUE|OD_REPLACE);

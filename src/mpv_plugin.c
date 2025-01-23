@@ -153,7 +153,6 @@ int mpv_open_cplugin(mpv_handle *handle)
             char *path = NULL;
             err = mpv_get_property(mpv, "path", MPV_FORMAT_STRING, &path);
             media_track_paths_set(mtp, path);
-            printf("XXXXXXXX %s\n\n", dirname(path));
             mpv_free(path);
         } else {
             LOG("Got event: %d\n", event->event_id);
