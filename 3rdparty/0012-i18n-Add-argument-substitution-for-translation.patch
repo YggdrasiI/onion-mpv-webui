@@ -1,7 +1,7 @@
-From 3db551fb3a344086ade5f91996b4a632420072a0 Mon Sep 17 00:00:00 2001
+From 622547c96d2400e2acc96d6a65d62e1c62bb2221 Mon Sep 17 00:00:00 2001
 From: Olaf Schulz <947069+YggdrasiI@users.noreply.github.com>
 Date: Sat, 11 Jan 2025 22:35:20 +0100
-Subject: [PATCH 12/12] i18n: Add argument substitution for translation
+Subject: [PATCH] i18n: Add argument substitution for translation
 
 The i18n plugin is extended by a variable substitution. It supports
 two variants:
@@ -11,11 +11,60 @@ two variants:
 Example:
   {% trans "Template constant %s and context variable %s" "X" {varname} %}
 ---
+ tools/otemplate/otemplate.c         | 33 +++++++++++---
  tools/otemplate/templatetags/i18n.c | 70 +++++++++++++++++++++++++++--
- 1 file changed, 67 insertions(+), 3 deletions(-)
+ 2 files changed, 95 insertions(+), 8 deletions(-)
 
+diff --git a/tools/otemplate/otemplate.c b/tools/otemplate/otemplate.c
+index ea309ce..82c83ab 100644
+--- a/tools/otemplate/otemplate.c
++++ b/tools/otemplate/otemplate.c
+@@ -247,15 +247,38 @@ int work(const char *infilename, const char *outfilename,
+           "#include <onion/dict.h>\n"
+           "\n"
+           "typedef struct loop_meta_t{\n"
+-          "	int loop0;\n"
+-          "	int loop;\n"
++          "    int loop0;\n"
++          "    int loop;\n"
+           "}loop_meta;\n"
+           " static loop_meta ONION_TEMPLATE_META_INIT = {.loop0 = -1, .loop = 0 };\n"
+           "\n"
+           "typedef struct dict_res_t{\n"
+-          "	onion_dict *dict;\n"
+-          "	onion_response *res;\n"
+-          "	loop_meta meta;\n" "}dict_res;\n" "\n" "\n");
++          "    onion_dict *dict;\n"
++          "    onion_response *res;\n"
++          "    loop_meta meta;\n"
++          "}dict_res;\n\n");
++
++  fprintf(status.out,
++          "#include <stdarg.h>\n"
++          "const char * dgettext2 (char *out, size_t out_len, const char * domainname, const char * msgid, ...){\n"
++          "    const char *unformated_message = dgettext(domainname, msgid);\n"
++          "    va_list args;\n"
++          "    va_start(args, msgid);\n"
++          "    int ret = vsnprintf(out, out_len, unformated_message, args);\n"
++          "    va_end(args);\n"
++          "    if (ret < 0 || ret >= out_len){\n"
++          "        if (strlen(unformated_message) + 64 < out_len){\n"
++          "            char *p = out;\n"
++          "            p = strcpy(p, \"dgettext2 failed for '\");\n"
++          "            p = strcpy(p, unformated_message);\n"
++          "            p = strcpy(p, \"'\");\n"
++          "            return out;\n"
++          "        }\n"
++          "        return \"dgettext2 failed\";\n"
++          "    }\n"
++          "    return out;\n"
++          "}\n"
++         );
+ 
+   functions_write_declarations_assets(&status, assets);
+ 
 diff --git a/tools/otemplate/templatetags/i18n.c b/tools/otemplate/templatetags/i18n.c
-index 73b652b..48229b9 100644
+index 73b652b..197ed01 100644
 --- a/tools/otemplate/templatetags/i18n.c
 +++ b/tools/otemplate/templatetags/i18n.c
 @@ -22,8 +22,11 @@
@@ -91,10 +140,10 @@ index 73b652b..48229b9 100644
 +
 +      function_add_code(st,
 +              "    char tmp[4096];\n"
-+              "    if (sizeof(tmp) <= snprintf(tmp, sizeof(tmp), dgettext(onion_dict_get(context, \"LANG\"), %s)%s))\n"
-+              "      onion_response_write0(res, \"Failed to evaluate '\" %s \"'\");\n"
-+              "    else\n"
-+              "      onion_response_write0(res, tmp);\n",
++              "    dgettext2(tmp, sizeof(tmp), onion_dict_get(context, \"LANG\"),\n"
++              "        %s\n"      // Text with '%s's
++              "        %s);\n"    // Args
++              "    onion_response_write0(res, tmp);\n",
 +              s, s_args, s);
 +      function_add_code(st, "  }\n");
 +
@@ -105,5 +154,5 @@ index 73b652b..48229b9 100644
  }
  
 -- 
-2.25.1
+2.47.1
 
