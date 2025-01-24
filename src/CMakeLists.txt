@@ -201,6 +201,7 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/webui.pc"
 compile_template(style.include webui)
 compile_template(js.include webui)
 compile_template(footer.include webui)
+compile_template(controls.include webui)
 compile_template(fileserver.html webui)
 compile_template(media.html webui)
 compile_template(media_api_list.json webui)

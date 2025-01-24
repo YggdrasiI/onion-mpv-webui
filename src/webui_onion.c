@@ -496,7 +496,7 @@ int webui_onion_init(onion_dict *_options) {
   onion_url_add_static(api, "/version", VERSION, HTTP_OK);
   onion_url_add(api, "/status", handle_status_get);
   onion_url_add(api, "2", handle_api_post_data2); // "/api2"
-  onion_url_add(api, "", handle_api_get_or_post_data);   // "/api"
+  onion_url_add(api, "^", handle_api_get_or_post_data);   // "/api"
   /* /api2 evaluates POST content of api.html and redirects to api.html
    * after handling command */
 

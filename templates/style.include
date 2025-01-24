@@ -20,4 +20,6 @@ a.fname, a.dname { max-width:30em; overflow: hidden; text-overflow: ellipsis; }
 .size{ text-align:right; }
 
 .spacer { flex-grow: 1; padding-top:2em;}
+#controls { font-size: 2em; }
+#controls a{ padding-right:1em; }
 </style>
