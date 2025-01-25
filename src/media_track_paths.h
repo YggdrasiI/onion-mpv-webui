@@ -2,7 +2,8 @@
 
 typedef struct media_track_paths_t media_track_paths_t;
 
-media_track_paths_t *media_track_paths_new();
+media_track_paths_t *media_track_paths_new(
+        onion_dict *shares);
 
 void media_track_paths_free(
         media_track_paths_t *mlp);

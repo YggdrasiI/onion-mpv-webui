@@ -60,16 +60,12 @@ int mpv_open_cplugin(mpv_handle *handle)
 #endif
     printf("Webui plugin loaded as '%s'!\n", mpv_plugin_name);
 
-    mtp = media_track_paths_new(); // static var…
-                                 // Needs to be initialized before update_options
-                                 // loops over all shares.
-
     onion_dict *options = get_default_options();
     update_options(mpv, mpv_plugin_name, options);
 
     // For media.c extension
     onion_dict *shared_folders = onion_dict_get_dict(options, "shared_folders");
-    media_track_paths_set_shares(mtp, shared_folders);
+    mtp = media_track_paths_new(shared_folders);
 
     // Debug flag
     log_debug = ('0' != onion_dict_get(options, "debug")[0]); 

@@ -207,6 +207,7 @@ onion_dict *setup_media_commands(){
 typedef struct __share_loop_t {
     onion_url *html;
     onion_url *api;
+    int first; // Flag for first run of loop
 } __share_loop_t;
 
 /* Searching for share with "key_enumerated" value and swap */
@@ -286,6 +287,15 @@ void __add_handler_for_shares(
 
     if (key_named && key_named[0]) __add_handler_for_shares_cont(data, key_named, path, share_info);
     if (key_enumerated && key_enumerated[0]) __add_handler_for_shares_cont(data, key_enumerated, path, share_info);
+
+
+    // Use first share as default one (.current)
+    if (data->first){
+        data->first = 0;
+        if (mtp && NULL == media_track_paths_get_current_share(mtp)){
+            media_track_paths_set_directory(mtp, share_info->path);
+        }
+    }
 }
 
 void __add_handler_for_shares_cont(
@@ -412,7 +422,7 @@ int webui_onion_share_media_folders(
     // 3b) Construct url->handler mappings
     // note that all keys/values from shared_folders_b should be duplicated.
     // shared_folders_b will be free'd at the end of this function.
-    __share_loop_t data = {.html = html, .api = api};
+    __share_loop_t data = {.html = html, .api = api, .first = 1};
     onion_dict_preorder(shared_folders, __add_handler_for_shares, &data);
 
     return 0;

@@ -42,9 +42,12 @@ void _media_track_paths_update(
         int split_filename);
 
 
-media_track_paths_t *media_track_paths_new(){
+media_track_paths_t *media_track_paths_new(
+        onion_dict *shares)
+{
     media_track_paths_t *this = calloc(1, sizeof(media_track_paths_t));
     pthread_mutex_init(&this->lock, NULL); /* Instead of PTHREAD_MUTEX_INITIALIZER which only works for static vars */
+    media_track_paths_set_shares(this, shares);
     return this;
 }
 
@@ -115,8 +118,8 @@ void _media_track_paths_update(
         char *new_path,
         int split_filename)
 {
-    char *new_file = basename(new_path);
-    char *new_directory = dirname(new_path);
+    char *new_file;
+    char *new_directory;
 
     if (new_path[0] == '\0') return;
     if (0 == split_filename){

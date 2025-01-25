@@ -160,11 +160,6 @@ int __update_shared_folders(onion_dict *options,  const char *value,
         onion_dict_add(shared_folders, onion_dict_get((onion_dict *)infos, "key_enumerated"), infos,
                 OD_DUP_KEY|OD_FREE_ALL|OD_REPLACE|OD_DICT); // duplicate key-string
 
-        // Use first share as default one (.current)
-        if (mtp && NULL == media_track_paths_get_current_share(mtp)){
-            media_track_paths_set_directory(mtp, media_folder);
-        }
-
         free(media_folder);
         ++n_share;
         ++opts;
