@@ -499,7 +499,7 @@ function refresh_share_list(){
     for (var s in json.shares){
       shares.list.push({"name": s,
 				"name_encoded": json.shares[s],
-        "url": json.commands.list + "/" + json.shares[s],
+        "url": `${json.commands.list}/${json.shares[s]}`,
         //"dir": "" 
         // '.current': Server return last requested dir for this share
         "dir": ".current"

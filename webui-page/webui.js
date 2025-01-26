@@ -158,7 +158,7 @@ function send(command, param1, param2){
      * Thus a file named "%2F" would be inaccesible if it's not encoded.
      */
     //path += "/" + encodeURI(param2)
-		path += "/" + encodeURIComponent(param2)
+    path += "/" + encodeURIComponent(param2)
   }
 
   var request = new XMLHttpRequest();
@@ -1217,6 +1217,7 @@ function status_init_ws(){
     if (connected) {
       connected = false;
       if (ev.code != 1001 /* GOING_AWAY reply. No need for further rendering */){
+        clearTimeout(window.mpv_outstanding_status.timer)
         print_disconnected()
         hide_overlays()
       }
@@ -1228,6 +1229,8 @@ function status_init_ws(){
         status_init_ws()
       }, 5000)
     }
+
+    ws = null
   }
   //ws.onerror = ws.onclose; // not required for reconnections
 
