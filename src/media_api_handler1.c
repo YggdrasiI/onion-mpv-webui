@@ -90,10 +90,8 @@ onion_connection_status media_api_list(
     if (dir) {
         // Fill the dictionary for html-template.
         onion_dict *d = onion_dict_new();
-        //onion_dict_add(d, "dirname", uri_full_path, 0);
-        //onion_dict_add(d, "dirname", onion_request_get_fullpath(req), 0); // TODO: Formatting ok?!
         onion_dict_add(d, "share", (onion_dict *)privdata->share_info, OD_DICT);
-        onion_dict_add(d, "share_key", share_key, 0); // TODO-> CHange template and use share-subdict.
+        onion_dict_add(d, "share_key", share_key, 0);
         onion_dict_add(d, "share_key_encoded", share_key_encoded, 0);
 
         if (uri_rel_path[0] == '\0' || uri_rel_path[1] == '\0') { // To avoid empty dir string "/"
@@ -274,8 +272,9 @@ void __list_share_func(
     if (key_encoded == NULL) key_encoded = key;
 
     char *api_path;
-    asprintf(&api_path, "/media/api/list/%s", key_encoded);
-    onion_dict_add(to_json, key, api_path, OD_FREE_VALUE);
+    //asprintf(&api_path, "/media/api/list/%s", key_encoded);
+    //onion_dict_add(to_json, key, api_path, OD_FREE_VALUE);
+    onion_dict_add(to_json, key, key_encoded, OD_DUP_VALUE);
 }
 
 
@@ -304,6 +303,10 @@ int media_api_list_root(
     onion_dict *to_json = onion_dict_new();
     onion_dict *shares = onion_dict_new(); // free'd together with to_json
     onion_dict_add(to_json, "shares", shares, OD_DICT | OD_FREE_VALUE);
+
+    onion_dict *commands = onion_dict_new(); // free'd together with to_json
+    onion_dict_add(to_json, "commands", commands, OD_DICT | OD_FREE_VALUE);
+    onion_dict_add(commands, "list", "/media/api/list", 0);
 
     // Collect keys from shared folders but not their local paths
     onion_dict_preorder(shared_folders, __list_share_func, shares);

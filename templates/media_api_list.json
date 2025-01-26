@@ -1,19 +1,23 @@
 {
-  "TODOdirname": "{{dirname}}",
-  "dirname": "/media/api/list/{{share_key_encoded}}{{uri_rel_path_encoded}}",
+  "dirname": "{{dirname}}",
+  "dirpath": "{{share_key_encoded}}{{uri_rel_path_encoded}}",
+  "commands":{
+      "list": "/media/api/list",
+      "play": "/media/api/playlist_add"
+  },
   "files": [
     {% for file in files %}
     {% if meta.loop0 != "0" %},{% endif %}
     {
       "name": "{{file.name}}",
+      "name_encoded": "{{file.name_encoded}}",
       {% if file.type == "dir" %}
-      "list": "/media/api/list/{{share_key_encoded}}{{uri_rel_path_encoded}}/{{file.name_encoded}}/",
-      "play": "/media/api/playlist_add/{{share_key_encoded}}{{uri_rel_path_encoded}}/{{file.name_encoded}}",
+      {# "list": "/media/api/list/{{share_key_encoded}}{{uri_rel_path_encoded}}/{{file.name_encoded}}/", #}
+      {# "play": "/media/api/playlist_add/{{share_key_encoded}}{{uri_rel_path_encoded}}/{{file.name_encoded}}", #}
       "size": -1,
       {% else %}
-      "play": "/media/api/playlist_add/{{share_key_encoded}}{{uri_rel_path_encoded}}/{{file.name_encoded}}",
+      {# "play": "/media/api/playlist_add/{{share_key_encoded}}{{uri_rel_path_encoded}}/{{file.name_encoded}}", #}
       "size": {{file.size}},
-      {# "size2": {{file.size2}}, #}
       {% endif %}
       {# "owner": {{file.owner}}, #}
       "modified": {{file.modified}}

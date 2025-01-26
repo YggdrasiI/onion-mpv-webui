@@ -64,7 +64,7 @@ function browseShares() {
 function share_change(el){
   /* Save current scroll position */
   var sharelist = document.getElementById("sharelist")
-  var prev_dirname = shares.scroll_positions["active_dirname"]
+  var prev_dirname = shares.scroll_positions["active_dirpath"]
   if( prev_dirname !== undefined ){
     var sT = sharelist.scrollTop;
     DEBUG && console.log("Save scroll position of share " +
@@ -84,9 +84,7 @@ function share_change(el){
 
   var iSel = el.selectedIndex
   var request = new XMLHttpRequest()
-  find_share = false
   if (iSel == -1){
-    find_share = true
     request.open("get", "/media/api/list/.current/.current")
   }else{
     //var value = el.options[el.selectedIndex].value
@@ -99,7 +97,7 @@ function share_change(el){
   request.onreadystatechange = function() {
     if (request.readyState === 4 && request.status === 200) {
       var json = JSON.parse(request.responseText)
-      update_selected_share(json, find_share);
+      update_selected_share(json);
       print_share_list(json)
     } else if (request.status === 0) {
       DEBUG && console.log("Fetching share list failed")
@@ -108,22 +106,27 @@ function share_change(el){
   request.send(null)
 }
 
-function update_selected_share(json, find_share){
-  if (find_share){
-    for(var i = 0; i < shares.list.length; ++i) {
-      if (json.dirname.startsWith(shares.list[i].url)){
-        shares.selected = i
-        document.getElementById("share_selector").options.selectedIndex = i
-        DEBUG && console.log(`Selecting share ${i} (${shares.list[i].url})`)
-        break
-      }
-    }
-  }
+function update_selected_share(json){
+	shares.selected = -1
+	for(var i = 0; i < shares.list.length; ++i) {
+		var full_dirpath = `${json.commands.list}/${json.dirpath}`
+		console.log(`${full_dirpath} vs ${shares.list[i].url}`)
+		if (full_dirpath.startsWith(shares.list[i].url)){
+			shares.selected = i
+			document.getElementById("share_selector").options.selectedIndex = i
+			DEBUG && console.log(`Selecting share ${i} (${shares.list[i].url})`)
+			break
+		}
+	}
+	if (shares.selected = -1){
+		console.log("Error, given path is no child directory of a share.")
+    DEBUG && console.log(json)
+		return;
+	}
 
   if (shares.list[shares.selected].dir === ".current"){
-    console.log(json)
-    DEBUG && console.log(`Replace .current by '${share_get_subdir(json.dirname)}'`)
-    shares.list[shares.selected].dir = share_get_subdir(json.dirname)
+    DEBUG && console.log(`Replace .current by '${share_get_subdir(json.dirpath)}'`)
+    shares.list[shares.selected].dir = share_get_subdir(json.dirpath)
   }
 
     //shares.selected = el.selectedIndex
@@ -280,7 +283,7 @@ function print_share_list(json){
     return li
   }
   // Add .. if not root dir of share
-  if (json.dirname !== shares.list[shares.selected].url){
+  if (json.dirpath !== shares.list[shares.selected].name_encoded){
     var li_dotdot = add_li(file_dotdot, -2)
     li_dotdot.classList.add('dir_up')
     sharelist.appendChild(li_dotdot)
@@ -288,11 +291,18 @@ function print_share_list(json){
 
   var files = json.files
   for(var i = 0; i < files.length; ++i) {
+		var file = files[i]
+		// Reconstruct full path for list/play
+		file.play = `${json.commands.play}/${json.dirpath}/${file.name_encoded}`
+		if (file.size == -1){
+			file.list = `${json.commands.list}/${json.dirpath}/${file.name_encoded}`
+		}
+
     sharelist.appendChild(add_li(files[i], i))
   }
 
   /* Presort element before inserting into DOM */
-  var local_sorting = shares.local_sorting[json.dirname]
+  var local_sorting = shares.local_sorting[json.dirpath]
   if (local_sorting !== undefined){
     DEBUG_SORTINGS && console.log(`Restore sorting ${local_sorting.sname} ${local_sorting.active}`)
     // Use previous sorting option for this folder because the
@@ -313,13 +323,13 @@ function print_share_list(json){
   /* Reset scrollPosition on saved value, if available.
    * Assumes scarelist.style.overflow == "scroll"
    */
-  var sT = shares.scroll_positions[json.dirname]
+  var sT = shares.scroll_positions[json.dirpath]
   DEBUG && console.log("Set scroll position of share " +
-    json.dirname + " to " + (sT||0))
+    json.dirpath + " to " + (sT||0))
   sharelist.scrollTop = sT || 0  // sT could be undefined
 
   // Used name for next storage of scrollTop
-  shares.scroll_positions["active_dirname"] = json.dirname
+  shares.scroll_positions["active_dirpath"] = json.dirpath
 
 }
 
@@ -488,7 +498,8 @@ function refresh_share_list(){
 
     for (var s in json.shares){
       shares.list.push({"name": s,
-        "url": json.shares[s],
+				"name_encoded": json.shares[s],
+        "url": json.commands.list + "/" + json.shares[s],
         //"dir": "" 
         // '.current': Server return last requested dir for this share
         "dir": ".current"
