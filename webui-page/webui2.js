@@ -108,6 +108,7 @@ function share_change(el){
 
 function update_selected_share(json){
 	shares.selected = -1
+	console.log("Ping")
 	for(var i = 0; i < shares.list.length; ++i) {
 		var full_dirpath = `${json.commands.list}/${json.dirpath}`
 		console.log(`${full_dirpath} vs ${shares.list[i].url}`)
@@ -118,7 +119,7 @@ function update_selected_share(json){
 			break
 		}
 	}
-	if (shares.selected = -1){
+	if (shares.selected == -1){
 		console.log("Error, given path is no child directory of a share.")
     DEBUG && console.log(json)
 		return;
@@ -186,11 +187,23 @@ function share_add_file(add_link, bPlay){
   //add_link = preserve_special_chars(add_link)
   request.open("get", add_link)
   //request.open("get", encode_raw_link(add_link))  // This can be used if the server not percent encoded on it's own.
+	
+	// Workaround: If mpv idles no entry of playlist is selected.
+	// We has to jump to an entry to re-vite mpv.
+	var is_idle = check_idle(mpv_status)
+	if (is_idle) {
+		var playlist_entry_to_select = bPlay?0:mpv_status.playlist.length
+	}
 
   request.onreadystatechange = function() {
     if (request.readyState === 4 && request.status === 200) {
       var json = JSON.parse(request.responseText);
       DEBUG && console.log(json)
+			if (is_idle) {
+				DEBUG && console.log("Jump to new playlist entry")
+				send("playlist_jump", playlist_entry_to_select)
+				if (bPlay) send("play")
+			}
     } else if (request.status === 0) {
       console.log("Adding file to playlist failed")
     }

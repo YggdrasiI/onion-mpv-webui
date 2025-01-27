@@ -97,7 +97,7 @@ function checkForStatusUpdate(immedialty){
 
   var _handler = function() {
     if (window.tab_in_background) {
-      //console.log('Wait at ' + Date.now());
+      //console.log('Wait at ' + Date.now())
       window.mpv_outstanding_status.timer = setTimeout(
         _handler, window.mpv_outstanding_status.delay)
       return
@@ -108,7 +108,7 @@ function checkForStatusUpdate(immedialty){
     //TODO Prepare async handling by storing update in local var (!?)
     var updates = window.mpv_outstanding_status.updates
     window.mpv_outstanding_status.updates = {}
-    //console.log('Handle update at ' + Date.now());
+    //console.log('Handle update at ' + Date.now())
     handleStatusUpdate(updates)
   }
 
@@ -132,7 +132,7 @@ document.addEventListener('visibilitychange', function (event) {
     tab_in_background = false
     checkForStatusUpdate(true)
   }
-});
+})
 // ===================================
 
 
@@ -161,7 +161,7 @@ function send(command, param1, param2){
     path += "/" + encodeURIComponent(param2)
   }
 
-  var request = new XMLHttpRequest();
+  var request = new XMLHttpRequest()
   request.open("post", path)
 
   request.send(null)
@@ -259,17 +259,18 @@ function createPlaylistTable(entry, position, pause, first) {
     function playlist_jump(table) {
       arg = table.playlist_id
       send("playlist_jump", arg)
-      send("play");  // remove pause
-      // evt.stopPropagation();
+      send("play")  // remove pause
+      // evt.stopPropagation()
     }
 
     td_left.addEventListener('click', () => { playlist_jump(table) })
     //td_2.addEventListener('click', () => { playlist_jump(table) })
 
-    td_left.addEventListener("mouseover", function() {setActive(true)})
-    td_left.addEventListener("mouseout", function() {setActive(false)})
-    //td_2.addEventListener("mouseover", function() {setActive(true)})
-    //td_2.addEventListener("mouseout", function() {setActive(false)})
+    /* Switching from mouseover/mouseout to mouseenter/mouseleave because
+     * first pair also triggers if mouse in on child elements.
+     */
+    td_left.addEventListener("mouseenter", function() {setActive(true)})
+    td_left.addEventListener("mouseleave", function() {setActive(false)})
 
     td_left.addEventListener("click", blink)
     //td_2.addEventListener("click", blink)
@@ -307,7 +308,7 @@ function populatePlaylist(json, pause) {
   var first = true
   var playedRow = null
   for(var i = 0; i < json.length; ++i) {
-    row = createPlaylistTable(json[i], i, pause, first);
+    row = createPlaylistTable(json[i], i, pause, first)
     playlist.appendChild(row)
     if (first === true) {
       first = false
@@ -319,7 +320,7 @@ function populatePlaylist(json, pause) {
   }
 
   // Scroll played entry into view
-  if (playedRow) playedRow.scrollIntoView({block: 'center'});
+  if (playedRow) playedRow.scrollIntoView({block: 'center'})
 
 }
 
@@ -330,7 +331,7 @@ function updatePlaylistOnPause(current_playlist, new_pause, old_pause) {
   for (i=0; i<current_playlist.length; ++i){
     if (current_playlist[i].current && current_playlist[i].current == true){
 
-      row = createPlaylistTable(current_playlist[i], i, new_pause, (i==0));
+      row = createPlaylistTable(current_playlist[i], i, new_pause, (i==0))
       playlist.replaceChild(row, playlist.children[i])
       break;
     }
@@ -364,13 +365,13 @@ function updatePlaylist(new_playlist, old_playlist, new_pause) {
     if (x['op'] == 'replace' /* || x['op'] == 'changed'*/) {
       var row = createPlaylistTable(
         new_playlist[x['new']],
-        x['old'], new_pause, (x['new']==0));
+        x['old'], new_pause, (x['new']==0))
       playlist.replaceChild( row,
         playlist.children[x['old'] + offset])
     }else if (x['op'] == 'add') {
       var row = createPlaylistTable(
         new_playlist[x['new']],
-        x['old'], new_pause, (x['new']==0));
+        x['old'], new_pause, (x['new']==0))
       playlist.insertBefore( row,
         playlist.children[x['old'] + offset])//.nextElementSilbing)
       offset++
@@ -406,9 +407,9 @@ function unfold_bindings(bindings){
   const split_by_modifier_shift = bindings.reduce((result, obj) => {
     const key = (obj.shift?true:false) // merges false and undefined
     result[key] = result[key] || []
-    result[key].push(obj);
+    result[key].push(obj)
     return result;
-  }, {});
+  }, {})
 
   // For both sub-lists, create map for key code and key name.
   // => [shift][keyname] or [shift][keycode] can be used to access available keybindigs.
@@ -575,7 +576,7 @@ function webui_keydown(evt) {
 }
 
 function format_time(seconds){
-  var date = new Date(null);
+  var date = new Date(null)
   date.setSeconds(seconds)
   return date.toISOString().substr(11, 8)
 }
@@ -695,6 +696,7 @@ function current_playlist_index(playlist){
       return i
     }
   }
+  // This is ok with idle=yes
   DEBUG && console.log("Can not detect playlist entry!")
 }
 
@@ -706,10 +708,37 @@ function playlist_get_title(entry){
   return basename(entry['filename'])
 }
 
-function setMetadata(metadata, playlist, filename) {
+function check_idle(new_status){
+  if ("yes" != (new_status.idle || "")) return false
+
+  if (undefined !== current_playlist_index(new_status.playlist)) return false
+  //if (new_status.filename != "undefined") return false // false positive for 'mpv --pause --idle=yes .'
+
+  return true
+}
+
+function print_idle(){
+  var title = "Idle…"
+  window.metadata.title = title
+  window.metadata.artist = ''
+  window.metadata.album = ''
+
+  document.getElementById("title").innerText = window.metadata.title
+  document.getElementById("title").setAttribute('title', title)
+
+  document.getElementById("artist").innerText = window.metadata.artist
+  document.getElementById("album").innerText = window.metadata.album
+}
+
+function setMetadata(metadata, playlist, filename, new_status) {
   // try to gather the track number
   metadata = metadata?metadata:{}; // null to {}
   var track = ''
+
+  if (check_idle(new_status) ){
+    return print_idle()
+  }
+
   if (metadata['track']) {
     track = metadata['track'] + ' - '
   }
@@ -819,7 +848,7 @@ function __mediaSession() {
         { src: '/favicons/android-chrome-192x192.png', sizes: '192x192', type: 'image/png' },
         { src: '/favicons/android-chrome-512x512.png', sizes: '512x512', type: 'image/png' }
       ]
-    });
+    })
 
     navigator.mediaSession.setActionHandler('play', function() {send('play');})
     navigator.mediaSession.setActionHandler('pause', function() {send('pause');})
@@ -1009,7 +1038,7 @@ function setLoop(loopFile, loopPlaylist) {
 }
 
 function handleStatusResponse(json) {
-  setMetadata(json['metadata'], json['playlist'], json['filename'])
+  setMetadata(json['metadata'], json['playlist'], json['filename'], json)
   setTrackList(json['track-list'])
   document.getElementById("duration").innerText =
     format_time(json['duration'])
@@ -1046,7 +1075,7 @@ function handleStatusUpdate(status_updates) {
   if ("metadata" in status_updates
     ||"playlist" in status_updates
     ||"filename" in status_updates){
-    setMetadata(new_status['metadata'], new_status['playlist'], new_status['filename'])
+    setMetadata(new_status['metadata'], new_status['playlist'], new_status['filename'], new_status)
   }
   if ("track-list" in status_updates){
     setTrackList(new_status['track-list'])
@@ -1124,7 +1153,7 @@ function handleStatusUpdate(status_updates) {
 }
 
 function status_init_ws(){
-  ws = new WebSocket('ws://'+window.location.host+'/ws');
+  ws = new WebSocket('ws://'+window.location.host+'/ws')
 
   ws.__unhandled_data = []
   ws.onmessage=function(ev){
@@ -1308,7 +1337,7 @@ function audioPlay() {
   if (audio.paused) {
     block.doublePause = true
     audio.play()
-      .then(_ => { __mediaSession();
+      .then(_ => { __mediaSession()
         DEBUG && console.log('Playing dummy audio'); })
       .catch(error => { DEBUG && console.log(error) })
     navigator.mediaSession.playbackState = "playing"
@@ -1547,8 +1576,8 @@ function add_button_listener() {
 
     ['quitMpv', 'click', function (evt) {send('quit') }],
     ['overlay', 'click', function (evt) {
-      if(evt.target == this) togglePlaylist();
-      evt.stopPropagation();
+      if(evt.target == this) togglePlaylist()
+      evt.stopPropagation()
     }],
   ]
 
@@ -1585,7 +1614,7 @@ window.addEventListener('load', add_button_listener, false)
 // https://stackoverflow.com/questions/37808180/disable-viewport-zooming-ios-10-safari/38573198#38573198
 var lastTouchEnd = 0
 document.addEventListener('touchend', function (evt) {
-  var now = (new Date()).getTime();
+  var now = (new Date()).getTime()
   if (now - lastTouchEnd <= 300) {
     evt.preventDefault()
   }

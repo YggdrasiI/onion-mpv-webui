@@ -306,7 +306,6 @@ void __add_handler_for_shares_cont(
 {
     // 3. Connect folder with handlers
     char *keychars_in_braces = regex_encapsule_chars(key); // + -> [+], etc
-    printf("%s\n\n", keychars_in_braces);                                                           
 
     // 1. /media/html/{sharename}
     // Create hander with privdata about shared dir.
