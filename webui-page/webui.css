@@ -714,6 +714,7 @@ ul#sharelist {
   font-weight: bold;
 }
 
+#sharelist li *.share_bullet,
 #sharelist li *.share_dir,
 #sharelist li *.share_file {
   cursor: pointer;
@@ -737,6 +738,7 @@ ul#sharelist {
   background-color: var(--playlist-bg-active);
 }
 
+ul#sharelist li i.share_bullet_dotdot,
 ul#sharelist li i.share_bullet {
   margin-right: 0.6em;
   /*display:inline-block;*/

@@ -1,11 +1,5 @@
 #pragma once
 
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-
 #include <mpv/client.h>
 
 extern int log_debug;

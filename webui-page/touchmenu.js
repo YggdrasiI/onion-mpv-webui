@@ -147,8 +147,8 @@ var touchmenu = {
      * Returns: True if top position was selected.
      */
 
-    if (arguments.length < 4) expand = {};
-    if (arguments.length < 3) preferBottomOffset = 0;
+    if (arguments.length < 5) expand = {};
+    if (arguments.length < 4) preferBottomOffset = 0;
 
     if (this._menu_handler_initialized.hasOwnProperty(menu) === false){
       DEBUG_TOUCH && console.log("Add menu listener")
@@ -169,7 +169,7 @@ var touchmenu = {
     menu.replaceChildren()
 
     // Eval new position. Here the above flag is undefined, but defined in all later calls. We fixing this value because otherwise the order of elements needs to be reversed.
-    var above = this._position(menu, currentTarget, preferBottomOffset, expand, undefined)
+    var above = this._position(menu, currentTarget, preferBottomOffset, expand, undefined, false)
 
     // Remove previous resize handler
     window.removeEventListener('resize', this._resize_handler[menu])
@@ -187,7 +187,7 @@ var touchmenu = {
       }
 
       // Update position 
-      touchmenu._position(menu, currentTarget, preferBottomOffset, expand, above)
+      touchmenu._position(menu, currentTarget, preferBottomOffset, expand, above, true)
     }
 
     // Add resize handler
@@ -196,12 +196,13 @@ var touchmenu = {
     return above;
   },
 
-  _position: function (menu, currentTarget, preferBottomOffset, expand, above){
+  _position: function (menu, currentTarget, preferBottomOffset, expand, above, during_resize){
     //console.log("_position called")
     const rect = currentTarget.getBoundingClientRect();
 
     // FF-Mobile: Respect hiding of address bar
-    const addressbar_offset = window.innerHeight - touchmenu._menu_innerHeights[menu]
+    const addressbar_offset = during_resize?0:
+			(window.innerHeight - touchmenu._menu_innerHeights[menu])
 
     if (expand['left']){
       const rectL = expand['left'].getBoundingClientRect();

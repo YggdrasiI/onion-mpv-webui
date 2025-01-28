@@ -1,5 +1,9 @@
+#define _GNU_SOURCE // for strchrnul()
 #include <stdlib.h>
 #include <stdio.h>
+#include <stddef.h>
+#include <unistd.h>
+
 #include <string.h>
 #include <assert.h>
 
@@ -260,15 +264,74 @@ void free_options(option_t * const opts){
     free(opts);
 }
 
-int check_int_or_float(const char *param, char **msg){
-    double dbl;
+
+/* Checks if whole input string is Integer.
+ *
+ * Return value: 0 - No int
+ *               1 -    Int
+ *
+ * Params:
+ *      param: input , null terminated, but strlen(param) > len_param is ok.
+ *  len_param: <= strlen(param). Range to check
+ *       *out: parsed value, if out != NULL
+ * */
+int check_int(const char *param, int len_param, int *out){
     int n;
 
-    int is_int = (1 == sscanf( param, "%d", &n));
-    if( is_int ) return 1;
+    /* %d      : Integer with leading space
+     * %*[ \t] : Space characters without output variable.
+     *           Do not influence return value of sscanf
+     * %n      : Saves number of consumed chars at this position.
+     */
+    const char *pattern = "%d%*[ \t]%n";
+    int end_pos = -1;
+    int string_starts_as_int = (1 == sscanf(param, pattern, &n, &end_pos));
+    int whole_input_consumed = (end_pos >= len_param);
+    if (string_starts_as_int && whole_input_consumed) {
+        if (out != NULL) *out = n;
+        return 1;
+    }
 
-    int is_dbl = (1 != sscanf( param, "%lf", &dbl));
-    if( is_dbl ) return 2;
+    return 0;
+}
+
+/* Checks if whole input string is Double.
+ *
+ * Return value: 0 - No double
+ *               2 -    Double
+ *
+ * Params:
+ *      param: input , null terminated, but strlen(param) > len_param is ok.
+ *  len_param: <= strlen(param). Range to check
+ *       *out: parsed value, if out != NULL
+ * */
+int check_float(const char *param, int len_param, double *out){
+    double dbl;
+
+    /* %lf     : Double sized float
+     * %*[ \t] : Space characters without output variable.
+     *           Do not influence return value of sscanf
+     * %n      : Saves number of consumed chars at this position.
+     */
+    const char *pattern = "%lf%*[ \t]%n";
+    int end_pos = -1;
+    int string_starts_as_int = (1 == sscanf(param, pattern, &dbl, &end_pos));
+    int whole_input_consumed = (end_pos >= len_param);
+    if (string_starts_as_int && whole_input_consumed) {
+        if (out != NULL) *out = dbl;
+        return 1;
+    }
+
+    return 0;
+}
+
+int check_int_or_float(const char *param, char **msg){
+    char *end = strchrnul(param, '/'); // position of next '/' or '\0'.
+    int len_param = end-param; // >= 0
+    if (len_param <= 0) return 0;
+
+    if (check_int(param, len_param, NULL)) return 1;
+    if (check_float(param, len_param, NULL)) return 2;
 
     // Parsing fails
     if (msg != NULL ){
@@ -333,8 +396,8 @@ char *left_slashed_string_if_not_empty(
     char *ret = onion_low_strdup(path-1);
     ret[0] = '/';
 
-    // Remove tailing. (Can still lead to empty string) 
-    rstrip_slash(ret); 
+    // Remove tailing. (Can still lead to empty string)
+    rstrip_slash(ret);
 
     return ret;
 }

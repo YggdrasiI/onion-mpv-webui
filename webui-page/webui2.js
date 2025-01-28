@@ -107,30 +107,29 @@ function share_change(el){
 }
 
 function update_selected_share(json){
-	shares.selected = -1
-	console.log("Ping")
-	for(var i = 0; i < shares.list.length; ++i) {
-		var full_dirpath = `${json.commands.list}/${json.dirpath}`
-		console.log(`${full_dirpath} vs ${shares.list[i].url}`)
-		if (full_dirpath.startsWith(shares.list[i].url)){
-			shares.selected = i
-			document.getElementById("share_selector").options.selectedIndex = i
-			DEBUG && console.log(`Selecting share ${i} (${shares.list[i].url})`)
-			break
-		}
-	}
-	if (shares.selected == -1){
-		console.log("Error, given path is no child directory of a share.")
+  shares.selected = -1
+  for(var i = 0; i < shares.list.length; ++i) {
+    var full_dirpath = `${json.commands.list}/${json.dirpath}`
+    console.log(`${full_dirpath} vs ${shares.list[i].url}`)
+    if (full_dirpath.startsWith(shares.list[i].url)){
+      shares.selected = i
+      document.getElementById("share_selector").options.selectedIndex = i
+      DEBUG && console.log(`Selecting share ${i} (${shares.list[i].url})`)
+      break
+    }
+  }
+  if (shares.selected == -1){
+    console.log("Error, given path is no child directory of a share.")
     DEBUG && console.log(json)
-		return;
-	}
+    return;
+  }
 
-  if (shares.list[shares.selected].dir === ".current"){
+  if (shares.selected && shares.list[shares.selected].dir === ".current"){
     DEBUG && console.log(`Replace .current by '${share_get_subdir(json.dirpath)}'`)
     shares.list[shares.selected].dir = share_get_subdir(json.dirpath)
   }
 
-    //shares.selected = el.selectedIndex
+  //shares.selected = el.selectedIndex
 }
 
 function share_change_dir(list_link){
@@ -187,23 +186,23 @@ function share_add_file(add_link, bPlay){
   //add_link = preserve_special_chars(add_link)
   request.open("get", add_link)
   //request.open("get", encode_raw_link(add_link))  // This can be used if the server not percent encoded on it's own.
-	
-	// Workaround: If mpv idles no entry of playlist is selected.
-	// We has to jump to an entry to re-vite mpv.
-	var is_idle = check_idle(mpv_status)
-	if (is_idle) {
-		var playlist_entry_to_select = bPlay?0:mpv_status.playlist.length
-	}
+
+  // Workaround: If mpv idles no entry of playlist is selected.
+  // We has to jump to an entry to re-vite mpv.
+  var is_idle = check_idle(mpv_status)
+  if (is_idle) {
+    var playlist_entry_to_select = bPlay?0:mpv_status.playlist.length
+  }
 
   request.onreadystatechange = function() {
     if (request.readyState === 4 && request.status === 200) {
       var json = JSON.parse(request.responseText);
       DEBUG && console.log(json)
-			if (is_idle) {
-				DEBUG && console.log("Jump to new playlist entry")
-				send("playlist_jump", playlist_entry_to_select)
-				if (bPlay) send("play")
-			}
+      if (is_idle) {
+        DEBUG && console.log("Jump to new playlist entry")
+        send("playlist_jump", playlist_entry_to_select)
+        if (bPlay) send("play")
+      }
     } else if (request.status === 0) {
       console.log("Adding file to playlist failed")
     }
@@ -235,8 +234,17 @@ function print_share_list(json){
     var play_link = decode(file.play || "" )
     var list_link = decode(file.list || "")
 
+    function show_playable(el, isplay, isdir) {
+      var base_class = isdir?'fa-folder':'fa-file'
+      if (isplay){
+        el.classList.replace(base_class, 'fa-play')
+      }else{
+        el.classList.replace('fa-play', base_class)
+      }
+    }
+
     li.classList.add('gray')
-    bullet.classList.add('share_bullet')
+    bullet.classList.add(idx>=0?'share_bullet':'share_bullet_dotdot')
     if (isdir) {
       bullet.classList.add('fas', 'fa-folder')
     }else{
@@ -251,14 +259,26 @@ function print_share_list(json){
         share_change_dir(list_link)
         share_change(document.getElementById("share_selector"))
       })
+      if( idx >= 0 ){
+        bullet.addEventListener("click", function() {
+          share_add_file(play_link, true)
+        })
+      }
     }else{
       fname.classList.add('share_file')
 
       if( idx >= 0 ){
         fname.addEventListener("click", function() {
-          share_add_file(play_link, true)
+          share_add_file(play_link, false) // playlist_add
+        })
+        bullet.addEventListener("click", function() {
+          share_add_file(play_link, true)  // playlist_play
         })
       }
+    }
+    if (idx >= 0){
+      bullet.addEventListener("mouseenter", function() {show_playable(bullet, 1, isdir)})
+      bullet.addEventListener("mouseleave", function() {show_playable(bullet, 0, isdir)})
     }
 
     li.setAttribute("timestamp", file.modified)
@@ -281,7 +301,7 @@ function print_share_list(json){
     }
     if (idx == -2){ // Add button to go up to root dir.
       var bullet2 = document.createElement("I")
-      bullet2.classList.add('share_bullet', 'fas', 'fa-folder')
+      bullet2.classList.add('share_bullet_dotdot', 'fas', 'fa-folder')
       var go_top = document.createElement("SPAN")
       go_top.textContent = "/"
       go_top.classList.add('share_dir')
@@ -297,19 +317,20 @@ function print_share_list(json){
   }
   // Add .. if not root dir of share
   if (json.dirpath !== shares.list[shares.selected].name_encoded){
-    var li_dotdot = add_li(file_dotdot, -2)
+    var depth = (json.dirpath.split('/').length > 2)?-2:-1; // First level doesn't need '/' button
+    var li_dotdot = add_li(file_dotdot, depth)
     li_dotdot.classList.add('dir_up')
     sharelist.appendChild(li_dotdot)
   }
 
   var files = json.files
   for(var i = 0; i < files.length; ++i) {
-		var file = files[i]
-		// Reconstruct full path for list/play
-		file.play = `${json.commands.play}/${json.dirpath}/${file.name_encoded}`
-		if (file.size == -1){
-			file.list = `${json.commands.list}/${json.dirpath}/${file.name_encoded}`
-		}
+    var file = files[i]
+    // Reconstruct full path for list/play
+    file.play = `${json.commands.play}/${json.dirpath}/${file.name_encoded}`
+    if (file.size == -1){
+      file.list = `${json.commands.list}/${json.dirpath}/${file.name_encoded}`
+    }
 
     sharelist.appendChild(add_li(files[i], i))
   }
@@ -511,7 +532,7 @@ function refresh_share_list(){
 
     for (var s in json.shares){
       shares.list.push({"name": s,
-				"name_encoded": json.shares[s],
+        "name_encoded": json.shares[s],
         "url": `${json.commands.list}/${json.shares[s]}`,
         //"dir": "" 
         // '.current': Server return last requested dir for this share
