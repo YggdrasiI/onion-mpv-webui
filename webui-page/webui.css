@@ -19,8 +19,8 @@ body {
   margin: 0px;
   padding: 0px;
 
-  overflow:auto;
-  /*overflow:clip;*/
+  /*overflow:auto;*/
+  overflow:clip; /* Sometimes touchmenu.js menus producing vertical scrollbar in Chromium. */
 }
 
 h1, h2, h3 {
@@ -321,8 +321,11 @@ input[type="range"] {
   margin: 0px auto;
 }
 
-#playlist::-webkit-scrollbar {
-  display: none;
+.touchmenu,
+#sharelist,
+#playlist{
+  /*scrollbar-color: var(--playlist-bg-active) var(--playlist-bg-hover);*/
+  scrollbar-color: var(--playlist-bg-hover) transparent;
 }
 
 .playlist-button {
@@ -776,7 +779,7 @@ ul#sharelist li i.share_bullet {
 }
 
 /* Touchmenu */
-#touchmenu {
+.touchmenu {
   /*top: 0; left: 0; right: 0; bottom: 0;*/
   /* Do not set here top,left,right,bottom values because
    * javascript's removeProperty won't work as expected */
@@ -795,7 +798,7 @@ ul#sharelist li i.share_bullet {
   overflow-y:auto;
 }
 
-#touchmenu ul {
+.touchmenu ul {
   display:flex;
   /* flex-direction can be adapted by JS */
   padding:0px;
@@ -810,7 +813,7 @@ ul#sharelist li i.share_bullet {
   background-color: var(--touchmenu-bg);
 }
 
-#touchmenu li {
+.touchmenu li {
   flex: 2em; /* difficult to vertical center */
   flex: 1;
   list-style-type: none; /* Remove bullets */
@@ -824,7 +827,7 @@ ul#sharelist li i.share_bullet {
   /*border: 1px solid red;*/
 }
 
-#touchmenu li:hover {
+.touchmenu li:hover {
   background-color: var(--playlist-bg-hover);
 }
 /* Touchmenu END */
@@ -981,6 +984,11 @@ input[type="range"].chapter_mark_svg::-webkit-slider-runnable-track
     color:navy;
     content: "slim"
   }*/
+
+
+  #playlist::-webkit-scrollbar {
+    display: none;
+  }
 } /* end of @media  */
 
 /* Design for wide screens */

@@ -1,4 +1,4 @@
-var DEBUG = true,
+var DEBUG = false,
     DEBUG_MOBILE = false,
     use_dummy_audio_element = false, /* for controls on lock screen. */
     metadata = {},
@@ -11,6 +11,8 @@ var DEBUG = true,
 
 var ws = null
 var mpv_status = {}
+
+const UNIT_GAP = " ";
 
 var block = {
       posSlider: null, // null, false or Timeout-ID during user interaction
@@ -583,17 +585,17 @@ function format_time(seconds){
 
 function format_time2(seconds){
   if (Math.abs(seconds) < 60) {
-    return `${seconds}s`
+    return `${seconds}${UNIT_GAP}s`
   }
   if (seconds < 0){
-    var min =`${Math.ceil(seconds/60)}min`
+    var min =`${Math.ceil(seconds/60)}${UNIT_GAP}min`
   }else{
-    var min =`${Math.floor(seconds/60)}min`
+    var min =`${Math.floor(seconds/60)}${UNIT_GAP}min`
   }
   if (0 == seconds % 60){
     var sec = ''
   }else{
-    var sec = `${Math.abs(seconds)%60}s`
+    var sec = `${Math.abs(seconds)%60}${UNIT_GAP}s`
   }
   return min+sec
 }
