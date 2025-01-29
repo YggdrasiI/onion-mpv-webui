@@ -47,6 +47,36 @@ void print_options(
 void free_options(
         option_t * const opts);
 
+/* Checks if whole input string is Integer.
+ *
+ * Return value: 0 - No int
+ *               1 -    Int
+ *
+ * Params:
+ *      param: input , null terminated, but strlen(param) > len_param is ok.
+ *  len_param: <= strlen(param). Range to check
+ *       *out: parsed value, if out != NULL
+ * */
+int parse_int(
+        const char *param,
+        int len_param,
+        int *out);
+
+/* Checks if whole input string is Double.
+ *
+ * Return value: 0 - No double
+ *               1 -    Double
+ *
+ * Params:
+ *      param: input , null terminated, but strlen(param) > len_param is ok.
+ *  len_param: <= strlen(param). Range to check
+ *       *out: parsed value, if out != NULL
+ * */
+int parse_float(
+        const char *param,
+        int len_param,
+        double *out);
+
 int check_int_or_float(
         const char *param,
         char **msg);

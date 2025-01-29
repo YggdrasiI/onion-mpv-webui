@@ -15,7 +15,6 @@ extern mpv_handle *mpv;
 #include "onion_ws_status.h"
 extern __status *status;
 
-// TODO: Bundle options in webui struct and include webui_onion.h
 #include <onion/dict.h>
 extern onion_dict *options;
 
@@ -401,7 +400,8 @@ int cmd_increase_playback_speed(const char *name,
     }
 
     double fspeed_change;
-    if (sscanf(STR(param1), "%lf", &fspeed_change) != 1){
+    const char *_param1 = STR(param1);
+    if (parse_float(_param1, strlen(_param1), &fspeed_change) != 1){
         fspeed_change = 1.0;
     }
 
@@ -423,7 +423,7 @@ int cmd_increase_playback_speed(const char *name,
         return CMD_FAIL;
     }
 
-    printf("New SPEED: %s\n", new_speed);
+    LOG("New SPEED: %s\n", new_speed);
 
     int err = 0;
     //const char *cmd[] = {"multiply", "speed", param1, NULL};
@@ -451,8 +451,6 @@ int cmd_reset_playback_speed(const char *name,
         const char *param1, const char *param2,
         char **pOutput_message)
 {
-    if( !check_int_or_float(param1, pOutput_message) ) return CMD_FAIL;
-
     const char *cmd[] = {"set", "speed", "1.0", NULL};
     int err = _mpv_command(mpv, cmd);
     check_mpv_err(err);

@@ -212,7 +212,7 @@ function createPlaylistTable(entry, position, pause, first) {
   } else {
     var title = basename(entry.filename)
     // Parts of URLs needs decoding here.
-    title = decodeURI(title)
+    title = decodeURIComponent(title)
   }
 
   // limit length of entry
@@ -1422,8 +1422,9 @@ function __changeControls(el, nearby_element_names, bDisplay, classname){
    * and add/remove 'with_info' class to all elements of nearby_element_names */
   setClass(el, bDisplay, 'hidden')
 
-  nearby_element_names.forEach( nearby_names => {
-    document.getElementsByName(nearby_names).forEach( div => {
+  nearby_element_names.forEach( nearby_el_name_or_id => {
+    setClass(document.getElementById(nearby_el_name_or_id), !bDisplay, classname)
+    document.getElementsByName(nearby_el_name_or_id).forEach( div => {
       setClass(div, !bDisplay, classname)
     })
   })

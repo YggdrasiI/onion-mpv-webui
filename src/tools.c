@@ -264,29 +264,25 @@ void free_options(option_t * const opts){
     free(opts);
 }
 
-
-/* Checks if whole input string is Integer.
- *
- * Return value: 0 - No int
- *               1 -    Int
- *
- * Params:
- *      param: input , null terminated, but strlen(param) > len_param is ok.
- *  len_param: <= strlen(param). Range to check
- *       *out: parsed value, if out != NULL
- * */
-int check_int(const char *param, int len_param, int *out){
-    int n;
+int parse_int(const char *param, int len_param, int *out){
+    int n = 0;
 
     /* %d      : Integer with leading space
+     * %n      : Saves number of consumed chars at this position.
      * %*[ \t] : Space characters without output variable.
      *           Do not influence return value of sscanf
+     *           In difference to %s it only matches nonempty sequence
      * %n      : Saves number of consumed chars at this position.
+     *
+     *
+     * Two %n position needed to catch empty and nonempty sequences of
+     * following whitespace chars.
      */
-    const char *pattern = "%d%*[ \t]%n";
-    int end_pos = -1;
-    int string_starts_as_int = (1 == sscanf(param, pattern, &n, &end_pos));
-    int whole_input_consumed = (end_pos >= len_param);
+    const char *pattern = "%d%n%*[ \t]%n";
+    int end_pos1 = -1;
+    int end_pos2 = -1;
+    int string_starts_as_int = (1 == sscanf(param, pattern, &n, &end_pos1, &end_pos2));
+    int whole_input_consumed = (end_pos1 == len_param || end_pos2 >= len_param);
     if (string_starts_as_int && whole_input_consumed) {
         if (out != NULL) *out = n;
         return 1;
@@ -295,29 +291,26 @@ int check_int(const char *param, int len_param, int *out){
     return 0;
 }
 
-/* Checks if whole input string is Double.
- *
- * Return value: 0 - No double
- *               2 -    Double
- *
- * Params:
- *      param: input , null terminated, but strlen(param) > len_param is ok.
- *  len_param: <= strlen(param). Range to check
- *       *out: parsed value, if out != NULL
- * */
-int check_float(const char *param, int len_param, double *out){
-    double dbl;
+int parse_float(const char *param, int len_param, double *out){
+    double dbl = 0.0;
 
     /* %lf     : Double sized float
+     * %n      : Saves number of consumed chars at this position.
      * %*[ \t] : Space characters without output variable.
      *           Do not influence return value of sscanf
+     *           In difference to %s it only matches nonempty sequence
      * %n      : Saves number of consumed chars at this position.
+     *
+     *
+     * Two %n position needed to catch empty and nonempty sequences of
+     * following whitespace chars.
      */
-    const char *pattern = "%lf%*[ \t]%n";
-    int end_pos = -1;
-    int string_starts_as_int = (1 == sscanf(param, pattern, &dbl, &end_pos));
-    int whole_input_consumed = (end_pos >= len_param);
-    if (string_starts_as_int && whole_input_consumed) {
+    const char *pattern = "%lf%n%*[ \t]%n";
+    int end_pos1 = -1;
+    int end_pos2 = -1;
+    int string_starts_as_float = (1 == sscanf(param, pattern, &dbl, &end_pos1, &end_pos2));
+    int whole_input_consumed = (end_pos1 == len_param || end_pos2 >= len_param);
+    if (string_starts_as_float && whole_input_consumed) {
         if (out != NULL) *out = dbl;
         return 1;
     }
@@ -330,8 +323,8 @@ int check_int_or_float(const char *param, char **msg){
     int len_param = end-param; // >= 0
     if (len_param <= 0) return 0;
 
-    if (check_int(param, len_param, NULL)) return 1;
-    if (check_float(param, len_param, NULL)) return 2;
+    if (parse_int(param, len_param, NULL)) return 1;
+    if (parse_float(param, len_param, NULL)) return 2;
 
     // Parsing fails
     if (msg != NULL ){
