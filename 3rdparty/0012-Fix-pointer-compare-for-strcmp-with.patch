@@ -1,0 +1,69 @@
+From edf51a3fdcc8a2fe7ab27163033e96ddfb55350b Mon Sep 17 00:00:00 2001
+From: Olaf Schulz <947069+YggdrasiI@users.noreply.github.com>
+Date: Sat, 1 Feb 2025 02:41:24 +0100
+Subject: [PATCH] Fix pointer compare for strcmp with !=,<,>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Template tokens like '{% if context-varname != "" %} returned wrong/unexpected
+result if the pointer of the context variable is pointing on the same
+string.
+This was produced by the 'op1==op2' check in
+
+'op1==op2 || (op1 && op2 && strcmp(op1, op2)%s))\n", opcmp)'
+
+Solution: Use 'op1!=op2 &&' for omcmp ∈ {"!=", "<", ">"}.
+---
+ tools/otemplate/tag_builtins.c | 24 ++++++++++++++++--------
+ 1 file changed, 16 insertions(+), 8 deletions(-)
+
+diff --git a/tools/otemplate/tag_builtins.c b/tools/otemplate/tag_builtins.c
+index b597d6b..36ac752 100644
+--- a/tools/otemplate/tag_builtins.c
++++ b/tools/otemplate/tag_builtins.c
+@@ -138,25 +138,33 @@ void tag_if(parser_status * st, list * l) {
+   } else if (lc == 4) {
+     const char *op = tag_value_arg(l, 2);
+     const char *opcmp = NULL;
+-    if (strcmp(op, "==") == 0)
++    const char *pointercmp = NULL;
++    if (strcmp(op, "==") == 0){
+       opcmp = "==0";
+-    else if (strcmp(op, "<=") == 0)
++      pointercmp = "op1==op2 ||";
++    }else if (strcmp(op, "<=") == 0){
+       opcmp = "<=0";
+-    else if (strcmp(op, "<") == 0)
++      pointercmp = "op1==op2 ||";
++    }else if (strcmp(op, "<") == 0){
+       opcmp = "<0";
+-    else if (strcmp(op, ">=") == 0)
++      pointercmp = "op1!=op2 &&";
++    }else if (strcmp(op, ">=") == 0){
+       opcmp = ">=0";
+-    else if (strcmp(op, ">") == 0)
++      pointercmp = "op1==op2 ||";
++    }else if (strcmp(op, ">") == 0){
+       opcmp = ">0";
+-    else if (strcmp(op, "!=") == 0)
++      pointercmp = "op1!=op2 &&";
++    }else if (strcmp(op, "!=") == 0){
+       opcmp = "!=0";
++      pointercmp = "op1!=op2 &&";
++    }
+     if (opcmp) {
+       function_add_code(st, "  {\n" "    const char *op1, *op2;\n");
+       variable_solve(st, tag_value_arg(l, 1), "op1", tag_type_arg(l, 1));
+       variable_solve(st, tag_value_arg(l, 3), "op2", tag_type_arg(l, 3));
+       function_add_code(st,
+-                        "    if (op1==op2 || (op1 && op2 && strcmp(op1, op2)%s))\n",
+-                        opcmp);
++                        "    if (%s (op1 && op2 && strcmp(op1, op2)%s))\n",
++                        pointercmp, opcmp);
+     } else {
+       ONION_ERROR("%s:%d Unkonwn operator for if: %s", st->infilename, st->line,
+                   op);
+-- 
+2.25.1
+

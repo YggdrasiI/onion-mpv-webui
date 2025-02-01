@@ -43,7 +43,7 @@ onion_connection_status media_html_root(
     onion_dict_add(d, "page_title", onion_dict_get(options, "page_title"), 0);
     onion_dict_add(d, "shares", shared_folders, OD_DICT);
     onion_dict_add(d, "allow_download_in_shares",
-            (ad && ad[0] != '0')?"1":"0", 0);
+	    (ad && ad[0] != '0')?"1":"0", 0);
 
     onion_response_set_header(res, "Content-Type", onion_mime_get("_.html"));
     int ret = media_html_template(d, req, res); // this frees d!
@@ -145,6 +145,10 @@ onion_connection_status list_share_page(
         onion_dict *d = onion_dict_new();
         //onion_dict_add(d, "uri", uri_full_path, 0);
         onion_dict_add(d, "page_title", onion_dict_get(options, "page_title"), 0);
+
+	const char *ad = onion_dict_get(options, "allow_download_in_shares");
+	onion_dict_add(d, "allow_download_in_shares",
+		(ad && ad[0] != '0')?"1":"0", 0);
 
         // Add "Go up" link. Using uri_rel_path because
         // uri_full_path is 'media/html/[share_name]'
