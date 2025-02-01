@@ -1,13 +1,23 @@
 [webui]
 profile-desc="Enables webinterface"
 
-# Mandatory arguments
+## Mandatory arguments
 script="${SCRIPT_DIR}/libwebui.so"
 script-opts-add=libwebui-root_dir="${HTTP_DIR}/webui-page"
 
-# idle=yes # Otherwise, mpv returns before plugin is loaded without files
+# Keeps mpv open without files
+# idle=yes
 
-# Optional arguments
-script-opts-add=libwebui-paused=0
-script-opts-add=libwebui-daemon=0
+## Optional arguments
+#script-opts-add=libwebui-page_title="MPV"
 script-opts-add=libwebui-shared_folders="music:${HOME}/Music,/dev/shm"
+
+# With 1 files are downloadable, not just listed.
+#script-opts-add=libwebui-allow_download_in_shares=1
+
+# Allows replay of arbitary links
+#script-opts-add=libwebui-block_non_shared_files=0
+
+
+#script-opts-add=libwebui-daemon=0 # Deprecated => use --idle=yes
+#script-opts-add=libwebui-paused=0  # Deprecated -> use --pause

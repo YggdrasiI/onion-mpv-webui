@@ -107,6 +107,7 @@ function share_change(el){
 }
 
 function update_selected_share(json){
+	console.log(json)
   shares.selected = -1
   for(var i = 0; i < shares.list.length; ++i) {
     var full_dirpath = `${json.commands.list}/${json.dirpath}`
@@ -119,9 +120,11 @@ function update_selected_share(json){
     }
   }
   if (shares.selected == -1){
-    console.log("Error, given path is no child directory of a share.")
+    console.log("Error. Given path is no child directory of a share.")
     DEBUG && console.log(json)
-    return;
+		shares.selected = 0
+
+		if (shares.list.length == 0) return;
   }
 
   if (shares.selected && shares.list[shares.selected].dir === ".current"){
@@ -217,138 +220,145 @@ function print_share_list(json){
   var sharelist = document.getElementById("sharelist")
 
   var pEl = sharelist.parentElement
-  /* remove from DOM during inserting*/
+
+  /* remove from DOM during inserting. Use try-catch to guarantee re-adding.*/
   pEl.removeChild(sharelist)
+  try {
 
-  sharelist.replaceChildren()
+    sharelist.replaceChildren()
 
-  var file_dotdot = {list: "..", play: "..", size: -1, modified: -1}
+    var file_dotdot = {list: "..", play: "..", size: -1, modified: -1}
 
 
-  function add_li(file, idx){
-    var isdir = (file.size == -1)
-    var li = document.createElement("LI")
-    var bullet = document.createElement("I")
-    var fname = document.createElement("SPAN")
+    function add_li(file, idx){
+      var isdir = (file.size == -1)
+      var li = document.createElement("LI")
+      var bullet = document.createElement("I")
+      var fname = document.createElement("SPAN")
 
-    var play_link = decode(file.play || "" )
-    var list_link = decode(file.list || "")
+      var play_link = decode(file.play || "" )
+      var list_link = decode(file.list || "")
 
-    function show_playable(el, isplay, isdir) {
-      var base_class = isdir?'fa-folder':'fa-file'
-      if (isplay){
-        el.classList.replace(base_class, 'fa-play')
+      function show_playable(el, isplay, isdir) {
+        var base_class = isdir?'fa-folder':'fa-file'
+        if (isplay){
+          el.classList.replace(base_class, 'fa-play')
+        }else{
+          el.classList.replace('fa-play', base_class)
+        }
+      }
+
+      li.classList.add('gray')
+      bullet.classList.add(idx>=0?'share_bullet':'share_bullet_dotdot')
+      if (isdir) {
+        bullet.classList.add('fas', 'fa-folder')
       }else{
-        el.classList.replace('fa-play', base_class)
+        bullet.classList.add('fas', 'fa-file')
       }
-    }
 
-    li.classList.add('gray')
-    bullet.classList.add(idx>=0?'share_bullet':'share_bullet_dotdot')
-    if (isdir) {
-      bullet.classList.add('fas', 'fa-folder')
-    }else{
-      bullet.classList.add('fas', 'fa-file')
-    }
-
-    //fname.textContent = basename(play_link) // if play_link is not percentage encoded.
-    fname.textContent = file.name || decodeURIComponent(basename(play_link))
-    if (isdir) {
-      fname.classList.add('share_dir')
-      fname.addEventListener("click", function() {
-        share_change_dir(list_link)
-        share_change(document.getElementById("share_selector"))
-      })
-      if( idx >= 0 ){
-        bullet.addEventListener("click", function() {
-          share_add_file(play_link, true)
-        })
-      }
-    }else{
-      fname.classList.add('share_file')
-
-      if( idx >= 0 ){
+      //fname.textContent = basename(play_link) // if play_link is not percentage encoded.
+      fname.textContent = file.name || decodeURIComponent(basename(play_link))
+      if (isdir) {
+        fname.classList.add('share_dir')
         fname.addEventListener("click", function() {
-          share_add_file(play_link, false) // playlist_add
+          share_change_dir(list_link)
+          share_change(document.getElementById("share_selector"))
         })
-        bullet.addEventListener("click", function() {
-          share_add_file(play_link, true)  // playlist_play
-        })
+        if( idx >= 0 ){
+          bullet.addEventListener("click", function() {
+            share_add_file(play_link, true)
+          })
+        }
+      }else{
+        fname.classList.add('share_file')
+
+        if( idx >= 0 ){
+          fname.addEventListener("click", function() {
+            share_add_file(play_link, false) // playlist_add
+          })
+          bullet.addEventListener("click", function() {
+            share_add_file(play_link, true)  // playlist_play
+          })
+        }
       }
+      if (idx >= 0){
+        bullet.addEventListener("mouseenter", function() {show_playable(bullet, 1, isdir)})
+        bullet.addEventListener("mouseleave", function() {show_playable(bullet, 0, isdir)})
+      }
+
+      li.setAttribute("timestamp", file.modified)
+      li.setAttribute("idx", idx)
+      //li.setAttribute("isdir", isdir) // Hm, this is always a string
+      li.isdir = isdir // this is still Boolean
+
+      li.appendChild(bullet)
+      li.appendChild(fname)
+      if ( idx >= 0 ){
+        var action1 = document.createElement("I")
+
+        action1.classList.add('share_action', 'fas', 'fa-plus-square')
+        //action1.textContent = "  [+]"
+        action1.addEventListener("click", function() {
+          share_add_file(play_link, false)
+        })
+
+        li.appendChild(action1)
+      }
+      if (idx == -2){ // Add button to go up to root dir.
+        var bullet2 = document.createElement("I")
+        bullet2.classList.add('share_bullet_dotdot', 'fas', 'fa-folder')
+        var go_top = document.createElement("SPAN")
+        go_top.textContent = "/"
+        go_top.classList.add('share_dir')
+        go_top.addEventListener("click", function() {
+          share_change_dir("/")
+          share_change(document.getElementById("share_selector"))
+        })
+        li.appendChild(bullet2)
+        li.appendChild(go_top)
+      }
+
+      return li
     }
-    if (idx >= 0){
-      bullet.addEventListener("mouseenter", function() {show_playable(bullet, 1, isdir)})
-      bullet.addEventListener("mouseleave", function() {show_playable(bullet, 0, isdir)})
+    // Add .. if not root dir of share
+    if (json.dirpath !== shares.list[shares.selected].name_encoded){
+      var depth = (json.dirpath.split('/').length > 2)?-2:-1; // First level doesn't need '/' button
+      var li_dotdot = add_li(file_dotdot, depth)
+      li_dotdot.classList.add('dir_up')
+      sharelist.appendChild(li_dotdot)
     }
 
-    li.setAttribute("timestamp", file.modified)
-    li.setAttribute("idx", idx)
-    //li.setAttribute("isdir", isdir) // Hm, this is always a string
-    li.isdir = isdir // this is still Boolean
+    var files = json.files
+    for(var i = 0; i < files.length; ++i) {
+      var file = files[i]
+      // Reconstruct full path for list/play
+      file.play = `${json.commands.play}/${json.dirpath}/${file.name_encoded}`
+      if (file.size == -1){
+        file.list = `${json.commands.list}/${json.dirpath}/${file.name_encoded}`
+      }
 
-    li.appendChild(bullet)
-    li.appendChild(fname)
-    if ( idx >= 0 ){
-      var action1 = document.createElement("I")
-
-      action1.classList.add('share_action', 'fas', 'fa-plus-square')
-      //action1.textContent = "  [+]"
-      action1.addEventListener("click", function() {
-        share_add_file(play_link, false)
-      })
-
-      li.appendChild(action1)
-    }
-    if (idx == -2){ // Add button to go up to root dir.
-      var bullet2 = document.createElement("I")
-      bullet2.classList.add('share_bullet_dotdot', 'fas', 'fa-folder')
-      var go_top = document.createElement("SPAN")
-      go_top.textContent = "/"
-      go_top.classList.add('share_dir')
-      go_top.addEventListener("click", function() {
-        share_change_dir("/")
-        share_change(document.getElementById("share_selector"))
-      })
-      li.appendChild(bullet2)
-      li.appendChild(go_top)
+      sharelist.appendChild(add_li(files[i], i))
     }
 
-    return li
+    /* Presort element before inserting into DOM */
+    var local_sorting = shares.local_sorting[json.dirpath]
+    if (local_sorting !== undefined){
+      DEBUG_SORTINGS && console.log(`Restore sorting ${local_sorting.sname} ${local_sorting.active}`)
+      // Use previous sorting option for this folder because the
+      // saved scrollingOffset matches just for this value
+      shares.sorting = {"sname": local_sorting.sname}
+      sortings[local_sorting.sname].active = local_sorting.active
+      __sortShareList(sharelist)
+      update_sort_buttons()
+    }else if(shares.sorting){
+      var sname = shares.sorting.sname
+      DEBUG_SORTINGS && console.log(`Use sorting ${sname} ${sortings[sname].active}`)
+      __sortShareList(sharelist)
+    }
+
   }
-  // Add .. if not root dir of share
-  if (json.dirpath !== shares.list[shares.selected].name_encoded){
-    var depth = (json.dirpath.split('/').length > 2)?-2:-1; // First level doesn't need '/' button
-    var li_dotdot = add_li(file_dotdot, depth)
-    li_dotdot.classList.add('dir_up')
-    sharelist.appendChild(li_dotdot)
-  }
-
-  var files = json.files
-  for(var i = 0; i < files.length; ++i) {
-    var file = files[i]
-    // Reconstruct full path for list/play
-    file.play = `${json.commands.play}/${json.dirpath}/${file.name_encoded}`
-    if (file.size == -1){
-      file.list = `${json.commands.list}/${json.dirpath}/${file.name_encoded}`
-    }
-
-    sharelist.appendChild(add_li(files[i], i))
-  }
-
-  /* Presort element before inserting into DOM */
-  var local_sorting = shares.local_sorting[json.dirpath]
-  if (local_sorting !== undefined){
-    DEBUG_SORTINGS && console.log(`Restore sorting ${local_sorting.sname} ${local_sorting.active}`)
-    // Use previous sorting option for this folder because the
-    // saved scrollingOffset matches just for this value
-    shares.sorting = {"sname": local_sorting.sname}
-    sortings[local_sorting.sname].active = local_sorting.active
-    __sortShareList(sharelist)
-    update_sort_buttons()
-  }else if(shares.sorting){
-    var sname = shares.sorting.sname
-    DEBUG_SORTINGS && console.log(`Use sorting ${sname} ${sortings[sname].active}`)
-    __sortShareList(sharelist)
+  catch(err){
+    console.log(err)
   }
 
   /* Reattach to DOM */

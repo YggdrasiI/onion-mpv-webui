@@ -1,43 +1,52 @@
-const DEBUG_TOUCH = true
+const DEBUG_TOUCH = false
 
 const options = {
-  open_with_long_click: false,     /* If false, menu will open with sort press/click.
+  swap_short_and_long_press: true,     /* If true, menu will open with sort press/click.
                                   * If true, button will triggered by short click
                                   * and menu will be open by longpress.
                                   */
   update_default_entry: false,   /* Selected menu entry will replace default 
-                                  * entry for short press.
+                                  * entry for short press. (NOT IMPLEMENTED)
                                   */
   default_entry_in_menu: false,  /* If false, the shortpress entry is not included 
-                                  * in touchmenu list.
+                                  * in touchmenu list. (NOT IMPLEMENTED)
                                   */
   show_silbing_menu: true,       /* If true the menu for the 'opposite operation' will also be shown. */
 }
 
+/* If 'show_silbing_menu' is true this list decides
+ * which menu(s) will shown, too.*/
 const sibling_ids = {
-  playlistPrev: "playlistNext",
-  playlistNext: "playlistPrev",
-  seekBack1: "seekForward1",
-  seekForward1: "seekBack1",
-  chapterBack: "chapterForward",
-  chapterForward: "chapterBack",
+  playlistPrev: ["playlistNext"],
+  playlistNext: ["playlistPrev"],
+  seekBack1: ["seekForward1"],
+  seekForward1: ["seekBack1"],
+  chapterBack: ["chapterForward"],
+  chapterForward: ["chapterBack"],
 }
 
 
 /* Helper object to create elements with short and long press events */
 var longpress = {
   options : {
-    ms: 400,
+    ms: 400,  // Length for a long press on buttons
   },
-  done: null, /* Tri state flag to control hiding of menu.
-                  • true: Last click/touch was long.
-                          => Do not close menu on next mouseup/touchend event.
-                  • false: short press triggered or already an other
+  done: null, /* Tri state flag to avoid firing both of shortpress_h/longpress_h.
+                  • true: Last click/touch was a long one.
+                          => Do not fire 'shortpress_h' on next mouseup/touchend event.
+                  • false: Last click/touch was short or already an other
                           mouseup/touchend event occoured.
-                          => Hide menu in this state.
-                  • null: Menu was already hidden. Nothing to do.
+                          => Do not fire 'longpress_h' after timeout.
+                  • null: State before everything started and after both events finished.
                   */
   timer: null,
+
+	_abortLongpress: function (){
+		if (longpress.timer) {
+			clearTimeout(longpress.timer);
+			longpress.timer = null
+		}
+	},
 
   addEventHandler: function(els, evt_type, shortpress_h, longpress_h){
     if (els.length == 0) return;
@@ -46,24 +55,31 @@ var longpress = {
     if (shortpress_h === undefined) shortpress_h = null
     if (longpress_h === undefined) longpress_h = null
 
-    if (!options.open_with_long_click && longpress_h !== null){
+    if (options.swap_short_and_long_press && longpress_h !== null){
       [shortpress_h, longpress_h] = [longpress_h, shortpress_h]
     }
 
-    if (longpress_h != null && !evt_type in ['mouseup', 'pointerup']){
+    if (longpress_h !== null && !evt_type in ['mouseup', 'pointerup']){
       console.log("Warning, touchmenu defined for event != mouseup/pointerup."
       + "Element: " + (els[0].getAttribute('id')||els[0].getAttribute('name')) )
     }
 
-    if (longpress_h !== null) {
-      var fshort = function (evt) {
-        if (!longpress.done){ /* null or false */
-          shortpress_h(evt)
-        }
-      }
-    }else{
-      var fshort = shortpress_h
-    }
+		var fshort = function (evt) {
+
+			if (!touchmenu._hidden){
+				DEBUG_TOUCH && console.log("Menu is open… Skip shortpress event")
+				return;
+			}
+
+			if (longpress.done === true){ // longpress handler had already fired.
+				longpress.done = null // Reset
+				return
+			}
+
+			longpress._abortLongpress()
+			longpress.done = false
+			shortpress_h(evt)
+		}
 
     els.forEach(el => {el.addEventListener(evt_type, fshort)})
 
@@ -79,37 +95,40 @@ var longpress = {
 
     /* Add handlers for longpresses */
     if (longpress_h !== null) {
-      var flong = function (evt) {
-        if (!touchmenu._hidden) return;
+      let flong = function (evt) {
+				if (!touchmenu._hidden){
+					DEBUG_TOUCH && console.log("Menu is open… dont start longpress timer.")
+					return;
+				}
+				// Reset tri-state (false -> short fired, true -> long fired.
+				longpress.done = null // Probably redundant
 
-        longpress.done = false
         longpress.timer = setTimeout(
           function(target) {
-            console.log("XXXX " + target.constructor.name)
-            return function() {
-              if (options.open_with_long_click){
-                 longpress.done = true
-                longpress_h(target)
-              }else{
-                if (longpress.done === null){
-                  longpress.done = true
-                  longpress_h(target)
-                }
-              }
-            }
-          }(evt.currentTarget), longpress.options.ms); // evt.currentTarget -> evt. to normalize args between short and long press.
-          //}(evt), longpress.options.ms); // evt.currentTarget -> evt. to normalize args between short and long press.
+            DEBUG_TOUCH && console.log("Longpress START " + target.constructor.name)
+						return function() {
+							longpress.timer = null
+							if (longpress.done === false){ // shortpress handler had already fired.
+								longpress.done = null
+								return
+							}
+							DEBUG_TOUCH && console.log("Longpress END " + target.constructor.name)
+							longpress.done = true
+							let longpressEvt = new CustomEvent("longpress", {
+								// Add other event properties used by your handlers, here.
+							})
+							target.dispatchEvent(longpressEvt)
+						}
+          }(evt.currentTarget), longpress.options.ms);
       }
 
-      var flongAbort = function (evt) {
-        if (longpress.timer){
-          clearTimeout(longpress.timer);
-          longpress.timer = null
-          //longpress.done = null  // wrong, we need 'false' in 'hideTouchMenu' handler
-        }
+      let flongAbort = function (evt) {
+				longpress._abortLongpress()
       }
 
       els.forEach(el => {
+				el.addEventListener('longpress', longpress_h)
+
         el.addEventListener('touchstart', flong)
         el.addEventListener('mousedown', flong)
         el.addEventListener('touchend', flongAbort)
@@ -123,28 +142,64 @@ var longpress = {
 var touchmenu = {
   options: {
     catch_events_outside: true,
-    id: 'touchmenu',
-    id2: 'touchmenu2',
+    id_prefix: 'touchmenu',  // -> id_prefix{number}
   },
 
   /* Flag set on pointerdown/mousedown/touchstart.
    * Used for 
-   *    • Avoid captureEvents if event occoured inside of menu.
+   *    • Avoid observeEventsForTouchmenu if event occoured inside of menu.
    *    • Abort menu hide after touchend.
    */
-  touchstart_in_menu: false, 
+  _touchstart_in_menu: false, 
+
+
   /* To abort touchend events of menu after scrolling its elements.
    */
-  touchmove_in_menu: false,
+  _touchmove_in_menu: false, // TODO unify with _touchstart_in_menu ?!
 
-  /* Workaround: Some click events still bubbles towards captureEvents() for window
-   * This flag marks click event as already handled.
-   * (for options.open_with_long_click == false)*/
-  click_evt_processed: false,
+  _menu_handler_initialized: {},
+  _resize_handler: {},
+  _hidden : true,
+  _recently_open : false,
+	_max_number_open_menus : 0,
+	_menu_ids : [],
+
+  _avoid_menu_hide: function(evt) {
+    if (!touchmenu._touchstart_in_menu) {
+      DEBUG_TOUCH && console.log("Pointerdown/Touchstart!")
+      touchmenu._touchstart_in_menu = true
+    }
+  },
+
+  _skip_touchend_handler: function(evt) {
+    if (!touchmenu._touchmove_in_menu) {
+      DEBUG_TOUCH && console.log("Touchmove!")
+      touchmenu._touchmove_in_menu = true
+    }
+  },
+
+  /* FF-Mobile: Save current innerHeight to respect geometry change
+   * by hide/show of addressbar by scrolling.
+   */
+  _menu_innerHeights: {},
+  _update_innerHeight: false,
 
   _gen_menu_elements: function(){
-    var menu_ids = options.show_silbing_menu?[this.options.id2, this.options.id]:[this.options.id];
-    [].slice.call(menu_ids).forEach(function (menu_id) {
+		let menu_ids = []
+		let max_number_open_menus = 0
+		if (!options.show_silbing_menu){
+			max_number_open_menus = 1
+			menu_ids.push(`${this.options.id_prefix}0`)
+		}else{
+			// Maximal array length in sibling_ids-values:
+			max_number_open_menus = Object.values(sibling_ids).reduce(
+				(n, value) => Math.max(n, value.length), 0)
+			// Entry for id=0 and max_id siblings.
+			for (let i = 0; i <= max_number_open_menus; i++) menu_ids.push(`${this.options.id_prefix}${i}`)
+		}
+
+		DEBUG_TOUCH && console.log(`Create ${menu_ids.length} elements for touchmenus`)
+    ;[].slice.call(menu_ids).forEach(function (menu_id) {
       menu = document.createElement('div')
       menu.id = menu_id
       menu.classList.add("touchmenu");
@@ -155,55 +210,54 @@ var touchmenu = {
 
       document.getElementsByTagName('body')[0].appendChild(menu)
     })
+
+		this._max_number_open_menus = max_number_open_menus
+		this._menu_ids = menu_ids
   },
 
-  _getSiblingTarget: function(primary_id){
-    var alt_id = sibling_ids[primary_id]
-    if (alt_id) return document.getElementById(alt_id)
+  _getSiblingTargets: function(primary_id){
+    var alt_ids = sibling_ids[primary_id]
+    if (alt_ids) return alt_ids.map((id) => document.getElementById(id))
+		return []
   },
 
-  get_element: function(sibling){
-    var menu = document.getElementById(sibling?this.options.id2:this.options.id)
-    if (menu === null) {
-      this._gen_menu_elements()
-      menu = document.getElementById(sibling?this.options.id2:this.options.id)
-    }
-    return menu
-  },
+  _get_element: function(sibling_id){
+		if (this._menu_ids.length === 0) this._gen_menu_elements()
 
-  /*get_sibling: function(){
-    if (menu === null) {
-      this._gen_menu_elements()
-    }
-    var menu = document.getElementById(this.options.id2)
-    return menu
-  },*/
+		if (sibling_id){
+			//return this._menu_ids.slice(1).map((id) => document.getElementById(id))
+			return document.getElementById(this._menu_ids[sibling_id])
+		}else{
+			return document.getElementById(this._menu_ids[0])
+		}
+  },
 
   show: function (menu) {
-    touchmenu._hidden = false
+		this._recently_open = true
+    this._hidden = false
     lock_slider_state(true)
     if (!menu) {
-      menu = this.get_element()
+      menu = this._get_element()
     }
     menu.style.setProperty('display', 'block')
   },
 
   hide: function(menu){
-    console.log("Ho")
-    if (touchmenu._hidden) return;
+		// Hide just explicit given element
+    if (menu) {
+			menu.style.setProperty('display', 'none')
+			return
+		}
 
-    touchmenu._hidden = true
-    longpress.done = null
+    if (this._hidden) return;
+    this._hidden = true
     lock_slider_state(false)
-    if (!menu) {
-      menu = this.get_element()
-    }
-    menu.style.setProperty('display', 'none')
-
-    if (options.show_silbing_menu){
-      altMenu = this.get_element(true)
-      if (altMenu) altMenu.style.setProperty('display', 'none')
-    }
+    
+		// Hide all menus
+		if (options.show_silbing_menu){
+			this._menu_ids.map((id) => document.getElementById(id)
+			).forEach((el) => el.style.setProperty('display', 'none'))
+		}
   },
 
 	/* Used keywords: sibling, preferBottomOffset, expand */
@@ -223,23 +277,22 @@ var touchmenu = {
     kwargs.expand = kwargs.expand || {}
     kwargs.preferBottomOffset = kwargs.preferBottomOffset || 0
 
-		// For _position
-		//kwargs.above = kwargs.above !== undefined || undefined
+		// For _position in resize handler defined below
 		kwargs.during_resize = kwargs.during_resize || false
 
-    if (this._menu_handler_initialized.hasOwnProperty(menu) === false){
+    if (this._menu_handler_initialized.hasOwnProperty(menu.id) === false){
       DEBUG_TOUCH && console.log("Add menu listener")
       //menu.addEventListener('mousedown', this._avoid_menu_hide)
       //menu.addEventListener('touchstart', this._avoid_menu_hide)
       menu.addEventListener('pointerdown', this._avoid_menu_hide)
       menu.addEventListener('touchmove', this._skip_touchend_handler)
-      this._menu_handler_initialized[menu] = true
-    }
+      this._menu_handler_initialized[menu.id] = true
+		}
     this._menu_innerHeights[menu] = window.innerHeight
 
     // Reset flags
-    this.touchstart_in_menu = false
-    this.touchmove_in_menu = false
+    this._touchstart_in_menu = false
+    this._touchmove_in_menu = false
 
     // Clear old content
     menu.style.setProperty('display', 'none')
@@ -249,6 +302,7 @@ var touchmenu = {
     var above = this._position(menu, currentTarget, kwargs)
 
     // Define new resize handler (respecting arguments of this function)
+		// and then replace previous one
 		var kwargs_resize = {
 			preferBottomOffset: kwargs.preferBottomOffset,
 			expand: kwargs.expand,
@@ -268,25 +322,19 @@ var touchmenu = {
       // Update position 
       touchmenu._position(menu, currentTarget, kwargs_resize)
     }
-    if (kwargs.sibling){
-      // Remove previous resize handler
-      window.removeEventListener('resize', this._resize_handler_sibling[menu])
 
-      // Save handler for next remove
-      this._resize_handler_sibling[menu] = new_handler
+		// Remove previous resize handler(s)
+		if (!kwargs.sibling){
+			Object.values(this._resize_handler).forEach((h) =>
+				window.removeEventListener('resize', h))
+			this._resize_handler = {}
+		}
 
-      // Add resize handler
-      window.addEventListener('resize', this._resize_handler_sibling[menu])
-    }else{
-      // Remove previous resize handler
-      window.removeEventListener('resize', this._resize_handler[menu])
+		// Save handler for next remove
+		this._resize_handler[menu.id] = new_handler
 
-      // Save handler for next remove
-      this._resize_handler[menu] = new_handler
-
-      // Add resize handler
-      window.addEventListener('resize', this._resize_handler[menu])
-    }
+		// Add resize handler
+		window.addEventListener('resize', this._resize_handler[menu.id])
 
     return above;
   },
@@ -325,41 +373,27 @@ var touchmenu = {
       menu.style.setProperty('bottom', Math.round(
         window.innerHeight - rect.top - window.scrollY - addressbar_offset
       )+'px')
-      //menu.style.removeProperty('border-top-width')
-      //menu.style.setProperty('border-bottom-width', '0.5em')
     }else{
       var above = false
       menu.style.setProperty('top', Math.round(
         rect.bottom + window.scrollY + addressbar_offset
       )+'px')
       menu.style.removeProperty('bottom')
-      //menu.style.setProperty('border-top-width', '0.5em')
-      //menu.style.removeProperty('border-bottom-width')
     }
     return above
   },
 
   _add_entry: function (ul, title, handler, idx, playlist_range) {
     var el = document.createElement('li')
-    el.classname = "button content playlist-controls touch-entry"
+    el.classList.add("button", "content", "playlist-controls", "touch-entry")
     el.innerText = idx<0?`${title}`:`#${idx} ${title}`
     el.addEventListener("click", handler)
-    //el.addEventListener("mouseup", handler)
-    /*el.addEventListener("touchend", function (evt){
-      if (!touchmenu.touchmove_in_menu){
-        DEBUG_TOUCH && console.log("Fire on touchend")
-        handler(evt);
-      }
-      //touchmenu.touchstart_in_menu = false // wrong to delete flag here. We need it in hide menu event
-      touchmenu.touchmove_in_menu = false
-
-    })*/
     ul.appendChild(el)
   },
 
   _add_info: function (menu, text) {
     var el = document.createElement('li')
-    el.classname = "touch-info"
+    el.classList.add("touch-info")
     el.innerText = text
     menu.appendChild(el)
   },
@@ -387,15 +421,21 @@ var touchmenu = {
     }
   },
 
-  next_files: function show_next_files_menu(currentTarget, kwargs){
+	_target(evt, kwargs){
+		let target = evt.currentTarget
+		if (kwargs.sibling){ // Use other button as anchor
+      target = this._getSiblingTargets(target.id)[kwargs.sibling-1]
+		}
+		return target
+	},
+
+  next_files: function show_next_files_menu(evt, kwargs){
 		kwargs = kwargs || {}
 
-    if (!options.open_with_long_click && !kwargs.sibling){
-      //currentTarget.stopImmediatePropagation() // no effect on captureEvents-function calls?!
-      this.click_evt_processed = true;
-      currentTarget = currentTarget.currentTarget; // Input is Event
-    }
-    var menu = this.get_element(kwargs.sibling)
+		let currentTarget = this._target(evt, kwargs)
+		if (!currentTarget) return
+
+    var menu = this._get_element(kwargs.sibling)
 		kwargs.preferBottomOffset = 100
 		kwargs.expand = {'left': document.getElementById("playlistPrev")}
     const reverse = this._prepare(menu, currentTarget, kwargs)
@@ -429,21 +469,19 @@ var touchmenu = {
     this.show(menu)
 
     if (options.show_silbing_menu && !kwargs.sibling){
-			kwargs.sibling = true
+			kwargs.sibling = 1
 			kwargs.above = !reverse // Forces position flip for sibling menu because they are too wide for the same vertical position.
-      var altTarget = this._getSiblingTarget(currentTarget.id)
-      if (altTarget) this.prev_files(altTarget, kwargs)
+      this.prev_files(evt, kwargs)
     }
   },
 
-  prev_files: function (currentTarget, kwargs){
+  prev_files: function (evt, kwargs){
 		kwargs = kwargs || {}
 
-    if (!options.open_with_long_click && !kwargs.sibling){
-      this.click_evt_processed = true;
-      currentTarget = currentTarget.currentTarget; // Input is Event
-    }
-    var menu = this.get_element(kwargs.sibling)
+		let currentTarget = this._target(evt, kwargs)
+		if (!currentTarget) return
+
+    var menu = this._get_element(kwargs.sibling)
 		kwargs.preferBottomOffset = 0
 		kwargs.expand = {'right': document.getElementById("playlistNext")}
     const reverse = this._prepare(menu, currentTarget, kwargs)
@@ -476,21 +514,19 @@ var touchmenu = {
     this.show(menu)
 
     if (options.show_silbing_menu && !kwargs.sibling){
-			kwargs.sibling = true
+			kwargs.sibling = 1
 			kwargs.above = !reverse // Forces position flip for sibling menu because they are too wide for the same vertical position.
-      var altTarget = this._getSiblingTarget(currentTarget.id)
-      if (altTarget) this.next_files(altTarget, kwargs)
+      this.next_files(evt, kwargs)
     }
   },
 
-  next_chapters: function show_next_chapters_menu(currentTarget, kwargs){
+  next_chapters: function show_next_chapters_menu(evt, kwargs){
 		kwargs = kwargs || {}
 
-    if (!options.open_with_long_click && !kwargs.sibling){
-      this.click_evt_processed = true;
-      currentTarget = currentTarget.currentTarget; // Input is Event
-    }
-    var menu = this.get_element(kwargs.sibling)
+		let currentTarget = this._target(evt, kwargs)
+		if (!currentTarget) return
+
+    var menu = this._get_element(kwargs.sibling)
 		kwargs.preferBottomOffset = 100
 		kwargs.expand = {'left': document.getElementById("chapterBack")}
     const reverse = this._prepare(menu, currentTarget, kwargs)
@@ -523,21 +559,19 @@ var touchmenu = {
     this.show(menu)
 
     if (options.show_silbing_menu && !kwargs.sibling){
-			kwargs.sibling = true
+			kwargs.sibling = 1
 			kwargs.above = !reverse // Forces position flip for sibling menu because they are too wide for the same vertical position.
-      var altTarget = this._getSiblingTarget(currentTarget.id)
-      if (altTarget) this.prev_chapters(altTarget, kwargs)
+      this.prev_chapters(evt, kwargs)
     }
   },
 
-  prev_chapters: function show_prev_chapters_menu(currentTarget, kwargs){
+  prev_chapters: function show_prev_chapters_menu(evt, kwargs){
 		kwargs = kwargs || {}
 
-    if (!options.open_with_long_click && !kwargs.sibling){
-      this.click_evt_processed = true;
-      currentTarget = currentTarget.currentTarget; // Input is Event
-    }
-    var menu = this.get_element(kwargs.sibling)
+		let currentTarget = this._target(evt, kwargs)
+		if (!currentTarget) return
+
+    var menu = this._get_element(kwargs.sibling)
 		kwargs.preferBottomOffset = 100
 		kwargs.expand = {'right': document.getElementById("chapterForward")}
     const reverse = this._prepare(menu, currentTarget, kwargs)
@@ -569,21 +603,19 @@ var touchmenu = {
     this.show(menu)
 
     if (options.show_silbing_menu && !kwargs.sibling){
-			kwargs.sibling = true
+			kwargs.sibling = 1
 			kwargs.above = !reverse // Forces position flip for sibling menu because they are too wide for the same vertical position.
-      var altTarget = this._getSiblingTarget(currentTarget.id)
-      if (altTarget) this.next_chapters(altTarget, kwargs)
+      this.next_chapters(evt, kwargs)
     }
   },
 
-  list_subtitle: function (currentTarget, kwargs){
+  list_subtitle: function (evt, kwargs){
 		kwargs = kwargs || {}
 
-    if (!options.open_with_long_click && !kwargs.sibling){
-      this.click_evt_processed = true;
-      currentTarget = currentTarget.currentTarget; // Input is Event
-    }
-    var menu = this.get_element(kwargs.sibling)
+		let currentTarget = this._target(evt, kwargs)
+		if (!currentTarget) return
+
+    var menu = this._get_element(kwargs.sibling)
 		kwargs.preferBottomOffset = 0
     const reverse = this._prepare(menu, currentTarget, kwargs)
     const tracklist = mpv_status['track-list']
@@ -613,16 +645,22 @@ var touchmenu = {
     }
     this._fill_ul(menu, reverse, add_entry_args)
     this.show(menu)
+
+    if (options.show_silbing_menu && !kwargs.sibling){
+			kwargs.sibling = 1
+      this.list_video(evt, kwargs)
+			kwargs.sibling = 2
+      this.list_audio(evt, kwargs)
+    }
   },
 
-  list_video: function (currentTarget, kwargs){
+  list_video: function (evt, kwargs){
 		kwargs = kwargs || {}
 
-    if (!options.open_with_long_click && !kwargs.sibling){
-      this.click_evt_processed = true;
-      currentTarget = currentTarget.currentTarget; // Input is Event
-    }
-    var menu = this.get_element(kwargs.sibling)
+		let currentTarget = this._target(evt, kwargs)
+		if (!currentTarget) return
+
+    var menu = this._get_element(kwargs.sibling)
 		kwargs.preferBottomOffset = 0
     const reverse = this._prepare(menu, currentTarget, kwargs)
     const tracklist = mpv_status['track-list']
@@ -656,16 +694,22 @@ var touchmenu = {
     }
     this._fill_ul(menu, reverse, add_entry_args)
     this.show(menu)
+
+    if (options.show_silbing_menu && !kwargs.sibling){
+			kwargs.sibling = 1
+      this.list_audio(evt, kwargs)
+			kwargs.sibling = 2
+      this.list_subtitle(evt, kwargs)
+    }
   },
 
-  list_audio: function (currentTarget, kwargs){
+  list_audio: function (evt, kwargs){
 		kwargs = kwargs || {}
 
-    if (!options.open_with_long_click && !kwargs.sibling){
-      this.click_evt_processed = true;
-      currentTarget = currentTarget.currentTarget; // Input is Event
-    }
-    var menu = this.get_element(kwargs.sibling)
+		let currentTarget = this._target(evt, kwargs)
+		if (!currentTarget) return
+
+    var menu = this._get_element(kwargs.sibling)
 		kwargs.preferBottomOffset = 0
     const reverse = this._prepare(menu, currentTarget, kwargs)
     const tracklist = mpv_status['track-list']
@@ -698,16 +742,22 @@ var touchmenu = {
     }
     this._fill_ul(menu, reverse, add_entry_args)
     this.show(menu)
+
+    if (options.show_silbing_menu && !kwargs.sibling){
+			kwargs.sibling = 1
+      this.list_subtitle(evt, kwargs)
+			kwargs.sibling = 2
+      this.list_video(evt, kwargs)
+    }
   },
 
-  seek_menu: function (currentTarget, seconds_list, kwargs){
+  seek_menu: function (evt, seconds_list, kwargs){
 		kwargs = kwargs || {}
 
-    if (!options.open_with_long_click && !kwargs.sibling){
-      this.click_evt_processed = true;
-      currentTarget = currentTarget.currentTarget; // Input is Event
-    }
-    var menu = this.get_element(kwargs.sibling)
+		let currentTarget = this._target(evt, kwargs)
+		if (!currentTarget) return
+
+    var menu = this._get_element(kwargs.sibling)
 		kwargs.preferBottomOffset = 0
     const reverse = this._prepare(menu, currentTarget, kwargs)
 
@@ -727,102 +777,84 @@ var touchmenu = {
     this.show(menu)
 
     if (options.show_silbing_menu && !kwargs.sibling){
-			kwargs.sibling = true
+			kwargs.sibling = 1
 			kwargs.above = reverse // Forces same position for sibling menu
-      var altTarget = this._getSiblingTarget(currentTarget.id)
-			console.log("HEY" + altTarget)
-      if (altTarget) this.seek_menu(altTarget, seconds_list.map((s)=>-s), kwargs)
+			this.seek_menu(evt, seconds_list.map((s)=>-s), kwargs)
     }
   },
 
-  _avoid_menu_hide: function(evt) {
-    if (!touchmenu.touchstart_in_menu) {
-      DEBUG_TOUCH && console.log("Touchstart!")
-      touchmenu.touchstart_in_menu = true
-    }
-  },
-
-  _skip_touchend_handler: function(evt) {
-    if (!touchmenu.touchmove_in_menu) {
-      DEBUG_TOUCH && console.log("Touchmove!")
-      touchmenu.touchmove_in_menu = true
-    }
-  },
-
-  _menu_handler_initialized: {},
-  _resize_handler: {},
-  _resize_handler_sibling: {},
-  _hidden : true,
-
-  /* FF-Mobile: Save current innerHeight to respect geometry change
-   * by hide/show of addressbar by scrolling.
-   */
-  _menu_innerHeights: {},
-  _update_innerHeight: false,
 }
 
-function captureEvents(evt) {
-  //DEBUG_TOUCH && console.log('Check ' + evt.type)
-  if (!touchmenu.options.catch_events_outside) return;
-  if (touchmenu._hidden) return;
+/*
+ * Checks if menu is open and prevent hitting of buttons, etc outside of menu.
+ *
+ */
+function observeEventsForTouchmenu(evt) {
+  DEBUG_TOUCH && console.log('Check ' + evt.type)
 
+	/*
   if (evt.type == 'touchend' && longpress.done){
     DEBUG_TOUCH && console.log('Longpress ended')
-    longpress.done = false
+    longpress.done = null
 
     // Ohne das: Nach Touch außerhalb zweimal klicken notwendig
     // Mit diesem: Menü wird nach Klick geschlossen :-(
-    //touchmenu.touchstart_in_menu = false
+    //touchmenu._touchstart_in_menu = false
     return;
   }
+	*/
 
-  /* Check if we're inside or outside of menu. This flag
-   * is set by capturing other events.*/
-  if ( !touchmenu.touchstart_in_menu ) {
-    DEBUG_TOUCH && console.log('->Catch ' + evt.type)
-    evt.stopPropagation()
-    if (evt.type == 'click' /*|| evt.type == 'touchend' Doppelt :-(*/){
-      if (touchmenu.click_evt_processed){
-        touchmenu.click_evt_processed = false;
-        longpress.done = false;
+  if (!touchmenu.options.catch_events_outside) return;
+  if (touchmenu._hidden) return;
 
-      }else{
-        hideTouchMenu(evt) // resets touchstart_in_menu
-      }
-    }
-    return
-  }
+	if (touchmenu._touchstart_in_menu) return;
+
+	if (touchmenu._recently_open){
+		/* Events on other child elements showed touchmenu.
+		 * So don't hide it immideatly. */
+		DEBUG_TOUCH && console.log(`Touchmenu recently open. Avoid menu hide…`)
+
+		evt.stopPropagation()
+
+		/* Reset flag in last event(s) of group (pointerup,mouseup,click)
+		 * TODO: Touch event switch
+		 */
+		if (evt.type == 'click') {
+			touchmenu._recently_open = false
+		}
+		return;
+	}
+
+	/* Here, the menu is open, but no touch/click was started in menu
+	 * Thus, I can surpress the event, and close the menu. */
+	evt.stopPropagation()
+
+	if (evt.type == 'click' /*|| evt.type == 'touchend' Doppelt :-(*/){
+		DEBUG_TOUCH && console.log(`Hide touchmenu`)
+		//hideTouchMenu(evt) // resets _touchstart_in_menu
+		touchmenu.hide()
+	}
 }
 
 
 function hideTouchMenu(evt) {
   DEBUG_TOUCH && console.log('Hide? ' + evt.type +
-    "  |" + touchmenu.touchstart_in_menu + ", " + longpress.done)
+    "  |" + touchmenu._touchstart_in_menu + ", " + longpress.done)
   if (touchmenu._hidden) {
     return;
   }
 
-  if( touchmenu.touchstart_in_menu || longpress.done)
-  {
+  if (touchmenu._touchstart_in_menu)
+	{
+		DEBUG_TOUCH && console.log("Abort because of _touchstart_in_menu (" + evt.type + ")")
+		touchmenu._touchstart_in_menu = false
+		touchmenu._touchmove_in_menu = false
 
-    if (touchmenu.touchstart_in_menu){
-      //DEBUG_TOUCH && console.log("Abort because of touchstart_in_menu (" + evt.type + ")")
-      touchmenu.touchstart_in_menu = false
-      touchmenu.touchmove_in_menu = false
-    }
-    if (longpress.done) { // Skip hide on first click after long touch
-      //DEBUG_TOUCH && console.log("Abort because of longpress.done (" + evt.type + ")")
-      longpress.done = false
-    }
+		return;
+	}
 
-    return;
-  }
-
-  //if (touchmenu.longpress.done !== null) {
-  if (!touchmenu._hidden) {
-    //DEBUG_TOUCH && console.log("Hide touch menu (" + evt.type + ")")
-    touchmenu.hide(touchmenu.get_element())
-  }
+	DEBUG_TOUCH && console.log("Hide touch menu (" + evt.type + ")")
+	touchmenu.hide()
 }
 
 /* Avoids firing slider events.
@@ -830,8 +862,8 @@ function hideTouchMenu(evt) {
  * Note that the following lines also preventing the change of
  * sliders, but you will still got graphical feedback on the slider.
  * 
- * window.addEventListener('input', captureEvents, {'capture': true})
- * window.addEventListener('change', captureEvents, {'capture': true})
+ * window.addEventListener('input', observeEventsForTouchmenu, {'capture': true})
+ * window.addEventListener('change', observeEventsForTouchmenu, {'capture': true})
 */
 function lock_slider_state(value){
   var sliders = document.getElementsByClassName("slider")
@@ -847,14 +879,16 @@ function lock_slider_state(value){
 }
 
 
+/* A) Triggered before event was processed in child elements: ?!*/
 // both, click and mouseup needed because evt.stopPropagation() do not stop the other one
-window.addEventListener('click', captureEvents, {'capture': true})
-window.addEventListener('mouseup', captureEvents, {'capture': true})
-window.addEventListener('pointerup', captureEvents, {'capture': true})
-window.addEventListener('touchend', captureEvents, {'capture': true})
-/*window.addEventListener('input', captureEvents, {'capture': true})
-window.addEventListener('change', captureEvents, {'capture': true})*/
+window.addEventListener('click', observeEventsForTouchmenu, {'capture': true})
+window.addEventListener('mouseup', observeEventsForTouchmenu, {'capture': true})
+window.addEventListener('pointerup', observeEventsForTouchmenu, {'capture': true})
+window.addEventListener('touchend', observeEventsForTouchmenu, {'capture': true})
+/*window.addEventListener('input', observeEventsForTouchmenu, {'capture': true})
+window.addEventListener('change', observeEventsForTouchmenu, {'capture': true})*/
 
+/* B) Triggered after event was processed in child elements: */
 // Capture of pointerup/mouseup/touchend in bubble phase is problematic 
 // because elements of touchmenu could be handled by 'click' later.
 /*window.addEventListener('mouseup', hideTouchMenu, {'capture': false})

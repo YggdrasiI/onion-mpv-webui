@@ -1032,7 +1032,7 @@ function setLoop(loopFile, loopPlaylist) {
     value = "1"
   }
 
-  [].slice.call(loopButton).forEach(function (div) {
+  ;[].slice.call(loopButton).forEach(function (div) {
     div.innerHTML = html
     div.setAttribute("value", value)
     })
@@ -1411,8 +1411,8 @@ function displayElementClass(cls_of_elements, bDisplay, classname){
   if (arguments.length < 3)
     classname = 'hidden'
 
-  let classElements = document.getElementsByClassName(cls_of_elements);
-  [].slice.call(classElements).forEach(function(div) {
+  let classElements = document.getElementsByClassName(cls_of_elements)
+  ;[].slice.call(classElements).forEach(function(div) {
     setClass(div, bDisplay, classname)
   })
 }
@@ -1496,6 +1496,13 @@ function logging_in_page(){
       if (evt.targetTouches.length == 2){this.innerHTML=''}
     })
   document.getElementsByTagName('body')[0].appendChild(log)
+}
+
+function elementsByNameOrId(name_or_id){
+	return document.querySelectorAll(`[name=${name_or_id}], #${name_or_id}`)
+	// Node merging .getElementsByName() and .getElementById() isn't
+	// possible without converting results into real Arrays…
+	// using the combined query selector avoids this problem.
 }
 
 /* To satisfy Content-Security-Policy define
@@ -1585,23 +1592,17 @@ function add_button_listener() {
   ]
 
   btnEvents.forEach( x => {
-    let els = document.getElementsByName(x[0])
-    let el = document.getElementById(x[0])
-    let count = els.length;
-    if (el) {
-      count++;
-    }
-    if (count == 0){
+    let els = elementsByNameOrId(x[0])
+    if (els.length == 0){
       console.log(`No button named '${x[0]}' found to add event!`)
     }
     if (window.longpress) {
       longpress.addEventHandler(els, x[1], x[2], x[3])
-      if (el) {
-        longpress.addEventHandler([el], x[1], x[2], x[3])
-      }
     }else{
-      // Fallback on non-touchmenu-case
-      console.log("TODO")
+      // Fallback on non-touchmenu-case: Use only shortpress handle
+      els.forEach(el => {
+				el.addEventListener(x[1], x[2])
+			})
     }
   })
 }
