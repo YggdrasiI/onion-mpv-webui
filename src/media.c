@@ -130,6 +130,12 @@ const char *share_info_get_path(share_info_t *share_info){
     return share_info->path;
 }
 
+const char *share_info_get_preferred_key(share_info_t *share_info){
+    const char *key_named = share_info->key;
+    const char *key_enumerated = share_info->key_enumerated;
+    return (key_named && key_named[0])?key_named:key_enumerated;
+}
+
 __share_data_media_html_t *__share_data_media_html_new(
         //const char *key,
         //const char *value,
@@ -419,8 +425,6 @@ int webui_onion_share_media_folders(
     onion_dict_preorder(shared_folders, __swap_enumerated_share_names, shared_folders);
 
     // 3b) Construct url->handler mappings
-    // note that all keys/values from shared_folders_b should be duplicated.
-    // shared_folders_b will be free'd at the end of this function.
     __share_loop_t data = {.html = html, .api = api, .first = 1};
     onion_dict_preorder(shared_folders, __add_handler_for_shares, &data);
 

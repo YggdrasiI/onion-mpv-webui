@@ -20,6 +20,8 @@ void share_info_free (
 
 const char *share_info_get_path(share_info_t *share_info);
 
+/* Default is ->key and it falls back on ->key_enumerated */
+const char *share_info_get_preferred_key(share_info_t *share_info);
 
 /* Private data of handler (Used for 'onion_handler_new') */
 typedef struct __share_data_media_html_t {

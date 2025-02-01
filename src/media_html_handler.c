@@ -343,7 +343,7 @@ onion_connection_status media_html_redirect_current(
     char *redirect_url=NULL;
     const char *uri_rel_path = onion_request_get_path(req);
 #if 1
-    const char *prefix = share_info->key;
+    const char *prefix = share_info_get_preferred_key(share_info);
     asprintf(&redirect_url, "media/html/%s/%s", prefix, uri_rel_path);
     ONION_DEBUG("Internal redirect to '%s'\n", redirect_url);
     /* Differences between onion_shortcut_internal_redirect and onion_shortcut_redirect:

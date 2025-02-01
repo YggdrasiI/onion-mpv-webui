@@ -9,6 +9,8 @@
 #include <string.h>
 #include <libgen.h>  // POSIX dirname, basename
 
+//#include <limits.h>  // for PATH_MAX
+
 #include <pthread.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -67,6 +69,7 @@ void media_track_paths_set_shares(
  *  Share s1:/a/b
  *  /a/b/c/d.mp3  => /c/d.mp3
  *  /a/b/c        => /c
+ *  /a/b          => ""
  *
  *  Only call it after sucessfull strstarts
  */
@@ -122,9 +125,14 @@ void _media_track_paths_update(
     char *new_directory;
 
     if (new_path[0] == '\0') return;
+
+    // 'Disadvantage': reaplath resolves symbolic links
+    char *real_path = realpath(new_path, NULL);
+    if (real_path == NULL) return;
+
     if (0 == split_filename){
         new_file = "";
-        new_directory = new_path;
+        new_directory = real_path; //new_path;
     }else{
         /* In POSIX-variant (libgen.h)
          *
@@ -138,21 +146,21 @@ void _media_track_paths_update(
          *
          * Never free return values of both functions.
          * */
-        new_file = basename(new_path);
-        new_directory = dirname(new_path);
+        new_file = basename(real_path); // basename(new_path);
+        new_directory = dirname(real_path); // dirname(new_path);
     }
+    //printf("DIR: '%s'\nFILE: '%s'\n\n", new_directory, new_file);
 
-    // TODO: Maybe I has to throw in a realpath() for the correct path, here.
 
     if (mtp->current_directory && 0 == strcmp(mtp->current_directory, new_directory)){
         // Simple, it's just a new file in the same dir
         onion_dict_add((onion_dict *)mtp->current_share_info, "current_file", 
                 new_file, OD_DUP_VALUE|OD_REPLACE);
         STR_FREE_DUP(mtp->current_file, new_file);
-        return;
+        goto _media_track_paths_update_end;
     }
 
-    if (mtp->current_share_info && 0 == strstarts(new_path,
+    if (mtp->current_share_info && 0 == strstarts(real_path /* new_path */,
                 onion_dict_get((onion_dict*)mtp->current_share_info, "path"))){
         char *translated_directory = translate_path(mtp->current_share_info, new_directory);
         // New path is included in current share
@@ -162,17 +170,20 @@ void _media_track_paths_update(
                 new_file, OD_DUP_VALUE|OD_REPLACE);
         STR_FREE_DUP(mtp->current_directory, new_directory);
         STR_FREE_DUP(mtp->current_file, new_file);
-        return;
+        goto _media_track_paths_update_end;
     }
 
     // Search matching share for new path/url
-    __update_loop_t data = {mtp, new_directory, new_file, 0};
+    __update_loop_t data = {mtp, new_directory, real_path /*new_file*/, 0};
     onion_dict_preorder(mtp->shares, __update, &data);
 
     if (data.found == 0){
         // Throw away new_directory, new_file, but keep current share selected.
         ONION_DEBUG("Starting file outside of shared folders.");
     }
+
+_media_track_paths_update_end:
+    free(real_path);
 }
 
 void media_track_paths_set(
