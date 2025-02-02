@@ -1,5 +1,10 @@
-#ifndef	_WORDEXP_H
-#define	_WORDEXP_H
+#pragma once
+
+// for pipe2
+#define _GNU_SOURCE             /* See feature_test_macros(7) */
+#include <fcntl.h>              /* Obtain O_* constant definitions */
+#include <unistd.h>
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -36,6 +41,4 @@ void wordfree (wordexp_t *);
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif

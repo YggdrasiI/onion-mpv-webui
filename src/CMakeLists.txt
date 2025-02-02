@@ -1,11 +1,14 @@
 MACRO(compile_template _name _target)
 	STRING(REPLACE "." "_" _name2 "${_name}")
+	if(TERMUX)
+		# Without translation (for Bionic build)
+		SET(LIBINTL --no-libintl)
+	else()
+		# With translation by gettext
+	endif()
 	add_custom_command(
 		OUTPUT ${_name2}.c
-		# Without translation (for Bionic build)
-		#COMMAND ${OTEMPLATE} --no-libintl -t "${OTEMPLATE_TAGSDIR}" "${CMAKE_SOURCE_DIR}/templates/${_name}"
-		# With translation by gettext
-		COMMAND ${OTEMPLATE} -t "${OTEMPLATE_TAGSDIR}" "${CMAKE_SOURCE_DIR}/templates/${_name}"
+		COMMAND ${OTEMPLATE} ${LIBINTL} -t "${OTEMPLATE_TAGSDIR}" "${CMAKE_SOURCE_DIR}/templates/${_name}"
 		"${CMAKE_CURRENT_BINARY_DIR}/${_name2}.c"
 		DEPENDS "${CMAKE_SOURCE_DIR}/templates/${_name}"
 	)

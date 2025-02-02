@@ -1,0 +1,32 @@
+From 80c39883440c416a07459a07272e77019a57d688 Mon Sep 17 00:00:00 2001
+From: Olaf Schulz <947069+YggdrasiI@users.noreply.github.com>
+Date: Sun, 2 Feb 2025 14:33:52 +0100
+Subject: [PATCH] Android/Termux: Set PTHREADS manually
+
+---
+ CMakeLists.txt | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 40a7ac5..3f4846f 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -110,6 +110,8 @@ endif(${ONION_USE_REDIS})
+ 
+ if (${TERMUX})
+ 	add_definitions(-DTERMUX)
++	message(STATUS "Termux: pthreads always available. Threading support is compiled in.")
++	set(PTHREADS true)
+ 	# Add folder with execinfo.h
+ 	#     include_directories(SYSTEM "${CMAKE_SOURCE_DIR}/../../src/include")
+ 
+@@ -307,3 +309,6 @@ add_custom_target(indent
+ 	COMMAND indent -linux -i2 -nut -brf ${ALL_C_H_FILES}
+ 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+ )
++
++add_subdirectory(examples/websockets)
++add_subdirectory(examples/ofileserver)
+-- 
+2.38.1
+

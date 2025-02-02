@@ -219,7 +219,7 @@ char *__decode_by_map(const char *text, const unsigned char *ascii_includes){
 
              char c = ((d1 << 4) | d2); // >= 0
              // Check if char isn't in map of encoded chars.
-             if (!ascii_includes[c/8] & (1<<(c%8)) ) {
+             if (!(ascii_includes[c/8] & (1<<(c%8)))) {
                  /* Here, we already know '%' != text[j] for j=i+1,i+2
                   * and can consume three bytes. */
                  decodedText[pos++] = text[i];
