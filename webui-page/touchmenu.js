@@ -17,12 +17,12 @@ const options = {
 /* If 'show_silbing_menu' is true this list decides
  * which menu(s) will shown, too.*/
 const sibling_ids = {
-  playlistPrev: ["playlistNext"],
-  playlistNext: ["playlistPrev"],
+//  playlistPrev: ["playlistNext"],
+//  playlistNext: ["playlistPrev"],
   seekBack1: ["seekForward1"],
   seekForward1: ["seekBack1"],
-  chapterBack: ["chapterForward"],
-  chapterForward: ["chapterBack"],
+//  chapterBack: ["chapterForward"],
+//  chapterForward: ["chapterBack"],
 }
 
 
