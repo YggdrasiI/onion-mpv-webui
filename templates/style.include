@@ -8,7 +8,7 @@ table{ background: #333; width: 100%; border: 1px solid #aaa; border-radius: 5px
 th{ background: rgba(60, 50, 50, 30); }
 tr.dir td{ rgba(40, 40, 40, 30); }
 tbody tr:hover td{ background: rgba(60, 60, 60, 30); }
-table a{ display: block; } th{ cursor: pointer}
+table a{ display: block; }
 a{ color: red; text-decoration: none; }
 h1,h2{ text-align: center; }
 h1 a,h2 a{ color:inherit; }

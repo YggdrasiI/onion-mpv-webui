@@ -1,7 +1,7 @@
 <div id="controls">
 <a target="_api" href="/api/toggle_pause">⏯</a>
 <a target="_api" href="/api/seek/-60">⏪</a>
-<a target="_api" href="/api/toggle_pause">⏩</a>
+<a target="_api" href="/api/seek/60">⏩</a>
 <a target="_api" href="/api/playlist_prev">⏮</a>
 <a target="_api" href="/api/playlist_next">⏭</a>
 
