@@ -107,6 +107,7 @@ You can also directly talk to the endpoints:
 | /api/cycle_audio                       | POST   |                                    | Cycle trough available audio tracks                                     |
 | /api/cycle_audio_device                | POST   |                                    | Cycle trough audio devices. [More information.](#audio-devices-string)  |
 | New in this fork                       |        |                                    |                                                                         |
+| /api/playlist_add/{append|replace}/{url}   | GET    | `string`              | Adds url. With 'replace' current playlist will be cleared.
 | /media/api/list/:share_name/:sub_dir   | GET    | `string` and `string`              | Returns JSON data about shared folder                                   |
 | /media/api/html/:share_name/:sub_dir   | GET    | `string` and `string`              | Directory listing of shared folders, if defined.                        |
 | /ws                                    | GET    |                                    | Websocket test page                                                     |

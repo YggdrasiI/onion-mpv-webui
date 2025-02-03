@@ -23,29 +23,15 @@ var shares = {
   local_sorting: {}
 }
 
-function toggleShares() {
-  document.body.classList.toggle('noscroll')
-  var el = document.getElementById("overlay2")
-  el.style.visibility = (el.style.visibility === "visible") ? "hidden" : "visible"
-  if (el.style.visibility === "visible" ){
+function toggleShares(force) {
+	let overlay_is_visible = toggleOverlay("overlay2", force)
+
+  if (overlay_is_visible){
     if (shares.list == null){
       refresh_share_list()
     }
   }
-
-  /* Close share overlay by click on background area. */
-  if (!shares.close_event_registered ){
-    function _close_listener(evt) {
-      //console.log(evt.target)
-      if( evt.target == el ){
-        toggleShares()
-      }
-      evt.stopPropagation();
-    }
-    el.addEventListener('click', _close_listener, false)
-    shares.close_event_registered = true
-  }
-
+	return overlay_is_visible
 }
 
 function browseShares() {

@@ -9,6 +9,8 @@ URI                                 |     COMMENT
 /api/version                        |
 /api/status                         |  API (returns JSON messages)
 /api/{command}/[param1]/[param2]    |
+/api/{play|pause|toggle_pause}      |  More -> README.md
+/api/playlist_add/{append|replace}/{url}
                                     |
 /api/media                          |  Like /media/api
 

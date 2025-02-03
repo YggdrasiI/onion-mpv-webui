@@ -169,20 +169,43 @@ function send(command, param1, param2){
   request.send(null)
 }
 
-function togglePlaylist() {
-  document.body.classList.toggle('noscroll')
-  var el = document.getElementById("overlay")
-  el.style.visibility = (el.style.visibility === "visible") ? "hidden" : "visible"
+function toggleOverlay(id, force) {
+
+  let el = document.getElementById(id)
+	let overlay_is_visible_new = force ||
+		el.style.getPropertyValue("visibility") !== "visible"
+
+  document.body.classList.toggle('noscroll', overlay_is_visible_new)
+  el.style.setProperty("visibility", (overlay_is_visible_new ? "visible" : "hidden"))
+
+  /* Close overlay by click on background area. */
+  if (!el.hasOwnProperty("close_event_registered") ){
+    function _close_listener(evt) {
+      if( evt.target == el ||
+				 evt.target.parentElement == el && evt.target.childElementCount == 0 ){
+        toggleOverlay(id, false)
+      }
+      evt.stopPropagation();
+    }
+    el.addEventListener('click', _close_listener, false)
+    el.close_event_registered = true
+  }
+
+	return overlay_is_visible_new
+}
+
+function togglePlaylist(force) {
+	return toggleOverlay("overlay1", force)
 }
 
 function hide_overlays(){
   overlays = {
-    "overlay": togglePlaylist,
+    "overlay1": togglePlaylist,
     "overlay2": toggleShares,
   }
   for (id in overlays){
     var el = document.getElementById(id)
-    if (el && el.style.visibility === "visible") overlays[id]()
+    if (el && el.style.visibility === "visible") overlays[id](false)
   }
 }
 
@@ -1585,10 +1608,6 @@ function add_button_listener() {
 
 
     ['quitMpv', 'click', function (evt) {send('quit') }],
-    ['overlay', 'click', function (evt) {
-      if(evt.target == this) togglePlaylist()
-      evt.stopPropagation()
-    }],
   ]
 
   btnEvents.forEach( x => {
