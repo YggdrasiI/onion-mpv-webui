@@ -485,23 +485,38 @@ int webui_onion_init(onion_dict *_options) {
 
   //Connect url pattern with handlers. Also added the empty rule that redirects to static/index.html
   onion_url *urls = onion_url_new();
-  onion_url *media = onion_url_new();
   onion_url *api = onion_url_new();
 
-  onion_url_add_url(urls, "^media", media);
-  onion_url_add_url(urls, "^api", api);
+  onion_url_add_url(urls, "^api/", api);  // with slash to handle 'api' by static_file provider
 
   /* Dynamic content */
   onion_url_add(urls, "ws", ws_status_start);  // websocket
-  onion_url_add_static(api, "/version", VERSION, HTTP_OK);
-  onion_url_add(api, "/status", handle_status_get);
-  onion_url_add(api, "2", handle_api_post_data2); // "/api2"
+  onion_url_add_static(api, "version", VERSION, HTTP_OK);
+  onion_url_add(api, "status", handle_status_get);
+
+  onion_url_add_with_data(api, "^media", swap_args_redirect, "/media/api", NULL);
+
+  // This as last to not overrule the other rules.
   onion_url_add(api, "^", handle_api_get_or_post_data);   // "/api"
+  //onion_url_add_with_data(api, "^/media", onion_shortcut_internal_redirect, "/index.html", NULL);
+
+
+  onion_url *media = onion_url_new();
+  onion_url_add_url(urls, "^media", media);
+  /* Add handlers for each shared folder */
+  /* /media/<share>/.* and /media/api/<cmd>/<share>/.* */
+  webui_onion_share_media_folders(media, options);
+
+
+  /* Redirect to index.html on top level */
+  onion_url_add_with_data(urls, "", onion_shortcut_internal_redirect, "/index.html", NULL);
+
+  onion_url_add(urls, "api2", handle_api_post_data2); // "/api2"
   /* /api2 evaluates POST content of api.html and redirects to api.html
    * after handling command */
 
   // TODO: Remove json reply before html of redirection
-  onion_url_add_static(api, ".html",
+  onion_url_add_static(urls, "api.html",
                        "<html>\n"
                        "<head>\n"
                        " <title>Gen Api post string</title>\n"
@@ -513,16 +528,6 @@ int webui_onion_init(onion_dict *_options) {
                        "<input type=\"submit\">\n"
                        "</form>\n" "\n" "</html>\n", HTTP_OK);
 
-  /* Add handlers for each shared folder */
-  /* /media/<share>/.* and /media/api/<cmd>/<share>/.* */
-  webui_onion_share_media_folders(media, options);
-
-  /* Redirect on index.html on top level */
-  onion_url_add_with_data(urls, "", onion_shortcut_internal_redirect, "/index.html", NULL);
-  //onion_url_add_with_data(urls, "", onion_shortcut_response_file, "webui-page/index.html", NULL);
-
-  onion_url_add_with_data(api, "^/media", swap_args_redirect, "/media/api", NULL);
-  //onion_url_add_with_data(api, "^/media", onion_shortcut_internal_redirect, "/index.html", NULL);
 
   // Finally, one handler for all other requests
   webui_onion_static_files(

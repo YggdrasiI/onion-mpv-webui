@@ -25,7 +25,7 @@
      </td>
    <td>
      <a class="dname" href="/media/html/{{share.key_encoded}}/">
-       {% if share.key == "" %}{{share.key_enumerated}}{% else %}{{share.key}}{% endif %}</a> ({{share.path}})
+       {% if share.key == "" %}{{share.key_enumerated}}{% else %}{{share.key}}{% endif %}</a>{# ({{share.path}}) #}
    </td>
  </tr>
  {% endfor %}
@@ -46,6 +46,9 @@
     </ul>
 </div>
 
+<div class="spacer"></div>
+<iframe name="_api" style="border:0px;height:200px;width:600px;display:none" title="Displays api return values"></iframe> 
+{% include "controls.include" %}
 {% include "footer.include" %}
 </body>
 </html>
