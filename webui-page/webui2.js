@@ -583,7 +583,7 @@ function encodeResolveDifference(s){
   critical_chars.forEach((el) => {map[el] = encodeURIComponent(el)}) // Schmerz…
 
   function replacer(match, offset, string) {
-    console.log("X" + match + " => " + map[match])
+    //console.log("X" + match + " => " + map[match])
     return map[match]
   }
   const r = RegExp("["+Object.keys(map)+"]", "g")

@@ -27,25 +27,25 @@
   </head>
   <body>
 		<div id="overlay1" class="playlist-controls">
-			<div id="quitMpv" class="button red content icon-content playlist-control position1">
+			<div id="quitMpv" title="Quit Mpv" class="button red content icon-content playlist-control position1">
 				Mpv <i class="fas fa-window-close"></i>
 			</div>
-			<div name="togglePlayPause" class="button green content icon-content playPauseButton playlist-control position2">
+			<div name="togglePlayPause" title="Play/Pause" class="button green content icon-content playPauseButton playlist-control position2">
 				<i class="fas fa-play"></i><i class="fas fa-pause"></i>
 			</div>
-			<div name="playlistLoopCycle" class="button blue content icon-content playlist-control playlistLoopButton position3">
+			<div name="playlistLoopCycle" title="Loop" class="button blue content icon-content playlist-control playlistLoopButton position3">
 				<i class="fas fa-redo-alt"></i>
 			</div>
-			<div name="playlistShuffle" class="button blue content icon-content playlist-control position4">
+			<div name="playlistShuffle" title="Shuffle playlist" class="button blue content icon-content playlist-control position4">
 				<i class="fas fa-random"></i>
 			</div>
-			<div name="togglePlaylist" class="button violet content icon-content playlist-control position5">
+			<div name="togglePlaylist" title="Hide overlay" class="button violet content icon-content playlist-control position5">
 				<i class="fas fa-times-circle"></i>
 			</div>
 			 <div id="playlistAdd">
-				 <input id="playlistAdd_input" type="text" placeholder="            http://" />
+				 <input id="playlistAdd_input" type="text" placeholder="http://" />
 				 <div id="playlistAdd_btn" class="button_r blue content playlist-control">
-					Add<i class="fas fa-plus-square"></i>
+					<i title="Add" class="fas fa-plus-square"></i>
 				 </div>
 			 </div>
 			 <div id="playlist"></div>
@@ -61,7 +61,7 @@
 			<div name="shareSortingDate" class="button blue content icon-content playlist-control shareSortButton_date position4">
 				<i class="fas fa-sort-numeric-up"></i>Date
 			</div>
-			<div name="toggleShares" class="button violet content icon-content playlist-control position5">
+			<div name="toggleShares" title="Hide overlay" class="button violet content icon-content playlist-control position5">
 				<i class="fas fa-times-circle"></i>
 			</div>
 			<ul id="sharelist"></ul>
@@ -227,8 +227,8 @@
     </div>
 
     <div class="burger">
-      <div name="togglePlaylist"><i class="fas fa-list-ul"></i></div>
-      <div name="toggleShares"><i class="fas fa-folder-open"></i></div>
+      <div name="togglePlaylist" title="Playlist"><i class="fas fa-list-ul"></i></div>
+      <div name="toggleShares" title="Shared folders"><i class="fas fa-folder-open"></i></div>
     </div>
 
     <audio id="audio" loop>

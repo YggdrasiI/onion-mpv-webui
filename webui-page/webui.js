@@ -7,7 +7,8 @@ var DEBUG = false,
     videos = {},
     connected = false,
     max_title_size = 60,
-    tab_in_background = false
+    tab_in_background = false,
+	  prevActiveElement = null
 
 var ws = null
 var mpv_status = {}
@@ -65,11 +66,11 @@ function send_ws(command, ...params){
     param2: (params[1] == undefined?"":String(params[1])),
   }
 
-	// encode params unless fourth argument prevents.
-	if (params[2] === undefined || params[2] === true){
-		api.param1 = encodeURIComponent(api.param1)
-		api.param2 = encodeURIComponent(api.param2)
-	}
+  // encode params unless fourth argument prevents.
+  if (params[2] === undefined || params[2] === true){
+    api.param1 = encodeURIComponent(api.param1)
+    api.param2 = encodeURIComponent(api.param2)
+  }
 
   DEBUG && console.log(`Sending command: '${api.command}' param1: '${api.param1}' param2: '${api.param2}'`)
 
@@ -154,19 +155,19 @@ function basename(path){
 function send(command, param1, param2, encode){
   if( true ) return send_ws(command, param1, param2, encode)
 
-	param1 = param1 || ""
-	param2 = param2 || ""
-	encode = encode || true
-	if (encode) {
-		param1 = encodeURIComponent(param1)
+  param1 = param1 || ""
+  param2 = param2 || ""
+  encode = encode || true
+  if (encode) {
+    param1 = encodeURIComponent(param1)
 
     /* '+' will be threaten like ' ', but filenames could included it. We need to encode it.
      * On the server side, onion's codec.c will decode every %XX char on the fly.
      * Thus a file named "%2F" would be inaccesible if it's not encoded.
      */
-		param2 = encodeURIComponent(param2)
-	}
-	uri = `api/${api.command}/${api.param1}/${api.param2}`
+    param2 = encodeURIComponent(param2)
+  }
+  uri = `api/${api.command}/${api.param1}/${api.param2}`
   DEBUG && console.log(`Sending command: '${command}' param1: '${param1}' param2: '${param2}'`)
 
   var request = new XMLHttpRequest()
@@ -178,30 +179,54 @@ function send(command, param1, param2, encode){
 function toggleOverlay(id, force) {
 
   let el = document.getElementById(id)
-	let overlay_is_visible_new = force ||
-		el.style.getPropertyValue("visibility") !== "visible"
+  let overlay_is_visible_new = force ||
+    el.style.getPropertyValue("visibility") !== "visible"
 
   document.body.classList.toggle('noscroll', overlay_is_visible_new)
   el.style.setProperty("visibility", (overlay_is_visible_new ? "visible" : "hidden"))
 
   /* Close overlay by click on background area. */
   if (!el.hasOwnProperty("close_event_registered") ){
+    function _click_on_background(target, overlay){
+      if ( target == overlay ||
+        target.parentElement == overlay && target.childElementCount == 0 )
+        return true
+      return false
+    }
+
+    function addBackupActiveElement(overlay){
+      Array.from(overlay.getElementsByTagName("input")).forEach((el) => 
+        el.addEventListener("focusout", function(evt) {document.prevActiveElement = evt.target}))
+    }
+
     function _close_listener(evt) {
-      if( evt.target == el ||
-				 evt.target.parentElement == el && evt.target.childElementCount == 0 ){
-        toggleOverlay(id, false)
-      }
       evt.stopPropagation();
+
+      // 1. Check abort criteria
+      // 1.1) Abort if select/input looses focus by click
+      let prevActiveElement = document.prevActiveElement;
+      document.prevActiveElement = null // reset
+      if (document.activeElement.localName === "select"
+        // || document.activeElement.localName === "input" /* This does not work because it's already 'body' active */
+        || prevActiveElement /* set by focusout-Event */)
+        return
+
+      // 1.2) Abort if not clicked on empty region of overlay*/
+      if (!_click_on_background(evt.target, el)) return
+
+      toggleOverlay(id, false)
     }
     el.addEventListener('click', _close_listener, false)
     el.close_event_registered = true
+
+    addBackupActiveElement(el) // track focusout events for input's
   }
 
-	return overlay_is_visible_new
+  return overlay_is_visible_new
 }
 
 function togglePlaylist(force) {
-	return toggleOverlay("overlay1", force)
+  return toggleOverlay("overlay1", force)
 }
 
 function hide_overlays(){
@@ -214,7 +239,6 @@ function hide_overlays(){
     if (el && el.style.visibility === "visible") overlays[id](false)
   }
 }
-
 
 function createPlaylistTable(entry, position, pause, first) {
   function setActive(set) {
@@ -595,7 +619,8 @@ function webui_keydown(evt) {
   binding = KeyBindings.for_event(evt) // null or Object assigned to this key+modifier combination.
   if (binding === null) return
 
-  if (document.activeElement.localName === "input") /* localName == tagName.toLowerCase() */
+  if (document.activeElement.localName === "input" /* localName == tagName.toLowerCase() */
+		||document.activeElement.localName === "select")
   {
     if (document.activeElement.type !== "range"){
       return // Avoid double interpreation of keystroke in normal input fields

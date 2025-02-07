@@ -289,6 +289,14 @@ input[type="range"] {
   /*margin-bottom: 20px;*/
 }
 
+  /* Buttons on right side in overlays
+   *   1 —2— 3 4 5
+   *    (—6—)
+   *  |   L   |
+   *  |   I   |
+   *  |   S   |
+   *  |   T   |
+   */
 #overlay1, #overlay2 {
   top: 0;
   left: 0;
@@ -303,18 +311,6 @@ input[type="range"] {
   background-color: rgba(0, 0, 0, 0.85);
 }
 
-#overlay2{
-  visibility: visible;
-}
-
-#overlay2 {
-	grid-template-rows: 1fr 1fr auto;
-	grid-template-areas:
-	"overlay_header"
-	"overlay_footer"
-	"overlay_content";
-}
-
 .noscroll {
   overflow-y: hidden;
 }
@@ -324,7 +320,7 @@ input[type="range"] {
   overflow-x: hidden;
   /*position: absolute;*/
   position: relative;
-	max-height:80vh;
+  max-height:80vh;
   bottom: 1vh;
   left: 0px;
   right:0px;
@@ -335,22 +331,10 @@ input[type="range"] {
 }
 
 #playlist {
-	top:0vh;
-	margin-bottom:1vh;
+  top:0vh;
+  margin-bottom:1vh;
 
   grid-area: overlay_content;
-}
-
-#overlay2_header {
-  grid-area: overlay_header;
-}
-#overlay1_footer {
-  grid-area: overlay_footer;
-	/*display:flex; /* Adjusts height of input field */
-}
-
-#sharelist {
-  top:1vh;
 }
 
 .touchmenu,
@@ -360,17 +344,11 @@ input[type="range"] {
   scrollbar-color: var(--playlist-bg-hover) transparent;
 }
 
-/*.playlist-button {
-  margin-top: 15px;
-}*/
-
 .playlistLoopButton {
   font-weight: bold;
 }
 
 .playlist-controls {
-  /*width: 100%;*/
-  /*font-size: 75px;*/
   font-size: 4vmin;
   padding-top:0.5vmin;
   margin-bottom: 2vmin;
@@ -378,72 +356,69 @@ input[type="range"] {
 }
 
 #overlay1 {
-	display:grid;
+  display:grid;
   grid-template-columns:
-	[Cleft]
-	2em
-	[Ccontrols]
-	1fr
-	[Ccontrols]
-	1fr
-	1fr
-	[Ccontrols]
-	1fr
-	[Ccontrols]
-	1fr
-	[Ccontrols]
-	1fr
-	[Ccontrols_end]
-	2em
-	[Cright];
+  [Cleft]
+  min(2vw, 2rem)
+  [Ccontrols]
+  1fr
+  [Ccontrols]
+  1fr
+  1fr
+  [Ccontrols]
+  1fr
+  [Ccontrols]
+  1fr
+  [Ccontrols]
+  1fr
+  [Ccontrols_end]
+  min(2vw, 2rem)
+  [Cright];
 
   grid-template-rows:
-	[Rfirst_row]
-	minmax(2em, 1fr)
-	[Rsecond_row]
-	minmax(2em, 1fr)
-	1rem
-	[Rcontent]
-	80vh
-	[Rend]
-	1rem;
+  [Rrow]
+  minmax(2em, 1fr)
+  [Rrow]
+  minmax(2em, 1fr)
+  1px
+  [Rcontent]
+  80vh
+  [Rend]
+  1rem;
 
   align-items:start;
   justify-items: stretch auto;
   grid-gap:1vw 1vw;
-
-  /*padding-right: 2em;
-  padding-left: 2em; */
 }
 
 #overlay2 {
-	display:grid;
+  display:grid;
   grid-template-columns:
-	[Cleft]
-	2em
-	[Ccontrols]
-	1fr
-	[Ccontrols]
-	1fr
-	1fr
-	[Ccontrols]
-	1fr
-	[Ccontrols]
-	1fr
-	[Ccontrols]
-	1fr
-	[Ccontrols_end]
-	2em
-	[Cright];
+  [Cleft]
+  min(2vw, 2em)
+  [Ccontrols]
+  1fr
+  [Ccontrols]
+  1fr
+  1fr
+  [Ccontrols]
+  1fr
+  [Ccontrols]
+  1fr
+  [Ccontrols]
+  1fr
+  [Ccontrols_end]
+  min(2vw, 2em)
+  [Cright];
 
   grid-template-rows:
-	[Rfirst_row]
-	minmax(2em, 1fr)
-	1rem
-	[Rcontent]
-	90vh
-	[Rend]
-	1rem;
+  [Rrow]
+  minmax(2em, 1fr)
+  1px
+  [Rcontent]
+  90vh
+  [Rend]
+  1rem;
 
   align-items:start;
   justify-items: stretch auto;
@@ -454,13 +429,9 @@ input[type="range"] {
 }
 
 .playlist-controls *{
-  /*grid-column-start:Ccontrols_left;
-  grid-column-end:Ccontrols_right;*/
-  /*grid-row-start:Rfirst_row;
-  grid-row-end:Rsecond_row;*/
-	overflow:hidden; /* Prevents
-	1. Right shift of buttons by too long texts in buttons
-	2. Too high buttons do not match top-/baseline*/
+  overflow:hidden; /* Prevents
+  1. Right shift of buttons by too long texts in buttons
+  2. Too high buttons do not match top-/baseline*/
 }
 
 .playlist-controls .position1 {
@@ -480,23 +451,23 @@ input[type="range"] {
 }
 
 #playlistAdd{
-	grid-column:Ccontrols 2 / span 3;
-  /*grid-row:Rfirst_row / span 1;*/
-  grid-row:Rsecond_row / span 1;
+  grid-column:Ccontrols 2 / span 3;
+  /*grid-row:Rrow / span 1;*/
+  grid-row:Rrow 2 / span 1;
 
-	display:flex; /* input field with variable width + button */
+  display:flex; /* input field with variable width + button */
   justify-content: center;
-	align-items:center; /* Do not use stretch here. It streches
-	the elements, but does not allow to center the text in the button.
-	Instead we need to center here and using an inner flexbox for stretching*/
+  align-items:center; /* Do not use stretch here. It streches
+  the elements, but does not allow to center the text in the button.
+  Instead we need to center here and using an inner flexbox for stretching*/
 
-	height:100%;
+  height:100%;
 }
 
 #playlistAdd_input{
-	flex: 1 1 auto;
-	min-width: 4em; /* Without this in slim layouts the grid box  will overflow */
-	height:100%;
+  flex: 1 1 auto;
+  min-width: 4em; /* Without this in slim layouts the grid box  will overflow */
+  height:100%;
 
   /*font-size: 3vmin;*/
   background-color: #66f;
@@ -507,29 +478,32 @@ input[type="range"] {
   padding-left:1em; /* Avoid round border collision */
   text-align:center;
 
-	border-color: var(--touchmenu-bg-blue);
+  border-color: var(--touchmenu-bg-blue);
   /*padding-top: 0.2em;
   padding-bottom: 0.1px;*/
-	/*height:100%;*/
+  /*height:100%;*/
 }
 #playlistAdd_input:focus{
-	outline: none;
-	background-color:#333333;
+  outline: none;
+  background-color:#333333;
 }
 #playlistAdd_input::placeholder{
   color: var(--main-bg-color);
 }
+#playlistAdd_input:focus::placeholder{
+  color: transparent;
+}
 #playlistAdd_btn{
-	width:4em;
+  width:4em;
 
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
 }
 
 .button_r {
-	flex: 0 0 auto;
+  flex: 0 0 auto;
 
   text-align: center;
   box-sizing: border-box; /* Border respected by width. */
@@ -843,7 +817,7 @@ td.playlist.playing:hover {
 }
 
 #share_selector {
-	height:100%;
+  height:100%;
   font-size: 3vmin; /* smaler than playlist button font to prevent clip of text, but got same button height. */
   background-color: var(--main-bg-color);
   color: var(--main-fg-color);
@@ -851,120 +825,122 @@ td.playlist.playing:hover {
   border-radius: 60px;
   /*padding-left:1em; /* Avoid round border collision */
   text-align:center;
-
-  text-transform: capitalize;
 }
 
-ul#sharelist {
-  list-style-type: none; /* Remove bullets */
-  padding: 0px;
-  /*vertical-align:top;*/
-}
+/*#share_selector ,
+text-transform: capitalize;
+}*/
 
-#sharelist li {
-  display: flex;
+  ul#sharelist {
+    list-style-type: none; /* Remove bullets */
+    padding: 0px;
+    /*vertical-align:top;*/
+  }
 
-  border-radius: 6px;
-  /*border: 3px solid #999;*/
-  color: var(--main-bg-color);
-  margin-bottom:0.5em;
-  margin-right: 20px;
+  #sharelist li {
+    display: flex;
 
-  min-height:2.5em;
+    border-radius: 6px;
+    /*border: 3px solid #999;*/
+    color: var(--main-bg-color);
+    margin-bottom:0.5em;
+    margin-right: 20px;
 
-  border-collapse: collapse;
-}
+    min-height:2.5em;
 
-#sharelist li * { /* same height of all elements in <li> */
-  padding-top:.5em;
-  padding-bottom:.3em;
-  vertical-align: middle;
-}
+    border-collapse: collapse;
+  }
 
-#sharelist li.dir_up:first-child { /* ".." do not scrolls off screen */
-  position: sticky;
-  top: 0px;
-}
+  #sharelist li * { /* same height of all elements in <li> */
+    padding-top:.5em;
+    padding-bottom:.3em;
+    vertical-align: middle;
+  }
 
-
-#sharelist li *.share_file,
-#sharelist li *.share_dir { /* title */
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  /*margin-right:auto;*/ /* not required with flex-property */
-  flex: 1 1 auto;
-  text-align: left;
-
-  font-weight: bold;
-}
-
-#sharelist li *.share_bullet,
-#sharelist li *.share_dir,
-#sharelist li *.share_file {
-  cursor: pointer;
-}
-
-/*#sharelist li *:nth-child(3) { /* action button */
-#sharelist li *.share_action { /* action button */
-  cursor: pointer;
-  text-align: center;
-  /*display:inline-block;*/
-  /*width: 4em;*/ /* not respected due above flex-prop */
-  flex-basis: 4em;
-  flex-grow: 0;
-  flex-shrink: 0;
-}
-
-#sharelist li *.share_action:hover,
-#sharelist li *.share_dir:hover,
-#sharelist li *.share_file:hover { /* action button */
-  border-radius: 6px;
-  background-color: var(--playlist-bg-active);
-}
-
-ul#sharelist li i.share_bullet_dotdot,
-ul#sharelist li i.share_bullet {
-  margin-right: 0.6em;
-  /*display:inline-block;*/
-  text-align:right;
-
-  /*width:2em;*/
-  flex-basis: 2em;
-  flex-grow: 0;
-  flex-shrink: 0;
-}
-
-/* Long chapter titles can vertially be cut by overflow:hidden
- * Using this, class the text will be not drawn after N lines */
-.truncate-text-multiline2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.truncate-text-multiline3 {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
+  #sharelist li.dir_up:first-child { /* ".." do not scrolls off screen */
+    position: sticky;
+    top: 0px;
+  }
 
 
+  #sharelist li *.share_file,
+  #sharelist li *.share_dir { /* title */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    /*margin-right:auto;*/ /* not required with flex-property */
+    flex: 1 1 auto;
+    text-align: left;
 
-#debug {
-  position:absolute;
-  left:0px;
-  bottom:0px;
-  font-weight:bold;
-  z-index:1001;
-}
+    font-weight: bold;
+  }
 
-/* Touchmenu */
-.touchmenu {
-  /*top: 0; left: 0; right: 0; bottom: 0;*/
-  /* Do not set here top,left,right,bottom values because
-   * javascript's removeProperty won't work as expected */
+  #sharelist li *.share_bullet,
+  #sharelist li *.share_dir,
+  #sharelist li *.share_file {
+    cursor: pointer;
+  }
+
+  /*#sharelist li *:nth-child(3) { /* action button */
+  #sharelist li *.share_action { /* action button */
+    cursor: pointer;
+    text-align: center;
+    /*display:inline-block;*/
+    /*width: 4em;*/ /* not respected due above flex-prop */
+    flex-basis: 4em;
+    flex-grow: 0;
+    flex-shrink: 0;
+  }
+
+  #sharelist li *.share_action:hover,
+  #sharelist li *.share_dir:hover,
+  #sharelist li *.share_file:hover { /* action button */
+    border-radius: 6px;
+    background-color: var(--playlist-bg-active);
+  }
+
+  ul#sharelist li i.share_bullet_dotdot,
+  ul#sharelist li i.share_bullet {
+    margin-right: 0.6em;
+    /*display:inline-block;*/
+    text-align:right;
+
+    /*width:2em;*/
+    flex-basis: 2em;
+    flex-grow: 0;
+    flex-shrink: 0;
+  }
+
+  /* Long chapter titles can vertially be cut by overflow:hidden
+   * Using this, class the text will be not drawn after N lines */
+  .truncate-text-multiline2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .truncate-text-multiline3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+
+
+  #debug {
+    position:absolute;
+    left:0px;
+    bottom:0px;
+    font-weight:bold;
+    z-index:1001;
+  }
+
+  /* Touchmenu */
+  .touchmenu {
+    /*top: 0; left: 0; right: 0; bottom: 0;*/
+    /* Do not set here top,left,right,bottom values because
+     * javascript's removeProperty won't work as expected */
   /*position: absolute; display:none; Set by JS*/
 
   max-height:38vh;
@@ -1058,114 +1034,114 @@ input[type="range"].chapter_mark_svg::-webkit-slider-runnable-track
 
   /* Slider chapter marks END */
 
-/* Smartphones and tablets with middle resolution/high dpi ?!*/
-/* Slim design with controls in one column. */
-@media all and (max-width: 35em) {
+  /* Smartphones and tablets with middle resolution/high dpi ?!*/
+  /* Slim design with controls in one column. */
+  @media all and (max-width: 35em) {
 
-  #controlBox
-  {
-  grid-template-columns: [Cleft] repeat(5, 1fr) [Cright];
+    #controlBox
+    {
+      grid-template-columns: [Cleft] repeat(5, 1fr) [Cright];
 
-  grid-template-rows:
-  /*minmax(min-content, 5em) /* header row */
-  [Ccycle]
-  1fr   /* cycleControls */
-  [CcycleEnd]
-  20px  /* free space */
-  [Ctop]
-  minmax(min-content, 1.5fr) /* topControls */
-  [CtopEnd]
-  20px  /* free space */
-  [Cmain1]
-  minmax(min-content, 1.5fr) /* leftControls1 */
-  [Cmain2]
-  3fr   /* leftControls2 */
-  [Cmain3]
-  1fr  /* rightControls1 */
-  [Cmain4]
-  3fr  /* rightControls2 */
-  [Cend];
-  /*justify-content:space-between;*/
-  align-items:start;
-  justify-items: stretch;
-  grid-gap:0px 20px;
+      grid-template-rows:
+      /*minmax(min-content, 5em) /* header row */
+      [Ccycle]
+      1fr   /* cycleControls */
+      [CcycleEnd]
+      20px  /* free space */
+      [Ctop]
+      minmax(min-content, 1.5fr) /* topControls */
+      [CtopEnd]
+      20px  /* free space */
+      [Cmain1]
+      minmax(min-content, 1.5fr) /* leftControls1 */
+      [Cmain2]
+      3fr   /* leftControls2 */
+      [Cmain3]
+      1fr  /* rightControls1 */
+      [Cmain4]
+      3fr  /* rightControls2 */
+      [Cend];
+      /*justify-content:space-between;*/
+      align-items:start;
+      justify-items: stretch;
+      grid-gap:0px 20px;
 
-  /*overflow:hidden;*/
-  overflow-x:hidden;
-  overflow-y:auto;
-  padding-right: 40px; /* scrollbar-space?! */
+      /*overflow:hidden;*/
+      overflow-x:hidden;
+      overflow-y:auto;
+      padding-right: 40px; /* scrollbar-space?! */
 
-}
+    }
 
-  #cycleControls{
-    grid-column-start:Cleft;
-    grid-column-end:Cright;
-    grid-row-start:Ccycle;
-    grid-row-end:Ccycle;
-  }
+    #cycleControls{
+      grid-column-start:Cleft;
+      grid-column-end:Cright;
+      grid-row-start:Ccycle;
+      grid-row-end:Ccycle;
+    }
 
-  #topControls {
-    grid-column-start:Cleft;
-    grid-column-end:Cright;
-    grid-row-start:Ctop;
-    grid-row-end:CtopEnd;
-  }
+    #topControls {
+      grid-column-start:Cleft;
+      grid-column-end:Cright;
+      grid-row-start:Ctop;
+      grid-row-end:CtopEnd;
+    }
 
-  #leftControls1 {
-    grid-column-start:Cleft;
-    grid-column-end:Cright;
-    grid-row-start:Cmain1;
-    grid-row-end:Cmain2;
-  }
-  #leftControls2 {
-    grid-column-start:Cleft;
-    grid-column-end:Cright;
-    grid-row-start:Cmain2;
-    grid-row-end:Cmain3;
+    #leftControls1 {
+      grid-column-start:Cleft;
+      grid-column-end:Cright;
+      grid-row-start:Cmain1;
+      grid-row-end:Cmain2;
+    }
+    #leftControls2 {
+      grid-column-start:Cleft;
+      grid-column-end:Cright;
+      grid-row-start:Cmain2;
+      grid-row-end:Cmain3;
 
-    /*margin-bottom: 20px; */
-    /*height: 13em;*/
-    grid-auto-rows:30%;
-  }
+      /*margin-bottom: 20px; */
+      /*height: 13em;*/
+      grid-auto-rows:30%;
+    }
 
-  #rightControls1 {
-    grid-column-start:Cleft;
-    grid-column-end:Cright;
-    grid-row-start:Cmain3;
-    grid-row-end:Cmain4;
+    #rightControls1 {
+      grid-column-start:Cleft;
+      grid-column-end:Cright;
+      grid-row-start:Cmain3;
+      grid-row-end:Cmain4;
 
-    /*grid-auto-rows:44%;*/
-  }
+      /*grid-auto-rows:44%;*/
+    }
 
-  #rightControls2 {
-    grid-column-start:Cleft;
-    grid-column-end:Cright;
-    grid-row-start:Cmain4;
-    grid-row-end:Cend;
+    #rightControls2 {
+      grid-column-start:Cleft;
+      grid-column-end:Cright;
+      grid-row-start:Cmain4;
+      grid-row-end:Cend;
 
-    grid-auto-rows:30%;
-  }
+      grid-auto-rows:30%;
+    }
 
-  .button {
-    max-height:6vh;
-  }
+    .button {
+      max-height:6vh;
+    }
 
-  .button .icon-content{
-    font-size: 5vh;
-    /*padding-top:0.1em;*/
-    padding-bottom:0.1em;
-  }
+    .button .icon-content{
+      font-size: 5vh;
+      /*padding-top:0.1em;*/
+      padding-bottom:0.1em;
+    }
 
-  .truncate-text-multiline3 {
-    display: -webkit-box;
-    -webkit-line-clamp: 5;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-  /*#debug::after {
+    .truncate-text-multiline3 {
+      display: -webkit-box;
+      -webkit-line-clamp: 5;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    /*#debug::after {
     color:navy;
     content: "slim"
-  }*/
+    }*/
 
 
   #playlist::-webkit-scrollbar {
@@ -1175,7 +1151,7 @@ input[type="range"].chapter_mark_svg::-webkit-slider-runnable-track
 
 /* Design for wide screens */
 /*@media all and (min-width: 80em) */
-@media all and (min-width: 80em) and (min-width: 150vh)
+@media all and (min-width: 60em) and (min-width: 150vh) 
 {
   #headerBox {
     min-height:15%;
@@ -1187,9 +1163,7 @@ input[type="range"].chapter_mark_svg::-webkit-slider-runnable-track
 
   #controlBox
   {
-    max-height:90%;
-    height:80vmax;
-    width:100em;
+    max-width:80em;  /* Using 'width' would produce jump during layout transition */
     margin-left:auto;
     margin-right:auto;
   }
@@ -1203,10 +1177,80 @@ input[type="range"].chapter_mark_svg::-webkit-slider-runnable-track
     /*font-size: min(4.5vw, 4em);*/ /* Macht Ärger in Volume-Zeile und führt zu ungleichmäßig hohen Buttons.*/
   }
 
-  /*#debug::before {
-    color:navy;
-    content: "wide"
-  }*/
+
+  /* Buttons on right side in overlays
+   * | L |   1 5
+   * | I |   —2—
+   * | S |   3 4
+   * | T |  (—6—)
+   */
+  #overlay1 ,
+  #overlay2 {
+    display:grid;
+    grid-template-columns:
+    [Cleft]
+    62vw
+    [Cright]
+    2em
+    repeat(6, [Ccontrols] 1fr)
+    [Ccontrols_end]
+    2em;
+
+    grid-template-rows:
+    [Rcontent]
+    repeat(4, [Rrow] minmax(2em, 8vh))
+    auto
+    [Rend]
+    1rem;
+
+    align-items:start;
+    justify-items: stretch auto;
+    grid-gap:1vw 1vw;
+
+    /*padding-right: 2em;
+    padding-left: 2em; */
+}
+
+.playlist-controls .position1 {
+  grid-column:Ccontrols 1 / span 3;
+  grid-row:Rrow 1 / span 1;
+}
+.playlist-controls .position2 {
+  grid-column:Ccontrols 1 / span 6;
+  grid-row:Rrow 2 / span 1;
+}
+.playlist-controls .position3 {
+  grid-column:Ccontrols 1/ span 3;
+  grid-row:Rrow 3 / span 1;
+}
+.playlist-controls .position4 {
+  grid-column:Ccontrols 4/ span 3;
+  grid-row:Rrow 3 / span 1;
+}
+.playlist-controls .position5 {
+  grid-column:Ccontrols 4/ span 3;
+  grid-row:Rrow 1 / span 1;
+}
+
+#playlistAdd{
+  grid-column:Ccontrols 1 / span 6;
+  grid-row:Rrow 4 / span 1;
+}
+
+#playlist ,
+#sharelist {
+  margin-top:1rem;
+  margin-bottom:1rem;
+  padding-left:2rem; /* Margin is auto for centering */
+  /*min-height:80vh;*/
+  max-width:62vw;
+  max-width:100%;
+}
+
+/*#debug::before {
+color:navy;
+content: "wide"
+}*/
 } /* end of @media  */
 
 /* For debugging */
@@ -1247,7 +1291,7 @@ input[type="range"].chapter_mark_svg::-webkit-slider-runnable-track
   }
 
   /*#debug::after {
-    color:navy;
-    content: "debug"
+  color:navy;
+  content: "debug"
   }*/
 } /* end of @media  */
