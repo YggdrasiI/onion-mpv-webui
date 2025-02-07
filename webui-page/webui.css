@@ -299,8 +299,20 @@ input[type="range"] {
   z-index: 1000;
   position: fixed;
   visibility: hidden;
-  text-align: center;
+  /*text-align: center;*/
   background-color: rgba(0, 0, 0, 0.85);
+}
+
+#overlay2{
+  visibility: visible;
+}
+
+#overlay2 {
+	grid-template-rows: 1fr 1fr auto;
+	grid-template-areas:
+	"overlay_header"
+	"overlay_footer"
+	"overlay_content";
 }
 
 .noscroll {
@@ -310,15 +322,35 @@ input[type="range"] {
 #playlist, #sharelist {
   overflow-y: scroll;
   overflow-x: hidden;
-  position: absolute;
-  top:10vmin;
-  bottom: 1vmin;
+  /*position: absolute;*/
+  position: relative;
+	max-height:80vh;
+  bottom: 1vh;
   left: 0px;
   right:0px;
   padding-right:1em; /* for scrollbar in #playlist */
 
   width:min(90vw, 40em); /* Space nearby window border to close overlay, if possible. */
   margin: 0px auto;
+}
+
+#playlist {
+	top:0vh;
+	margin-bottom:1vh;
+
+  grid-area: overlay_content;
+}
+
+#overlay2_header {
+  grid-area: overlay_header;
+}
+#overlay1_footer {
+  grid-area: overlay_footer;
+	/*display:flex; /* Adjusts height of input field */
+}
+
+#sharelist {
+  top:1vh;
 }
 
 .touchmenu,
@@ -328,41 +360,191 @@ input[type="range"] {
   scrollbar-color: var(--playlist-bg-hover) transparent;
 }
 
-.playlist-button {
+/*.playlist-button {
   margin-top: 15px;
-}
+}*/
 
 .playlistLoopButton {
   font-weight: bold;
 }
 
 .playlist-controls {
-  width: 100%;
+  /*width: 100%;*/
   /*font-size: 75px;*/
   font-size: 4vmin;
   padding-top:0.5vmin;
   margin-bottom: 2vmin;
   margin-top: 1vmin;
-
-  height:5vmin !important; /* overwrites .button value */
 }
 
-table.playlist-control {
-  width: 100%;
+#overlay1 {
+	display:grid;
+  grid-template-columns:
+	[Cleft]
+	2em
+	[Ccontrols]
+	1fr
+	[Ccontrols]
+	1fr
+	1fr
+	[Ccontrols]
+	1fr
+	[Ccontrols]
+	1fr
+	[Ccontrols]
+	1fr
+	[Ccontrols_end]
+	2em
+	[Cright];
+
+  grid-template-rows:
+	[Rfirst_row]
+	minmax(2em, 1fr)
+	[Rsecond_row]
+	minmax(2em, 1fr)
+	1rem
+	[Rcontent]
+	80vh
+	[Rend]
+	1rem;
+
+  align-items:start;
+  justify-items: stretch auto;
+  grid-gap:1vw 1vw;
+
+  /*padding-right: 2em;
+  padding-left: 2em; */
 }
 
-table.playlist-control td {
-  width: 19%;
-  padding-left: 2px;
-  padding-right: 2px;
+#overlay2 {
+	display:grid;
+  grid-template-columns:
+	[Cleft]
+	2em
+	[Ccontrols]
+	1fr
+	[Ccontrols]
+	1fr
+	1fr
+	[Ccontrols]
+	1fr
+	[Ccontrols]
+	1fr
+	[Ccontrols]
+	1fr
+	[Ccontrols_end]
+	2em
+	[Cright];
+
+  grid-template-rows:
+	[Rfirst_row]
+	minmax(2em, 1fr)
+	1rem
+	[Rcontent]
+	90vh
+	[Rend]
+	1rem;
+
+  align-items:start;
+  justify-items: stretch auto;
+  grid-gap:1vw 1vw;
+
+  /*padding-right: 2em;
+  padding-left: 2em; */
 }
 
-table.playlist-control td:nth-child(2) {
-  width: 30%;
+.playlist-controls *{
+  /*grid-column-start:Ccontrols_left;
+  grid-column-end:Ccontrols_right;*/
+  /*grid-row-start:Rfirst_row;
+  grid-row-end:Rsecond_row;*/
+	overflow:hidden; /* Prevents
+	1. Right shift of buttons by too long texts in buttons
+	2. Too high buttons do not match top-/baseline*/
 }
 
-table.playlist-control td:last-child {
-  width: 12%;
+.playlist-controls .position1 {
+ grid-column:Ccontrols / span 1;
+}
+.playlist-controls .position2 {
+ grid-column:Ccontrols 2 / span 2;
+}
+.playlist-controls .position3 {
+ grid-column:Ccontrols 3/ span 1;
+}
+.playlist-controls .position4 {
+ grid-column:Ccontrols 4/ span 1;
+}
+.playlist-controls .position5 {
+ grid-column:Ccontrols 5/ span 1;
+}
+
+#playlistAdd{
+	grid-column:Ccontrols 2 / span 3;
+  /*grid-row:Rfirst_row / span 1;*/
+  grid-row:Rsecond_row / span 1;
+
+	display:flex; /* input field with variable width + button */
+  justify-content: center;
+	align-items:center; /* Do not use stretch here. It streches
+	the elements, but does not allow to center the text in the button.
+	Instead we need to center here and using an inner flexbox for stretching*/
+
+	height:100%;
+}
+
+#playlistAdd_input{
+	flex: 1 1 auto;
+	min-width: 4em; /* Without this in slim layouts the grid box  will overflow */
+	height:100%;
+
+  /*font-size: 3vmin;*/
+  background-color: #66f;
+  color: var(--main-fg-color);
+  /*box-sizing: border-box; /* Border respected by width. */
+  border-top-left-radius: 60px;
+  border-bottom-left-radius: 60px;
+  padding-left:1em; /* Avoid round border collision */
+  text-align:center;
+
+	border-color: var(--touchmenu-bg-blue);
+  /*padding-top: 0.2em;
+  padding-bottom: 0.1px;*/
+	/*height:100%;*/
+}
+#playlistAdd_input:focus{
+	outline: none;
+	background-color:#333333;
+}
+#playlistAdd_input::placeholder{
+  color: var(--main-bg-color);
+}
+#playlistAdd_btn{
+	width:4em;
+
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	height: 100%;
+}
+
+.button_r {
+	flex: 0 0 auto;
+
+  text-align: center;
+  box-sizing: border-box; /* Border respected by width. */
+  border-bottom-right-radius: 60px;
+  border-top-right-radius: 60px;
+  color: var(--main-bg-color);
+  cursor: pointer;
+}
+
+#playlist ,
+#sharelist {
+  grid-column-start:Cleft;
+  grid-column-end:Cright;
+  grid-row-start:Rcontent;
+  grid-row-end:Rend;
 }
 
 table.playlist {
@@ -661,7 +843,7 @@ td.playlist.playing:hover {
 }
 
 #share_selector {
-  width: 80%;
+	height:100%;
   font-size: 3vmin; /* smaler than playlist button font to prevent clip of text, but got same button height. */
   background-color: var(--main-bg-color);
   color: var(--main-fg-color);

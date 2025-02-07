@@ -26,68 +26,46 @@
     <script src="json-diff.js" type="text/javascript"></script>
   </head>
   <body>
-    <div id="overlay1">
-      <table class="playlist-control">
-        <tr>
-          <td>
-            <div id="quitMpv" class="button red content icon-content playlist-controls">
-              Mpv <i class="fas fa-window-close"></i>
-            </div>
-          </td>
-          <td>
-            <div name="togglePlayPause" class="button green content icon-content playPauseButton playlist-controls">
-              <i class="fas fa-play"></i><i class="fas fa-pause"></i>
-            </div>
-          </td>
-          <td>
-            <div name="playlistLoopCycle" class="button blue content icon-content playlist-controls playlistLoopButton">
-              <i class="fas fa-redo-alt"></i>
-            </div>
-          </td>
-          <td>
-            <div name="playlistShuffle" class="button blue content icon-content playlist-controls">
-              <i class="fas fa-random"></i>
-            </div>
-          </td>
-          <td>
-            <div name="togglePlaylist" class="button violet content icon-content playlist-controls">
-              <i class="fas fa-times-circle"></i>
-            </div>
-          </td>
-        </tr>
-      </table>
-      <div id="playlist"></div>
-    </div>
-    <div id="overlay2">
-      <table class="playlist-control">
-        <tr>
-          <td>
-            <div name="browseShares" class="button violet content icon-content playlist-controls">
-              Browse<i class="fas fa-external-link-alt"></i>
-            </div>
-          </td>
-          <td>
-            <select id="share_selector" class="playlist-controls"></select>
-          </td>
-          <td>
-            <div name="shareSortingAlpha" class="button blue content icon-content playlist-controls shareSortButton_alpha">
-              <i class="fas fa-sort-alpha-up"></i>Name
-            </div>
-          </td>
-          <td>
-            <div name="shareSortingDate" class="button blue content icon-content playlist-controls shareSortButton_date">
-              <i class="fas fa-sort-numeric-up"></i>Date
-            </div>
-          </td>
-          <td>
-            <div name="toggleShares" class="button violet content icon-content playlist-controls">
-              <i class="fas fa-times-circle"></i>
-            </div>
-          </td>
-        </tr>
-      </table>
-      <ul id="sharelist"></ul>
-    </div>
+		<div id="overlay1" class="playlist-controls">
+			<div id="quitMpv" class="button red content icon-content playlist-control position1">
+				Mpv <i class="fas fa-window-close"></i>
+			</div>
+			<div name="togglePlayPause" class="button green content icon-content playPauseButton playlist-control position2">
+				<i class="fas fa-play"></i><i class="fas fa-pause"></i>
+			</div>
+			<div name="playlistLoopCycle" class="button blue content icon-content playlist-control playlistLoopButton position3">
+				<i class="fas fa-redo-alt"></i>
+			</div>
+			<div name="playlistShuffle" class="button blue content icon-content playlist-control position4">
+				<i class="fas fa-random"></i>
+			</div>
+			<div name="togglePlaylist" class="button violet content icon-content playlist-control position5">
+				<i class="fas fa-times-circle"></i>
+			</div>
+			 <div id="playlistAdd">
+				 <input id="playlistAdd_input" type="text" placeholder="            http://" />
+				 <div id="playlistAdd_btn" class="button_r blue content playlist-control">
+					Add<i class="fas fa-plus-square"></i>
+				 </div>
+			 </div>
+			 <div id="playlist"></div>
+		</div>
+		<div id="overlay2" class="playlist-controls">
+			<div name="browseShares" class="button violet content icon-content playlist-control position1">
+				Browse<i class="fas fa-external-link-alt"></i>
+			</div>
+			<select id="share_selector" class="playlist-control position2"></select>
+			<div name="shareSortingAlpha" class="button blue content icon-content playlist-control shareSortButton_alpha position3">
+				<i class="fas fa-sort-alpha-up"></i>Name
+			</div>
+			<div name="shareSortingDate" class="button blue content icon-content playlist-control shareSortButton_date position4">
+				<i class="fas fa-sort-numeric-up"></i>Date
+			</div>
+			<div name="toggleShares" class="button violet content icon-content playlist-control position5">
+				<i class="fas fa-times-circle"></i>
+			</div>
+			<ul id="sharelist"></ul>
+		</div>
 
     <div id="headerBox">
       <div id="header">

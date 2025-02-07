@@ -58,20 +58,25 @@ var mpv_outstanding_status = {
 
 function send_ws(command, ...params){
 
-  api = {
-    command: command,
+  let api = {
+    command: String(command),
     // Note: Syntax 'params[0] || ""', is wrong for param '0'
-    param1: (params[0] == undefined?"":params[0]),
-    param2: (params[1] == undefined?"":params[1]),
+    param1: (params[0] == undefined?"":String(params[0])),
+    param2: (params[1] == undefined?"":String(params[1])),
   }
+
+	// encode params unless fourth argument prevents.
+	if (params[2] === undefined || params[2] === true){
+		api.param1 = encodeURIComponent(api.param1)
+		api.param2 = encodeURIComponent(api.param2)
+	}
 
   DEBUG && console.log(`Sending command: '${api.command}' param1: '${api.param1}' param2: '${api.param2}'`)
 
   if (ws){
     // TODO: Implement json-parser on server side?!
     // At the moment we send simply send the url scheme and the input is threated like send().
-    //uri = String(api.command) + "/" + String(api.param1) + "/" + String(api.param2)
-    uri = String(api.command) + "/" + String(api.param1) + "/" + String(encodeURIComponent(api.param2))
+    uri = `${api.command}/${api.param1}/${api.param2}`
     DEBUG && console.log("Send " + uri)
     ws.send(uri)
     //ws.send(JSON.stringify(api))
@@ -146,22 +151,23 @@ function basename(path){
   return lpath[lpath.length - 1]
 }
 
-function send(command, param1, param2){
-  if( true ) return send_ws(command, param1, param2)
+function send(command, param1, param2, encode){
+  if( true ) return send_ws(command, param1, param2, encode)
 
-  DEBUG && console.log(`Sending command: '${command}' param1: '${param1}' param2: '${param2}'`)
-  var path = 'api/' + command
-  if (param1 !== undefined){
-    path += "/" + param1
-  }
-  if (param2 !== undefined){
-    /* '+' will threaten like ' ', but filenames could included it. We need to encode it.
+	param1 = param1 || ""
+	param2 = param2 || ""
+	encode = encode || true
+	if (encode) {
+		param1 = encodeURIComponent(param1)
+
+    /* '+' will be threaten like ' ', but filenames could included it. We need to encode it.
      * On the server side, onion's codec.c will decode every %XX char on the fly.
      * Thus a file named "%2F" would be inaccesible if it's not encoded.
      */
-    //path += "/" + encodeURI(param2)
-    path += "/" + encodeURIComponent(param2)
-  }
+		param2 = encodeURIComponent(param2)
+	}
+	uri = `api/${api.command}/${api.param1}/${api.param2}`
+  DEBUG && console.log(`Sending command: '${command}' param1: '${param1}' param2: '${param2}'`)
 
   var request = new XMLHttpRequest()
   request.open("post", path)
@@ -383,6 +389,7 @@ function updatePlaylist(new_playlist, old_playlist, new_pause) {
   //DEBUG && console.log(operations)
 
   var playlist = document.getElementById('playlist')
+	var overlay = playlist.parentElement
   // children Index of playlist matches with above index.
 
   var offset = 0
@@ -416,7 +423,7 @@ function updatePlaylist(new_playlist, old_playlist, new_pause) {
    * Maybe a button to scroll to active entry would be nice
    * to catch the open playlist case.
    */
-  if (overlay.style.getPropertyValue("visibility") == "hidden"){
+  if (overlay.style.getPropertyValue("visibility") === "hidden"){
     var pl_index = current_playlist_index(new_playlist)
     if (pl_index) {
       playlist.children[pl_index].scrollIntoView({block: 'center'})
@@ -556,6 +563,11 @@ class KeyBindings {
       "command": "add_volume",
       "param1": "2"
     },
+    {
+      "key": "Escape",
+      "code": 27,
+      "handle": function(evt) { hide_overlays(); }
+    },
   ]
 
   static bindings2 = unfold_bindings(this.bindings)
@@ -577,7 +589,7 @@ function webui_keydown(evt) {
   if ( evt.altKey || evt.ctrlKey || evt.metaKey) {
     return;
   }
-  DEBUG && console.log("Key pressed: " + evt.keyCode + " " + evt.key )
+  true | DEBUG && console.log("Key pressed: " + evt.keyCode + " " + evt.key )
   DEBUG && console.log(evt)
 
   binding = KeyBindings.for_event(evt) // null or Object assigned to this key+modifier combination.
@@ -595,9 +607,18 @@ function webui_keydown(evt) {
     }
   }
 
-  send(binding.command, binding.param1, binding.param2)
-  evt.stopPropagation()
-  evt.preventDefault()  // e.g. avoids 'scrolling by space key'
+	if (binding.handle){
+		binding.handle(evt)
+	}
+
+	if (binding.command){
+		send(binding.command, binding.param1, binding.param2)
+	}
+
+	if (binding.handle || binding.command){
+		evt.stopPropagation()
+		evt.preventDefault()  // e.g. avoids 'scrolling by space key'
+	}
 }
 
 function format_time(seconds){
@@ -1528,6 +1549,15 @@ function elementsByNameOrId(name_or_id){
 	// using the combined query selector avoids this problem.
 }
 
+function send_url_input(evt) {
+			let url_field = document.getElementById("playlistAdd_input")
+			let url = url_field.value
+			if (url) {
+				send("playlist_add", "append", url, false)
+				url_field.value = ""
+			}
+		}
+
 /* To satisfy Content-Security-Policy define
  * onClick/onTouch/etc events here.
  *
@@ -1606,6 +1636,13 @@ function add_button_listener() {
       vol.innerText = slider.value + "%"
     }],
 
+    ['playlistAdd', 'click', send_url_input],
+		['playlistAdd_input', 'keyup', function (evt) {
+			//console.log(evt)
+			if (evt.key === "Enter") {
+				send_url_input(evt)
+			}
+		}],
 
     ['quitMpv', 'click', function (evt) {send('quit') }],
   ]

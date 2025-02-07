@@ -7,6 +7,9 @@
 #include <string.h>
 #include <assert.h>
 
+#include <sys/types.h>
+#include <dirent.h>
+
 #include <onion/low.h>
 
 #include "tools.h"
@@ -485,3 +488,39 @@ int strstarts(
      return strncmp(str, prefix, strlen(prefix));
 }
 
+int check_is_url(
+        const char *url_or_path)
+{
+    if (0 == strstarts(url_or_path, "https://") ||
+            0 == strstarts(url_or_path, "http://"))
+        return 0;
+
+    return -1;
+}
+
+int check_is_non_hidden_file(
+        const char *path)
+{
+    /* Check if resolveable local path */
+    char *realp = NULL;
+    realp = realpath(path, NULL);
+    if (!realp){
+        return -1;
+    }
+
+    /* Check if hidden */
+    if( strlen(realp) == 0 || strstr(realp, "/.") != NULL ){
+        free(realp);
+        return -3;
+    }
+
+    /* Check if dir */
+    DIR *dir = opendir(realp);
+    if (dir) {
+        closedir(dir);
+        free(realp);
+        return -2;
+    }
+
+    return 0;
+}

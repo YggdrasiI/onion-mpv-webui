@@ -532,10 +532,15 @@ int cmd_playlist_add(const char *name,
         return CMD_FAIL;
     }
 
-    if( strstr(url_or_path, "://") == NULL &&
-            ('1' == onion_dict_get(options, "block_non_shared_files")[0])
-      ) {
-        free(*pOutput_message); *pOutput_message = strdup("Input path is no url");
+    int is_url = check_is_url(url_or_path);
+    if (0 > is_url && '1' == onion_dict_get(options, "block_non_shared_files")[0])
+    {
+        free(*pOutput_message); *pOutput_message = strdup("Local files not allowed");
+        return CMD_FAIL;
+    }
+
+    if (0 > is_url && 0 > check_is_non_hidden_file(url_or_path)){
+        free(*pOutput_message); *pOutput_message = strdup("Input is invalid path");
         return CMD_FAIL;
     }
 

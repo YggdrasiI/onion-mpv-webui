@@ -141,3 +141,16 @@ char *enumerated_name(
 int strstarts(
         const char *str,
         const char *prefix);
+
+/* Checks if string begins with "(http|https)://"
+ * (To rule out file:// and other potential problematic ways
+ * to access arbitary files on the host system)
+ */
+int check_is_url(
+        const char *url_or_path);
+
+/* Checks if given path links to a file,
+ * is not hidden nor placed in a hidden folder.
+ */
+int check_is_non_hidden_file(
+        const char *path);
