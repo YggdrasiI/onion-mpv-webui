@@ -289,14 +289,6 @@ input[type="range"] {
   /*margin-bottom: 20px;*/
 }
 
-  /* Buttons on right side in overlays
-   *   1 —2— 3 4 5
-   *    (—6—)
-   *  |   L   |
-   *  |   I   |
-   *  |   S   |
-   *  |   T   |
-   */
 #overlay1, #overlay2 {
   top: 0;
   left: 0;
@@ -319,11 +311,11 @@ input[type="range"] {
   overflow-y: scroll;
   overflow-x: hidden;
   /*position: absolute;*/
-  position: relative;
   max-height:80vh;
+  /*position: relative;
   bottom: 1vh;
   left: 0px;
-  right:0px;
+  right:0px;*/ /* Not needed/wrong in grid layout */
   padding-right:1em; /* for scrollbar in #playlist */
 
   width:min(90vw, 40em); /* Space nearby window border to close overlay, if possible. */
@@ -355,6 +347,14 @@ input[type="range"] {
   margin-top: 1vmin;
 }
 
+/* Grid layout sketch for overlay1/2:
+ *   1 —2— 3 4 5
+ *    (—6—)
+ *  |   L   |
+ *  |   I   |
+ *  |   S   |
+ *  |   T   |
+ */
 #overlay1 {
   display:grid;
   grid-template-columns:
@@ -956,6 +956,7 @@ text-transform: capitalize;
   overflow-y:auto;
 }
 
+.touchmenu ol ,
 .touchmenu ul {
   display:flex;
   /* flex-direction can be adapted by JS */
@@ -987,6 +988,11 @@ text-transform: capitalize;
 
 .touchmenu li:hover {
   background-color: var(--playlist-bg-hover);
+}
+
+.touchmenu-entry span.index {
+  min-width:2.4em;
+  display:inline-block;
 }
 /* Touchmenu END */
 
@@ -1122,6 +1128,7 @@ input[type="range"].chapter_mark_svg::-webkit-slider-runnable-track
       grid-auto-rows:30%;
     }
 
+    #playlistAdd, #share_selector, /* Too guarantee same height as .button-Elements in overlay1 */
     .button {
       max-height:6vh;
     }

@@ -385,8 +385,21 @@ var touchmenu = {
 
   _add_entry: function (ul, title, handler, idx, playlist_range) {
     var el = document.createElement('li')
-    el.classList.add("button", "content", "playlist-controls", "touch-entry")
-    el.innerText = idx<0?`${title}`:`#${idx} ${title}`
+    //el.classList.add("button", "content", "playlist-controls", "touch-entry")
+    el.classList.add("touchmenu-entry")
+
+    if (idx<0) {
+      el.innerText = title
+    }else{
+      var s1 = document.createElement('span')
+      s1.classList.add("index")
+      var s2 = document.createElement('span')
+      s1.innerText = `#${idx}`
+      s2.innerText = title
+      el.appendChild(s1)
+      el.appendChild(s2)
+    }
+
     el.addEventListener("click", handler)
     ul.appendChild(el)
   },
