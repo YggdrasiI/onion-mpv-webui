@@ -638,7 +638,7 @@ td.playlist.playing:hover {
   overflow-x:hidden;
   overflow-y:auto;
   padding-right: 40px; /* scrollbar-space?! */
-  padding-left: 20px; 
+  padding-left: 20px;
 }
 
 #header {
@@ -936,11 +936,15 @@ text-transform: capitalize;
 
 
   #debug {
+		display:none;
     position:absolute;
     left:0px;
     bottom:0px;
     font-weight:bold;
     z-index:1001;
+
+		width:30rem;
+		background-color:rgba(255, 0, 0, 0.5);
   }
 
   /* Touchmenu */
@@ -1018,7 +1022,7 @@ text-transform: capitalize;
   /* Notes:
    * • Style defined in symbol 'mark' and then references later with multiple positions.
    * • Escape '#' with '%23' (ocours e.g. in id names)!
-   * • Setting svg height to auto allows automatic scaling on width of the slider without 
+   * • Setting svg height to auto allows automatic scaling on width of the slider without
    *   keeping the aspect ratio but filling the correct height.
    *   You has to set 'background-size:cover;' too.
    • 'px' in viewBox width of 'mark' is required. Otherwise FF offsets the element.
@@ -1032,7 +1036,7 @@ text-transform: capitalize;
    *
    * Insert an <use xlink:href="%23mark" x="{VAL}" /> tag for each mark.
    * Note that a predefined svg given by data: will be ignored unless
-   the Content-Security-Policy for 'img-src includes 'data:'. 
+   the Content-Security-Policy for 'img-src includes 'data:'.
    We just need an update by JS and probably do not need to open this security hole?!
    * */
   background-image: url('chapter_mark.template.svg');
@@ -1136,7 +1140,7 @@ input[type="range"].chapter_mark_svg::-webkit-slider-runnable-track
       grid-auto-rows:30%;
     }
 
-    #playlistAdd, #share_selector, /* Too guarantee same height as .button-Elements in overlay1 */
+    #playlistAdd, #share_selector, /* This elements, too, to guarantee same height as .button-Elements in overlay1 */
     .button {
       max-height:6vh;
     }
@@ -1187,7 +1191,7 @@ input[type="range"].chapter_mark_svg::-webkit-slider-runnable-track
 
 /* Design for wide screens */
 /*@media all and (min-width: 80em) */
-@media all and (min-width: 50em) and (min-width: 150vh)
+@media all and (min-width: 50rem) and (min-width: 150vh)
 {
   #headerBox {
     min-height:15%;
@@ -1281,6 +1285,10 @@ input[type="range"].chapter_mark_svg::-webkit-slider-runnable-track
   /*min-height:80vh;*/
   max-width:62vw;
   max-width:100%;
+}
+
+table.playlist {
+  font-size: 3vmin; /* Ändert nix?! */
 }
 
 /*#debug::before {

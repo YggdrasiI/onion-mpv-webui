@@ -208,8 +208,10 @@ function toggleOverlay(id, force) {
       document.prevActiveElement = null // reset
       if (document.activeElement.localName === "select"
         // || document.activeElement.localName === "input" /* This does not work because it's already 'body' active */
-        || prevActiveElement /* set by focusout-Event */)
+        || prevActiveElement /* set by focusout-Event */){
+				DEBUG && console.log("Skip hide because of focused input element.")
         return
+			}
 
       // 1.2) Abort if not clicked on empty region of overlay*/
       if (!_click_on_background(evt.target, el)) return
@@ -1688,7 +1690,7 @@ function add_button_listener() {
   })
 }
 
-window.addEventListener('keydown', webui_keydown, true) /* capture to skip scrolling on overlays*/
+window.addEventListener('keydown', webui_keydown, true) /* capture=true to skip scrolling on overlays*/
 window.addEventListener('load', status_init_ws, false)
 window.addEventListener('load', add_button_listener, false)
 //status_ws()
