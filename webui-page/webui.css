@@ -109,7 +109,7 @@ h3 {
 }
 
 .button .text-content {
-  font-size: 2.5vw;
+  /*font-size: 2.5vw;*/ /* On slim screens too different from icon-content buttons. Using 60% on slim screens, now. */
   font-weight: bold;
 }
 
@@ -318,8 +318,15 @@ input[type="range"] {
   right:0px;*/ /* Not needed/wrong in grid layout */
   padding-right:1em; /* for scrollbar in #playlist */
 
+
   width:min(90vw, 40em); /* Space nearby window border to close overlay, if possible. */
-  margin: 0px auto;
+
+  margin-inline: auto;
+  /* box-sizing: border-box;
+  margin-inline: max(1rem, 50% - 40em/2); */ /*
+  Disadvantage: Without 'auto' it blow out grid layout on slim screens.
+  'Solution': Set fixed margin-inline on slim screens and use auto otherwise.
+                                              */
 }
 
 #playlist {
@@ -528,7 +535,7 @@ table.playlist {
   font-size: 4vmin;
   /*margin-left: auto;
   margin-right: auto;*/
-  margin-right:20vmin;
+  /*margin-right:20vmin;*/
   border-collapse: collapse;
   margin-bottom: 10px;
   font-weight: bold;
@@ -557,8 +564,8 @@ td.playlist:nth-child(2) {
 
 td.playlist {
   /*height: 150px;*/
-  padding-top:0.3rem;
-  padding-bottom:0.3rem;
+  padding-top:0.3em;
+  padding-bottom:0.3em;
   text-align: center;
   font-size: 5.5vmin;
   font-weight: bold;
@@ -980,10 +987,11 @@ text-transform: capitalize;
   margin:0px;
   padding:0.3em;
 
-
   overflow:hidden;
   white-space:nowrap; /* single line */
   /*border: 1px solid red;*/
+
+  font-size:60%; /* Unclear reference?! */
 }
 
 .touchmenu li:hover {
@@ -1133,7 +1141,14 @@ input[type="range"].chapter_mark_svg::-webkit-slider-runnable-track
       max-height:6vh;
     }
 
-    .button .icon-content{
+    #controlBox {
+      font-size:60%;
+    }
+
+    .button .text-content {
+      /*font-size:90%; /* *60% */
+    }
+    .button .icon-content {
       font-size: 5vh;
       /*padding-top:0.1em;*/
       padding-bottom:0.1em;
@@ -1145,10 +1160,24 @@ input[type="range"].chapter_mark_svg::-webkit-slider-runnable-track
       -webkit-box-orient: vertical;
       overflow: hidden;
     }
+
     /*#debug::after {
     color:navy;
     content: "slim"
     }*/
+
+  #playlistAdd{
+    grid-column:Ccontrols 2 / span 4;
+    /*grid-row:Rrow / span 1;*/
+    grid-row:Rrow 2 / span 1;
+  }
+
+  #playlist, #sharelist {
+    /* Give finger enough space to close overlay on borders */
+    box-sizing: border-box;
+    margin-left:min(10vw, 2rem);
+    /*margin-right:max(1vw, 0.5rem);*/
+  }
 
 
   #playlist::-webkit-scrollbar {
@@ -1158,7 +1187,7 @@ input[type="range"].chapter_mark_svg::-webkit-slider-runnable-track
 
 /* Design for wide screens */
 /*@media all and (min-width: 80em) */
-@media all and (min-width: 60em) and (min-width: 150vh) 
+@media all and (min-width: 50em) and (min-width: 150vh)
 {
   #headerBox {
     min-height:15%;
