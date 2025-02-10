@@ -43,7 +43,7 @@ onion_connection_status media_html_root(
     onion_dict_add(d, "page_title", onion_dict_get(options, "page_title"), 0);
     onion_dict_add(d, "shares", shared_folders, OD_DICT);
     onion_dict_add(d, "allow_download_in_shares",
-	    (ad && ad[0] != '0')?"1":"0", 0);
+            (ad && ad[0] != '0')?"1":"0", 0);
 
     onion_response_set_header(res, "Content-Type", onion_mime_get("_.html"));
     int ret = media_html_template(d, req, res); // this frees d!
@@ -146,9 +146,9 @@ onion_connection_status list_share_page(
         //onion_dict_add(d, "uri", uri_full_path, 0);
         onion_dict_add(d, "page_title", onion_dict_get(options, "page_title"), 0);
 
-	const char *ad = onion_dict_get(options, "allow_download_in_shares");
-	onion_dict_add(d, "allow_download_in_shares",
-		(ad && ad[0] != '0')?"1":"0", 0);
+        const char *ad = onion_dict_get(options, "allow_download_in_shares");
+        onion_dict_add(d, "allow_download_in_shares",
+            (ad && ad[0] != '0')?"1":"0", 0);
 
         // Add "Go up" link. Using uri_rel_path because
         // uri_full_path is 'media/html/[share_name]'
@@ -217,34 +217,31 @@ onion_connection_status list_share_page(
             struct stat st;
             if( ps >= 0 && ps < __tmp_path_len && 0 == stat(__tmp_path, &st) )
             {
-                int s = st.st_size;
-
-                ps = snprintf(__tmp_path, __tmp_path_len,
-                        "%d", s);
-                if( ps >= 0 && ps < __tmp_path_len ){
-                    onion_dict_add(file, "size", __tmp_path, OD_DUP_VALUE);
+                int is_dir = S_ISDIR(st.st_mode);
+                if (is_dir){
+                    onion_dict_add(file, "type", "dir", 0);
                 }else{
-                    onion_dict_add(file, "size", "snprintf fails", OD_DUP_VALUE);
+                    onion_dict_add(file, "type", "file", 0);
                 }
 
-                // Human readable form
-                if( s > 1E9 ) {
+                if (!is_dir){
                     ps = snprintf(__tmp_path, __tmp_path_len,
-                            "%.1f GB", ((double)s)/1.0E9 );
-                } else if( s > 1E6 ) {
-                    ps = snprintf(__tmp_path, __tmp_path_len,
-                            "%.1f MB", ((double)s)/1E6 );
-                } else if( s > 1E3 ) {
-                    ps = snprintf(__tmp_path, __tmp_path_len,
-                            "%.1f kB", ((double)s)/1E3 );
-                } else {
-                    ps = snprintf(__tmp_path, __tmp_path_len,
-                            "%d B", s);
-                }
-                if( ps >= 0 && ps < __tmp_path_len ){
-                    onion_dict_add(file, "size2", __tmp_path, OD_DUP_VALUE);
+                            "%lld", st.st_size);
+                    if( ps >= 0 && ps < __tmp_path_len ){
+                        onion_dict_add(file, "size", __tmp_path, OD_DUP_VALUE);
+                    }else{
+                        onion_dict_add(file, "size", "snprintf fails", OD_DUP_VALUE);
+                    }
+
+                    ps = print_filesize_BIN64(__tmp_path, __tmp_path_len, st.st_size);
+                    if( ps >= 0 && ps < __tmp_path_len ){
+                        onion_dict_add(file, "size2", __tmp_path, OD_DUP_VALUE);
+                    }else{
+                        onion_dict_add(file, "size2", "snprintf fails", OD_DUP_VALUE);
+                    }
                 }else{
-                    onion_dict_add(file, "size2", "snprintf fails", OD_DUP_VALUE);
+                    onion_dict_add(file, "size", "", 0);
+                    onion_dict_add(file, "size2", "", 0);
                 }
 
                 ps = snprintf(__tmp_path, __tmp_path_len,
@@ -252,7 +249,7 @@ onion_connection_status list_share_page(
                 if( ps >= 0 && ps < __tmp_path_len ){
                     onion_dict_add(file, "modified", __tmp_path, OD_DUP_VALUE);
                 }else{
-                    onion_dict_add(file, "modified", "snprintf fails", OD_DUP_VALUE);
+                    onion_dict_add(file, "modified", "snprintf fails", 0);
                 }
 
                 ps = snprintf(__tmp_path, __tmp_path_len,
@@ -260,19 +257,14 @@ onion_connection_status list_share_page(
                 if( ps >= 0 && ps < __tmp_path_len ){
                     onion_dict_add(file, "owner", __tmp_path, OD_DUP_VALUE);
                 }else{
-                    onion_dict_add(file, "owner", "snprintf fails", OD_DUP_VALUE);
-                }
-
-                if (S_ISDIR(st.st_mode)){
-                    onion_dict_add(file, "type", "dir", 0);
-                }else{
-                    onion_dict_add(file, "type", "file", 0);
+                    onion_dict_add(file, "owner", "snprintf fails", 0);
                 }
 
             }else{
-                onion_dict_add(file, "size", "?", OD_DUP_VALUE);
-                onion_dict_add(file, "modified", "?", OD_DUP_VALUE);
-                onion_dict_add(file, "owner", "?", OD_DUP_VALUE);
+                onion_dict_add(file, "size", "?", 0);
+                onion_dict_add(file, "size2", "?", 0);
+                onion_dict_add(file, "modified", "?", 0);
+                onion_dict_add(file, "owner", "?", 0);
                 onion_dict_add(file, "type", "?", 0);
             }
 

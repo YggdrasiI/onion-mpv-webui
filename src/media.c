@@ -1,4 +1,6 @@
 #define _GNU_SOURCE
+#define _LARGE_FILES
+#define _FILE_OFFSET_BITS 64
 
 #include <stddef.h>
 #include <stdio.h>

@@ -1,4 +1,6 @@
 #define _GNU_SOURCE
+#define _LARGE_FILES
+#define _FILE_OFFSET_BITS 64
 
 #include <stddef.h>
 #include <stdio.h>
@@ -140,30 +142,35 @@ onion_connection_status fileserver_page(
             int ps = snprintf(tmp_path2, tmp_path_len, "%s/%s", realp, de->d_name);
             if( ps >= 0 && ps < tmp_path_len && 0 == stat(tmp_path2, &st))
             {
-
-                ps = snprintf(tmp_path2, tmp_path_len, "%d", (int)st.st_size);
-                if( ps >= 0 && ps < tmp_path_len ){
-                    onion_dict_add(file, "size", tmp_path2, OD_DUP_VALUE);
+                int is_dir = S_ISDIR(st.st_mode);
+                if (is_dir){
+                    onion_dict_add(file, "type", "dir", 0);
                 }else{
-                    onion_dict_add(file, "size", "snprintf fails", OD_DUP_VALUE);
+                    onion_dict_add(file, "type", "file", 0);
+                }
+
+                if (!is_dir){
+                    //ps = snprintf(tmp_path2, tmp_path_len, "%d", (int)st.st_size);
+                    ps = print_filesize_BIN64(tmp_path2, tmp_path_len, st.st_size);
+                    if( ps >= 0 && ps < tmp_path_len ){
+                        onion_dict_add(file, "size", tmp_path2, OD_DUP_VALUE);
+                    }else{
+                        onion_dict_add(file, "size", "snprintf fails", 0);
+                    }
+                }else{
+                    onion_dict_add(file, "size", "", 0);
                 }
 
                 ps = snprintf(tmp_path2, tmp_path_len, "%d", st.st_uid);
                 if( ps >= 0 && ps < tmp_path_len ){
                     onion_dict_add(file, "owner", tmp_path2, OD_DUP_VALUE);
                 }else{
-                    onion_dict_add(file, "owner", "snprintf fails", OD_DUP_VALUE);
-                }
-
-                if (S_ISDIR(st.st_mode)){
-                    onion_dict_add(file, "type", "dir", 0);
-                }else{
-                    onion_dict_add(file, "type", "file", 0);
+                    onion_dict_add(file, "owner", "snprintf fails", 0);
                 }
 
             }else{
-                onion_dict_add(file, "size", "?", OD_DUP_VALUE);
-                onion_dict_add(file, "owner", "?", OD_DUP_VALUE);
+                onion_dict_add(file, "size", "?", 0);
+                onion_dict_add(file, "owner", "?", 0);
                 onion_dict_add(file, "type", "?", 0);
             }
 

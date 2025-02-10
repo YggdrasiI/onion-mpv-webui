@@ -1,4 +1,8 @@
 #define _GNU_SOURCE // for strchrnul()
+
+#define _LARGE_FILES // For longer file size on 32bit systems (e.g. armv7l)
+#define _FILE_OFFSET_BITS 64
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <stddef.h>
@@ -523,4 +527,48 @@ int check_is_non_hidden_file(
     }
 
     return 0;
+}
+
+// Size in binary units
+// Define _LARGE_FILES (and or D_FILE_OFFSET_BITS 64 ?!) for big files on 32bit Systems, and use off_t type, see
+int print_filesize_BIN64(char *buf, size_t buf_size, off_t num_bytes){
+    // num_bytes is signed. Interpret errors(directories?!) like zero bytes.
+    num_bytes = (num_bytes < 0)?0:num_bytes;
+    int ps;
+
+    if( num_bytes > (1 << 30)){
+        ps = snprintf(buf, buf_size, "%4lld.%03lld GiB",
+                (num_bytes >> 30),
+                1000 * ((num_bytes >> 20) & ((1 << 10)-1)) >> 10 ); /* Next 10 Bits scaled by 1000/1024 */
+    }else if( num_bytes > (1 << 20)){
+        ps = snprintf(buf, buf_size, "%4lld.%03lld MiB",
+                (num_bytes >> 20),
+                1000 * ((num_bytes >> 10) & ((1 << 10)-1)) >> 10 ); /* Next 10 Bits scaled by 1000/1024 */
+    }else if( num_bytes >= (1 << 10)){
+        ps = snprintf(buf, buf_size, "%4lld.%03lld KiB",
+                (num_bytes >> 10),
+                1000 * ((num_bytes >> 0) & ((1 << 10)-1)) >> 10 ); /* Next 10 Bits scaled by 1000/1024 */
+    }else{
+        ps = snprintf(buf, buf_size, "%u", num_bytes);
+    }
+    return ps;
+}
+
+// Size in SI units
+int print_filesize_SI32(char *buf, size_t buf_size, int num_bytes){
+    int ps;
+    if( num_bytes > 1E9 ) {
+        ps = snprintf(buf, buf_size,
+                "%.1f GB", ((double)num_bytes)/1.0E9 );
+    } else if( num_bytes > 1E6 ) {
+        ps = snprintf(buf, buf_size,
+                "%.1f MB", ((double)num_bytes)/1E6 );
+    } else if( num_bytes > 1E3 ) {
+        ps = snprintf(buf, buf_size,
+                "%.1f kB", ((double)num_bytes)/1E3 );
+    } else {
+        ps = snprintf(buf, buf_size,
+                "%d B", num_bytes);
+    }
+    return ps;
 }

@@ -154,3 +154,9 @@ int check_is_url(
  */
 int check_is_non_hidden_file(
         const char *path);
+
+// File size in binary units (B, KiB, MiB, GiB) and for large files.
+int print_filesize_BIN64(char *buf, size_t buf_size, off_t num_bytes);
+
+// File size in SI units (B, kB, MB, GB) and just for 32 bit numbers.
+int print_filesize_SI32(char *buf, size_t buf_size, int inum_bytes);
