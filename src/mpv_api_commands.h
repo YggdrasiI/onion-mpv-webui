@@ -190,14 +190,19 @@ int cmd_playlist_add(const char *name,
 int cmd_media_playlist_add(const char *name,
         const char *flags, const char *fullpath,
         char **pOutput_message);
-// Flags same as mpv's loadfile command, e.g
-// "replace", "append", "append-play"
-//
-int cmd_media_playlist_play(const char *name,
-        const char *flags, const char *fullpath,
-        char **pOutput_message);
-
 
 char *json_status_response();
 
 int check_mpv_err(int status);
+
+/*
+ * This returns 1 if mpv has currently no selected file and is waiting.
+ * Note that following just returns if the --idle flag is set, but not if it's currently waiting.
+ *    mpv_get_property(mpv, "idle", MPV_FORMAT_FLAG, &idle_flag)
+ *
+ *   Return value:
+ *      < 0: Error during fetching of idle status
+ *      = 0: No idle
+ *      = 1: Idle / Waiting on input / No playlist entry selected
+ */
+int check_idle();

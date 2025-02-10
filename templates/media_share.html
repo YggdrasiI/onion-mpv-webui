@@ -21,7 +21,7 @@
 {% for file in files %}
   <tr>
   <td class="icon">
-    <a class="list_icon" target="_api" href="/media/api/playlist_play/{{share_key_encoded}}{{uri_rel_path_encoded}}/{{file.name_encoded}}">
+    <a class="list_icon" target="_api" href="/media/api/playlist_add/replace/{{share_key_encoded}}{{uri_rel_path_encoded}}/{{file.name_encoded}}">
     <span>
     {% if file.type == "dir" %}
     &#x1F4C1;
@@ -36,12 +36,12 @@
         {% if allow_download_in_shares != "0" %}
         <a class="fname" href="/media/html/{{share_key_encoded}}{{uri_rel_path_encoded}}/{{file.name_encoded}}">{{file.name}}</a>
         {% else %}
-        <a class="fname" target="_api" href="/media/api/playlist_play/{{share_key_encoded}}{{uri_rel_path_encoded}}/{{file.name_encoded}}">{{file.name}}</a>
+        <a class="fname" target="_api" href="/media/api/playlist_add/replace/{{share_key_encoded}}{{uri_rel_path_encoded}}/{{file.name_encoded}}">{{file.name}}</a>
         {% endif %}
      {% endif %}
    </td>
    <td class="size">{% if file.type != "dir" %} {{file.size2}} {% endif %}</td>
-   <td class="add"><a target="_api" href="/media/api/playlist_add/{{share_key_encoded}}{{uri_rel_path_encoded}}/{{file.name_encoded}}">+</a></td>
+   <td class="add"><a target="_api" href="/media/api/playlist_add/append/{{share_key_encoded}}{{uri_rel_path_encoded}}/{{file.name_encoded}}">+</a></td>
    </tr>
 {% endfor %}
 </tbody>

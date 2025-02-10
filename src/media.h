@@ -44,12 +44,16 @@ typedef struct __share_data_media_api_t {
     //char *key;
     const char *media_path;
     char *command_name;
+    char *arg1;
+    char *arg2;
     CommandHandler cmd;
     share_info_t *share_info;
 } __share_data_media_api_t;
 
 __share_data_media_api_t *__share_data_media_api_new(
         const char *command_name,
+        const char *arg1,
+        const char *arg2,
         share_info_t *share_info);
 
 void __share_data_media_api_free (

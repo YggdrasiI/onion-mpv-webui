@@ -63,8 +63,6 @@ onion_connection_status media_api_loadfile(
         goto media_api_loadfile_end;
     }
 
-    printf("ZZZZZZ %s\n", privdata->command_name);
-    printf("ZZZZZZ %s\n", __tmp_path);
     if( access( __tmp_path, R_OK ) == -1 ) {
         // file doesn't exist or is not readable
         ret = onion_shortcut_response(
@@ -73,21 +71,12 @@ onion_connection_status media_api_loadfile(
         goto media_api_loadfile_end;
     }
 
-    // Distinct between playlist_add and playlist_play by propagared argument.
-    const char *cmd_arg1 = strcmp(privdata->command_name, "playlist_play") == 0?"replace":"append";
-
     /* Handle data */
 
     // Run command
     char *output_message = NULL;
     pthread_mutex_lock(&mpv_lock);
-    int cmd_status = (cmd)("loadfile", // See mpv's COMMAND INTERFACE 
-             //"append-play", __tmp_path,
-            /* Note: mpv's append-play seems not to start
-             * the file as expected...
-             * ...no difference to append */
-             cmd_arg1, __tmp_path,
-            &output_message);
+    int cmd_status = (cmd)(privdata->command_name, privdata->arg1, __tmp_path, &output_message);
     pthread_mutex_unlock(&mpv_lock);
 
     if (cmd_status > 0){

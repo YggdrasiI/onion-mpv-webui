@@ -63,7 +63,7 @@ int cmd_toggle_pause(const char *name,
     int pause;
     int err = mpv_get_property(mpv, "pause", MPV_FORMAT_FLAG, &pause);
     if (check_mpv_err(err)){
-        return 0;
+        return CMD_FAIL;
     }
 
     pause = pause?0:1;
@@ -80,7 +80,7 @@ int cmd_fullscreen(const char *name,
     int fullscreen;
     int err = mpv_get_property(mpv, "fullscreen", MPV_FORMAT_FLAG, &fullscreen);
     if (check_mpv_err(err)){
-        return 0;
+        return CMD_FAIL;
     }
 
     fullscreen = fullscreen?0:1;
@@ -525,6 +525,8 @@ int cmd_playlist_add(const char *name,
         const char *flags, const char *url_or_path,
         char **pOutput_message)
 {
+#define CHECK_MPV_ERR(VAR, LABEL) check_mpv_err(VAR); if (VAR < MPV_ERROR_SUCCESS) goto LABEL;
+
     int err = MPV_ERROR_GENERIC;
 
     if( strlen(url_or_path) == 0){
@@ -550,25 +552,53 @@ int cmd_playlist_add(const char *name,
 
     const char *cmd[] = {"loadfile", url_or_path, flags, NULL};
     err = _mpv_command(mpv, cmd);
-    check_mpv_err(err);
+    CHECK_MPV_ERR(err, cmd_playlist_add_fail);
 
     // Unpause in replace-case
-    if (err == MPV_ERROR_SUCCESS && 0 == strcmp("replace", flags)) {
+    if (0 == strcmp("replace", flags)) {
         err = cmd_play(NULL, NULL, NULL, NULL);
-        check_mpv_err(err);
+        CHECK_MPV_ERR(err, cmd_playlist_add_fail);
     }
 
-    if (err != MPV_ERROR_SUCCESS){
-        free(*pOutput_message); *pOutput_message = strdup(mpv_error_string(err));
+    // Unpause in append-case if in idle mode (playing latest/new entry in playlist)
+    if (0 == strcmp("append", flags)) 
+    {
+        int idle_flag = check_idle();
+        CHECK_MPV_ERR(err, cmd_playlist_add_fail);
+
+        if (idle_flag > 0){
+            // 1. Get length of playlist
+            int64_t playlist_count = 0;
+            err = mpv_get_property(mpv, "playlist/count", MPV_FORMAT_INT64, &playlist_count);
+            CHECK_MPV_ERR(err, cmd_playlist_add_fail);
+
+            // 2. Jump to last entry
+            if (playlist_count < 1) goto cmd_playlist_add_fail;
+            char buf[22];
+            if (sizeof(buf) <= snprintf(buf, sizeof(buf), "%d", playlist_count-1)) goto cmd_playlist_add_fail;
+            err = cmd_playlist_jump("playlist_jump", buf, "", pOutput_message);
+            CHECK_MPV_ERR(err, cmd_playlist_add_fail);
+
+            // 3. Unpause
+            err = cmd_play(NULL, NULL, NULL, NULL);
+            CHECK_MPV_ERR(err, cmd_playlist_add_fail);
+        }
     }
 
-    return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
+    return CMD_OK;
+
+cmd_playlist_add_fail:
+    free(*pOutput_message); *pOutput_message = strdup(mpv_error_string(err));
+    return CMD_FAIL;
+
+#undef CHECK_MPV_ERR
 }
 
 int cmd_media_playlist_add(const char *name,
         const char *flags, const char *fullpath,
         char **pOutput_message)
 {
+#define CHECK_MPV_ERR(VAR, LABEL) check_mpv_err(VAR); if (VAR < MPV_ERROR_SUCCESS) goto LABEL;
     int err = MPV_ERROR_GENERIC;
 
     // Avoid hidden folders/files and all paths which goes up.
@@ -581,89 +611,53 @@ int cmd_media_playlist_add(const char *name,
         flags = "";
     }
 
-#if 0
-    // Workaround for non-working 'replace' variant in mpv:
-    // It looks like replace does not differs from 'append'?!
-    int use_replace_workaround = ( 0 == strcmp("replace", flags) );
-    // Workorund, step 1/2
-    if ( use_replace_workaround ) {
-        const char *cmd_clear[] = {"playlist-clear", NULL};
-        err = _mpv_command(mpv, cmd_clear);
-        check_mpv_err(err);
-    }
-#endif
     // Old API  < 0.38: loadfile <url> [<flags> [<options>]]
     // New API => 0.38: loadfile <url> [<flags> [<index> [<options>]]]
     // => Is using options-string we has to differ between versions.
 
     const char *cmd[] = {"loadfile", fullpath, flags, NULL};
     err = _mpv_command(mpv, cmd);
-    check_mpv_err(err);
-
-    // Workaround, step 2/2
-#if 0
-    if ( use_replace_workaround ) {
-        cmd_play(NULL, NULL, NULL, NULL);
-    }
-#endif
+    CHECK_MPV_ERR(err, cmd_media_playlist_add_fail);
 
     // Unpause in replace-case
-    if (err == MPV_ERROR_SUCCESS && 0 == strcmp("replace", flags)) {
-        cmd_play(NULL, NULL, NULL, NULL);
+    if (0 == strcmp("replace", flags)) {
+        err = cmd_play(NULL, NULL, NULL, NULL);
+        CHECK_MPV_ERR(err, cmd_media_playlist_add_fail);
     }
 
-    return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
+    // Unpause in append-case if in idle mode (playing latest/new entry in playlist)
+    if (0 == strcmp("append", flags)) 
+    {
+        int idle_flag = check_idle();
+        CHECK_MPV_ERR(err, cmd_media_playlist_add_fail);
+
+        if (idle_flag > 0){
+            // 1. Get length of playlist
+            int64_t playlist_count = 0;
+            err = mpv_get_property(mpv, "playlist/count", MPV_FORMAT_INT64, &playlist_count);
+            CHECK_MPV_ERR(err, cmd_media_playlist_add_fail);
+
+            // 2. Jump to last entry
+            if (playlist_count < 1) goto cmd_media_playlist_add_fail;
+            char buf[22];
+            if (sizeof(buf) <= snprintf(buf, sizeof(buf), "%d", playlist_count-1)) goto cmd_media_playlist_add_fail;
+            err = cmd_playlist_jump("playlist_jump", buf, "", pOutput_message);
+            CHECK_MPV_ERR(err, cmd_media_playlist_add_fail);
+
+            // 3. Unpause
+            err = cmd_play(NULL, NULL, NULL, NULL);
+            CHECK_MPV_ERR(err, cmd_media_playlist_add_fail);
+        }
+    }
+
+    return CMD_OK;
+
+cmd_media_playlist_add_fail:
+    free(*pOutput_message); *pOutput_message = strdup(mpv_error_string(err));
+    return CMD_FAIL;
+#undef CHECK_MPV_ERR
 }
 
-int cmd_media_playlist_play(const char *name,
-        const char *flags, const char *fullpath,
-        char **pOutput_message)
-{
-    int err = MPV_ERROR_GENERIC;
-
-    // Avoid hidden folders/files and all paths which goes up.
-    if( strlen(fullpath) == 0 || strstr(fullpath, "/.") != NULL ){
-        free(*pOutput_message); *pOutput_message = strdup("Wrong path?!");
-        return CMD_FAIL;
-    }
-
-    if (flags == NULL){
-        flags = "";
-    }
-
-#if 0
-    // Workaround for non-working 'replace' variant in mpv:
-    // It looks like replace does not differs from 'append'?!
-    int use_replace_workaround = ( 0 == strcmp("replace", flags) );
-    // Workorund, step 1/2
-    if ( use_replace_workaround ) {
-        const char *cmd_clear[] = {"playlist-clear", NULL};
-        err = _mpv_command(mpv, cmd_clear);
-        check_mpv_err(err);
-    }
-#endif
-    // Old API  < 0.38: loadfile <url> [<flags> [<options>]]
-    // New API => 0.38: loadfile <url> [<flags> [<index> [<options>]]]
-    // => Is using options-string we has to differ between versions.
-
-    const char *cmd[] = {"loadfile", fullpath, flags, NULL};
-    err = _mpv_command(mpv, cmd);
-    check_mpv_err(err);
-
-    // Workaround, step 2/2
-#if 0
-    if ( use_replace_workaround ) {
-        cmd_play(NULL, NULL, NULL, NULL);
-    }
-#endif
-
-    // Unpause in replace-case
-    if (err == MPV_ERROR_SUCCESS && 0 == strcmp("replace", flags)) {
-        cmd_play(NULL, NULL, NULL, NULL);
-    }
-
-    return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
-}
 
 /*
 int cmd_(const char *name,
@@ -710,6 +704,13 @@ char *json_status_response(){
         perror("Can not fetch fullscreen property.\n");
         goto gen_status_error;
     }
+
+    int idle = check_idle();
+    if (idle < 0){
+        perror("Can not fetch idle property.\n");
+        goto gen_status_error;
+    }
+
 
     //char *chapter = "0";
     int64_t chapter = 0;
@@ -761,6 +762,7 @@ char *json_status_response(){
 
             ",\n\"pause\":"             "%d"
             ",\n\"fullscreen\":"        "%d"
+            ",\n\"idle\":"              "%d"
             ",\n\"speed\":"             "%f"
 
             ",\n\"chapter\":"          "%ld"
@@ -786,6 +788,7 @@ char *json_status_response(){
 
             , pause
             , fullscreen
+            , idle
             , fspeed
 
             , chapter
@@ -825,7 +828,7 @@ gen_status_end:
 
     return json;
 
-    /*
+    /* This was the originial return:
        return '{"audio-delay":'..values.audio_delay:sub(1, -4)..',' ..
        '"chapter":' ..values.chapter..',' ..
        '"chapters":' ..values.chapters..',' ..
@@ -849,3 +852,9 @@ gen_status_end:
        */
 }
 
+int check_idle(){
+    int64_t pos;
+    int err = mpv_get_property(mpv, "playlist-pos", MPV_FORMAT_INT64, &pos);
+    if (err != MPV_ERROR_SUCCESS) return err;
+    return (pos<0)?1:0;
+}

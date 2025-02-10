@@ -167,7 +167,7 @@ function share_add_file(add_link, bPlay){
   DEBUG && console.log("Add file: " + add_link)
 
   if ( bPlay ){
-    add_link = add_link.replace("playlist_add","playlist_play")
+    add_link = add_link.replace("playlist_add/append","playlist_add/replace")
   }
 
   var request = new XMLHttpRequest();

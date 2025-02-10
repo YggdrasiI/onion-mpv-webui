@@ -13,10 +13,10 @@
       "name_encoded": "{{file.name_encoded}}",
       {% if file.type == "dir" %}
       {# "list": "/media/api/list/{{share_key_encoded}}{{uri_rel_path_encoded}}/{{file.name_encoded}}/", #}
-      {# "play": "/media/api/playlist_add/{{share_key_encoded}}{{uri_rel_path_encoded}}/{{file.name_encoded}}", #}
+      {# "play": "/media/api/playlist_add/replace/{{share_key_encoded}}{{uri_rel_path_encoded}}/{{file.name_encoded}}", #}
       "size": -1,
       {% else %}
-      {# "play": "/media/api/playlist_add/{{share_key_encoded}}{{uri_rel_path_encoded}}/{{file.name_encoded}}", #}
+      {# "play": "/media/api/playlist_add/replace/{{share_key_encoded}}{{uri_rel_path_encoded}}/{{file.name_encoded}}", #}
       "size": {{file.size}},
       {% endif %}
       {# "owner": {{file.owner}}, #}

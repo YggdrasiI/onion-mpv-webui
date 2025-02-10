@@ -173,6 +173,8 @@ void __share_data_media_html_free (
 }
 __share_data_media_api_t *__share_data_media_api_new(
         const char *command_name,
+        const char *arg1,
+        const char *arg2,
         share_info_t *share_info)
 {
     __share_data_media_api_t *data = calloc(1, sizeof(__share_data_media_api_t));
@@ -182,6 +184,8 @@ __share_data_media_api_t *__share_data_media_api_new(
     data->media_path = onion_dict_get((onion_dict *)share_info, "path");
 
     data->command_name = strdup(command_name);
+    data->arg1 = strdup(arg1);
+    data->arg2 = strdup(arg2);
     data->cmd = (CommandHandler) onion_dict_get(
             media_commands, command_name);
     return data;
@@ -193,13 +197,15 @@ void __share_data_media_api_free (
     //FREE(privdata->key);
     //FREE(privdata->media_path);
     FREE(privdata->command_name);
+    FREE(privdata->arg1);
+    FREE(privdata->arg2);
     free(privdata);
 }
 
 onion_dict *setup_media_commands(){
   onion_dict *_commands = onion_dict_new();
   onion_dict_add(_commands, MEDIA_CMD(playlist_add), 0);
-  onion_dict_add(_commands, MEDIA_CMD(playlist_play), 0);
+  //onion_dict_add(_commands, MEDIA_CMD(playlist_play), 0);
   return _commands;
 }
 
@@ -346,20 +352,20 @@ void __add_handler_for_shares_cont(
     char *url_pattern3=NULL;
     onion_handler *add_media = onion_handler_new(
             (onion_handler_handler) media_api_loadfile,
-            __share_data_media_api_new("playlist_add", share_info),
+            __share_data_media_api_new("playlist_add", "append", "", share_info),
             (onion_handler_private_data_free) __share_data_media_api_free);
 
-    asprintf(&url_pattern3, "^[/]+playlist_add[/]+%s", keychars_in_braces);
+    asprintf(&url_pattern3, "^[/]+playlist_add[/]+append[/+]%s", keychars_in_braces);
     onion_url_add_handler(data->api, url_pattern3, add_media);
 
     // Url pattern to add file of share
     char *url_pattern4=NULL;
     onion_handler *add_media4 = onion_handler_new(
             (onion_handler_handler) media_api_loadfile,
-            __share_data_media_api_new("playlist_play", share_info),
+            __share_data_media_api_new("playlist_add", "replace", "", share_info),
             (onion_handler_private_data_free) __share_data_media_api_free);
 
-    asprintf(&url_pattern4, "^[/]+playlist_play[/]+%s", keychars_in_braces);
+    asprintf(&url_pattern4, "^[/]+playlist_add[/]+replace[/]+%s", keychars_in_braces);
     onion_url_add_handler(data->api, url_pattern4, add_media4);
 
     free(url_pattern4);
