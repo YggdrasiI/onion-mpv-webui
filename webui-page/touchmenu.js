@@ -5,12 +5,12 @@ const options = {
                                   * If true, button will triggered by short click
                                   * and menu will be open by longpress.
                                   */
-  update_default_entry: false,   /* Selected menu entry will replace default 
-                                  * entry for short press. (NOT IMPLEMENTED)
-                                  */
-  default_entry_in_menu: false,  /* If false, the shortpress entry is not included 
-                                  * in touchmenu list. (NOT IMPLEMENTED)
-                                  */
+  update_default_entry: true,   /* Selected menu entry will replace default
+                                 * entry for short press.
+                                 */
+  default_entry_in_menu: true,  /* If false, the shortpress entry is not included
+                                 * in touchmenu list.
+                                 */
   show_silbing_menu: true,       /* If true the menu for the 'opposite operation' will also be shown. */
 }
 
@@ -143,6 +143,11 @@ var touchmenu = {
   options: {
     catch_events_outside: true,
     id_prefix: 'touchmenu',  // -> id_prefix{number}
+
+    seek_menu_entries: {
+      'seekBack1': [-5, -30, -60, -180, -600, -1800],
+      'seekForward1': [10, 30, 60, 180, 600, 1800]
+    },
   },
 
   /* Flag set on pointerdown/mousedown/touchstart.
@@ -502,13 +507,14 @@ var touchmenu = {
     // Search prev M files
     const M = 15
     const playlist = mpv_status['playlist']
-    if (!playlist) return;
 
     // Range [A,B)
     const B = current_playlist_index(playlist)
     const A = Math.max(0, B-M);
-    if (A >= B){
-      this._add_info(menu, "No previous entries") // TODO: Did not respect looping
+    if (!playlist || playlist.length == 0){
+      this._add_info(menu, "No previous entries")
+    } else if (A >= B && false /* Always show first entry */){
+      this._add_info(menu, "No previous entries")
     }else{
       add_entry_args = []
       for(var n=B/*-1*/; n>=A; --n){ // -1 removed to allow jump back to start of current file.
@@ -597,7 +603,9 @@ var touchmenu = {
     // Range [A,B)
     const B = current_chapter_index(mpv_status)
     const A = Math.max(0, B-M);
-    if (A >= B){
+    if (capthers.length == 0){
+      this._add_info(menu, "No previous entries")
+    } else if (A >= B && false /* Always show first entry */){
       this._add_info(menu, "No previous entries")
     }else{
       add_entry_args = []
@@ -764,11 +772,17 @@ var touchmenu = {
     }
   },
 
-  seek_menu: function (evt, seconds_list, kwargs){
+  seek_menu: function (evt, kwargs){
     kwargs = kwargs || {}
 
     let currentTarget = this._target(evt, kwargs)
     if (!currentTarget) return
+
+    let seconds_list = this.options.seek_menu_entries[currentTarget.id]
+    let seek_on_button = 0
+    if (! options.default_entry_in_menu) {
+      seek_on_button = Number(currentTarget.getAttribute('seek')) || 0
+    }
 
     var menu = this._get_element(kwargs.sibling)
     kwargs.preferBottomOffset = 0
@@ -776,13 +790,19 @@ var touchmenu = {
 
     add_entry_args = []
     for (var i = 0; i < seconds_list.length; i++){
+      if (seconds_list[i] === seek_on_button) continue;
+
+      let seek_label = format_time2(seconds_list[i])
       add_entry_args.push([
-        format_time2(seconds_list[i]),
-        function (arg) {
+        seek_label,
+        function (arg, label) {
           return function (evt) {
             send("seek", arg)
+            if (options.update_default_entry){
+              update_seek_button(currentTarget, arg, label)
+            }
           }
-        }(seconds_list[i]),
+        }(seconds_list[i], seek_label),
         -1, [0, seconds_list.length]])
     }
     this._fill_ul(menu, reverse, add_entry_args)
@@ -792,7 +812,7 @@ var touchmenu = {
     if (options.show_silbing_menu && !kwargs.sibling){
       kwargs.sibling = 1
       kwargs.above = reverse // Forces same position for sibling menu
-      this.seek_menu(evt, seconds_list.map((s)=>-s), kwargs)
+      this.seek_menu(evt, kwargs)
     }
   },
 
@@ -931,3 +951,8 @@ screen.orientation.addEventListener('change', (evt) => {
 
 })
 
+function update_seek_button(el, seconds, label){
+  el.setAttribute("seek", seconds)
+  //el.innerText = label
+  el.getElementsByTagName("LABEL")[0].innerText = label
+}

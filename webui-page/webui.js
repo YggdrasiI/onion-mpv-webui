@@ -8,7 +8,7 @@ var DEBUG = false,
     connected = false,
     max_title_size = 60,
     tab_in_background = false,
-	  prevActiveElement = null
+    prevActiveElement = null
 
 var ws = null
 var mpv_status = {}
@@ -209,9 +209,9 @@ function toggleOverlay(id, force) {
       if (document.activeElement.localName === "select"
         // || document.activeElement.localName === "input" /* This does not work because it's already 'body' active */
         || prevActiveElement /* set by focusout-Event */){
-				DEBUG && console.log("Skip hide because of focused input element.")
+        DEBUG && console.log("Skip hide because of focused input element.")
         return
-			}
+      }
 
       // 1.2) Abort if not clicked on empty region of overlay*/
       if (!_click_on_background(evt.target, el)) return
@@ -415,7 +415,7 @@ function updatePlaylist(new_playlist, old_playlist, new_pause) {
   //DEBUG && console.log(operations)
 
   var playlist = document.getElementById('playlist')
-	var overlay = playlist.parentElement
+  var overlay = playlist.parentElement
   // children Index of playlist matches with above index.
 
   var offset = 0
@@ -622,7 +622,7 @@ function webui_keydown(evt) {
   if (binding === null) return
 
   if (document.activeElement.localName === "input" /* localName == tagName.toLowerCase() */
-		||document.activeElement.localName === "select")
+    ||document.activeElement.localName === "select")
   {
     if (document.activeElement.type !== "range"){
       return // Avoid double interpreation of keystroke in normal input fields
@@ -634,18 +634,18 @@ function webui_keydown(evt) {
     }
   }
 
-	if (binding.handle){
-		binding.handle(evt)
-	}
+  if (binding.handle){
+    binding.handle(evt)
+  }
 
-	if (binding.command){
-		send(binding.command, binding.param1, binding.param2)
-	}
+  if (binding.command){
+    send(binding.command, binding.param1, binding.param2)
+  }
 
-	if (binding.handle || binding.command){
-		evt.stopPropagation()
-		evt.preventDefault()  // e.g. avoids 'scrolling by space key'
-	}
+  if (binding.handle || binding.command){
+    evt.stopPropagation()
+    evt.preventDefault()  // e.g. avoids 'scrolling by space key'
+  }
 }
 
 function format_time(seconds){
@@ -654,21 +654,24 @@ function format_time(seconds){
   return date.toISOString().substr(11, 8)
 }
 
-function format_time2(seconds){
-  if (Math.abs(seconds) < 60) {
-    return `${seconds}${UNIT_GAP}s`
+function format_time2(_seconds){
+  let sign = ["-","","+"][Math.sign(_seconds)+1]
+  let seconds = Math.abs(_seconds)
+
+  if (seconds < 60) {
+    return `${sign}${seconds}${UNIT_GAP}s`
   }
-  if (seconds < 0){
-    var min =`${Math.ceil(seconds/60)}${UNIT_GAP}min`
+
+  let min =`${sign}${Math.floor(seconds/60)}${UNIT_GAP}min`
+  /*if (seconds < 0){
+    var min =`${sign}${Math.ceil(seconds/60)}${UNIT_GAP}min`
   }else{
-    var min =`${Math.floor(seconds/60)}${UNIT_GAP}min`
+    var min =`${sign}${Math.floor(seconds/60)}${UNIT_GAP}min`
+  }*/
+  if (0 != seconds % 60){
+    min = `${min} ${seconds%60}${UNIT_GAP}s`
   }
-  if (0 == seconds % 60){
-    var sec = ''
-  }else{
-    var sec = `${Math.abs(seconds)%60}${UNIT_GAP}s`
-  }
-  return min+sec
+  return min
 }
 
 function setFullscreenButton(fullscreen) {
@@ -1570,20 +1573,20 @@ function logging_in_page(){
 }
 
 function elementsByNameOrId(name_or_id){
-	return document.querySelectorAll(`[name=${name_or_id}], #${name_or_id}`)
-	// Node merging .getElementsByName() and .getElementById() isn't
-	// possible without converting results into real Arrays…
-	// using the combined query selector avoids this problem.
+  return document.querySelectorAll(`[name=${name_or_id}], #${name_or_id}`)
+  // Node merging .getElementsByName() and .getElementById() isn't
+  // possible without converting results into real Arrays…
+  // using the combined query selector avoids this problem.
 }
 
 function send_url_input(evt) {
-			let url_field = document.getElementById("playlistAdd_input")
-			let url = url_field.value
-			if (url) {
-				send("playlist_add", "append", url, false)
-				url_field.value = ""
-			}
-		}
+  let url_field = document.getElementById("playlistAdd_input")
+  let url = url_field.value
+  if (url) {
+    send("playlist_add", "append", url, false)
+    url_field.value = ""
+  }
+}
 
 /* To satisfy Content-Security-Policy define
  * onClick/onTouch/etc events here.
@@ -1613,10 +1616,10 @@ function add_button_listener() {
       function(evt) {touchmenu.prev_files(evt)} ],
     ['playlistNext', 'pointerup', function (evt) {send('playlist_next') },
       function(evt) {touchmenu.next_files(evt)} ],
-    ['seekBack1', 'pointerup', function (evt) {send('seek', '-5') },
-      function(evt) {touchmenu.seek_menu(evt, [-30, -60, -180, -600, -1800])} ],
-    ['seekForward1', 'pointerup', function (evt) {send('seek', '10') },
-      function(evt) {touchmenu.seek_menu(evt, [30, 60, 180, 600, 1800])} ],
+    ['seekBack1', 'pointerup', function (evt) {send('seek', evt.target.getAttribute('seek') || '-5') },
+      function(evt) {touchmenu.seek_menu(evt)} ],
+    ['seekForward1', 'pointerup', function (evt) {send('seek', evt.target.getAttribute('seek') || '10') },
+      function(evt) {touchmenu.seek_menu(evt)} ],
     ['seekBack2', 'pointerup', function (evt) {send('seek', '-60') }],
     ['seekForward2', 'pointerup', function (evt) {send('seek', '120') }],
     ['chapterBack', 'pointerup', function (evt) {send('add_chapter', '-1') },
@@ -1664,12 +1667,12 @@ function add_button_listener() {
     }],
 
     ['playlistAdd', 'click', send_url_input],
-		['playlistAdd_input', 'keyup', function (evt) {
-			//console.log(evt)
-			if (evt.key === "Enter") {
-				send_url_input(evt)
-			}
-		}],
+    ['playlistAdd_input', 'keyup', function (evt) {
+      //console.log(evt)
+      if (evt.key === "Enter") {
+        send_url_input(evt)
+      }
+    }],
 
     ['quitMpv', 'click', function (evt) {send('quit') }],
   ]
@@ -1684,8 +1687,8 @@ function add_button_listener() {
     }else{
       // Fallback on non-touchmenu-case: Use only shortpress handle
       els.forEach(el => {
-				el.addEventListener(x[1], x[2])
-			})
+        el.addEventListener(x[1], x[2])
+      })
     }
   })
 }
