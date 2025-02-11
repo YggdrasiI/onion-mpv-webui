@@ -615,7 +615,7 @@ function webui_keydown(evt) {
   if ( evt.altKey || evt.ctrlKey || evt.metaKey) {
     return;
   }
-  true | DEBUG && console.log("Key pressed: " + evt.keyCode + " " + evt.key )
+  DEBUG && console.log("Key pressed: " + evt.keyCode + " " + evt.key )
   DEBUG && console.log(evt)
 
   binding = KeyBindings.for_event(evt) // null or Object assigned to this key+modifier combination.

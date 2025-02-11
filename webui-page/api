@@ -29,5 +29,4 @@ URI                                 |     COMMENT
 …list/{sharename}[/[path]]          |
 …list/{sharename}/.current          |
 …list/.current                      |
-…playlist_add/{sharename}/{path}    |  
-…playlist_play/{sharename}/{path}   |  
+…playlist_add/{append|replace}/{sharename}/{path}    |  

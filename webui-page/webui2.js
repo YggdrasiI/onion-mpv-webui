@@ -24,14 +24,14 @@ var shares = {
 }
 
 function toggleShares(force) {
-	let overlay_is_visible = toggleOverlay("overlay2", force)
+  let overlay_is_visible = toggleOverlay("overlay2", force)
 
   if (overlay_is_visible){
     if (shares.list == null){
       refresh_share_list()
     }
   }
-	return overlay_is_visible
+  return overlay_is_visible
 }
 
 function browseShares() {
@@ -93,7 +93,7 @@ function share_change(el){
 }
 
 function update_selected_share(json){
-	console.log(json)
+  console.log(json)
   shares.selected = -1
   for(var i = 0; i < shares.list.length; ++i) {
     var full_dirpath = `${json.commands.list}/${json.dirpath}`
@@ -108,9 +108,9 @@ function update_selected_share(json){
   if (shares.selected == -1){
     console.log("Error. Given path is no child directory of a share.")
     DEBUG && console.log(json)
-		shares.selected = 0
+    shares.selected = 0
 
-		if (shares.list.length == 0) return;
+    if (shares.list.length == 0) return;
   }
 
   if (shares.selected && shares.list[shares.selected].dir === ".current"){
@@ -167,7 +167,9 @@ function share_add_file(add_link, bPlay){
   DEBUG && console.log("Add file: " + add_link)
 
   if ( bPlay ){
-    add_link = add_link.replace("playlist_add/append","playlist_add/replace")
+    add_link = add_link.replace("playlist_add","playlist_add/replace")
+  }else{
+    add_link = add_link.replace("playlist_add","playlist_add/append")
   }
 
   var request = new XMLHttpRequest();
@@ -176,22 +178,10 @@ function share_add_file(add_link, bPlay){
   request.open("get", add_link)
   //request.open("get", encode_raw_link(add_link))  // This can be used if the server not percent encoded on it's own.
 
-  // Workaround: If mpv idles no entry of playlist is selected.
-  // We has to jump to an entry to re-vite mpv.
-  var is_idle = check_idle(mpv_status)
-  if (is_idle) {
-    var playlist_entry_to_select = bPlay?0:mpv_status.playlist.length
-  }
-
   request.onreadystatechange = function() {
     if (request.readyState === 4 && request.status === 200) {
       var json = JSON.parse(request.responseText);
       DEBUG && console.log(json)
-      if (is_idle) {
-        DEBUG && console.log("Jump to new playlist entry")
-        send("playlist_jump", playlist_entry_to_select)
-        if (bPlay) send("play")
-      }
     } else if (request.status === 0) {
       console.log("Adding file to playlist failed")
     }

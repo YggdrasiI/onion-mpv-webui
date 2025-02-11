@@ -564,7 +564,7 @@ int cmd_playlist_add(const char *name,
     if (0 == strcmp("append", flags)) 
     {
         int idle_flag = check_idle();
-        CHECK_MPV_ERR(err, cmd_playlist_add_fail);
+        CHECK_MPV_ERR(idle_flag, cmd_playlist_add_fail);
 
         if (idle_flag > 0){
             // 1. Get length of playlist
@@ -575,7 +575,7 @@ int cmd_playlist_add(const char *name,
             // 2. Jump to last entry
             if (playlist_count < 1) goto cmd_playlist_add_fail;
             char buf[22];
-            if (sizeof(buf) <= snprintf(buf, sizeof(buf), "%d", playlist_count-1)) goto cmd_playlist_add_fail;
+            if (sizeof(buf) <= snprintf(buf, sizeof(buf), "%d", (int)playlist_count-1)) goto cmd_playlist_add_fail;
             err = cmd_playlist_jump("playlist_jump", buf, "", pOutput_message);
             CHECK_MPV_ERR(err, cmd_playlist_add_fail);
 
@@ -629,7 +629,7 @@ int cmd_media_playlist_add(const char *name,
     if (0 == strcmp("append", flags)) 
     {
         int idle_flag = check_idle();
-        CHECK_MPV_ERR(err, cmd_media_playlist_add_fail);
+        CHECK_MPV_ERR(idle_flag, cmd_media_playlist_add_fail);
 
         if (idle_flag > 0){
             // 1. Get length of playlist
@@ -640,7 +640,7 @@ int cmd_media_playlist_add(const char *name,
             // 2. Jump to last entry
             if (playlist_count < 1) goto cmd_media_playlist_add_fail;
             char buf[22];
-            if (sizeof(buf) <= snprintf(buf, sizeof(buf), "%d", playlist_count-1)) goto cmd_media_playlist_add_fail;
+            if (sizeof(buf) <= snprintf(buf, sizeof(buf), "%d", (int)playlist_count-1)) goto cmd_media_playlist_add_fail;
             err = cmd_playlist_jump("playlist_jump", buf, "", pOutput_message);
             CHECK_MPV_ERR(err, cmd_media_playlist_add_fail);
 
@@ -855,6 +855,10 @@ gen_status_end:
 int check_idle(){
     int64_t pos;
     int err = mpv_get_property(mpv, "playlist-pos", MPV_FORMAT_INT64, &pos);
+
+    // old mpv version delivers -10 during idling.
+    if (err == MPV_ERROR_PROPERTY_UNAVAILABLE) return 1;
+
     if (err != MPV_ERROR_SUCCESS) return err;
     return (pos<0)?1:0;
 }

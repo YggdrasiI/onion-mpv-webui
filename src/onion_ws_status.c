@@ -957,7 +957,7 @@ __status *status_init()
     ADD("chapter-metadata", MPV_FORMAT_NODE_MAP, MPV_FORMAT_NODE_MAP, 0); // like metadata, but rare. Usually chapter title only.
     // chapter-metadata redundant to chapter-list entry..
 
-    ADD("idle", MPV_FORMAT_NODE,  MPV_FORMAT_FLAG, 0);
+    //ADD("idle", MPV_FORMAT_NODE,  MPV_FORMAT_FLAG, 0); // no, wrong value. Derive value from playlist-map in JS (no current file <==> idle)
     status->num_props = pos;
 #undef ADD
 
