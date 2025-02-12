@@ -722,7 +722,7 @@ function setTrackList(tracklist) {
 
   // Video streams
   var el = document.getElementById("nextVideo")
-  if (window.videos.count > 1) {
+  if (window.videos.count > 1 || (window.videos.count > 0 && window.videos.selected == 0)) {
     el.innerText = 'Video ' + window.videos.selected + '/' + window.videos.count
     displayElementClass('video', true)
   }else{
@@ -734,7 +734,7 @@ function setTrackList(tracklist) {
 
   // Audio tracks
   var el = document.getElementById("nextAudio")
-  if (window.audios.count > 1){
+  if (window.audios.count > 1 || (window.audios.count > 0 && window.audios.selected == 0)) {
     el.innerText = 'Audio ' + window.audios.selected + '/' + window.audios.count
     displayElementClass('audio2', true) // for #audio tracks > 1
     displayElementClass('audio1', true) // for #audio tracks > 0

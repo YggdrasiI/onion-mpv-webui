@@ -1200,7 +1200,7 @@ void send_to_all_clients2(
     for( i=0; i<MAX_ACTIVE_CLIENTS; ++i){
         __websocket *pclient = &pclients->clients[i];
         if ( pclient->ws ){
-            //ONION_DEBUG("Send websocket msg");
+            //ONION_DEBUG("Send websocket msg to %d\n", i);
             pthread_mutex_lock(&pclient->lock);
             __chunked_websocket_printf(pclient->ws,
                     "{\"status_diff\": %s }",

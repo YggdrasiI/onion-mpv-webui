@@ -150,6 +150,9 @@ int mpv_open_cplugin(mpv_handle *handle)
             err = mpv_get_property(mpv, "path", MPV_FORMAT_STRING, &path);
             media_track_paths_set(mtp, path);
             mpv_free(path);
+        } else if (event->event_id == MPV_EVENT_TRACK_SWITCHED) {
+            // Trigger update of ws status.
+            property_reobserve("track-list");
         } else {
             LOG("Got event: %d\n", event->event_id);
         }

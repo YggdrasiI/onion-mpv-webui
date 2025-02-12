@@ -354,7 +354,10 @@ int cmd_cycle(const char *name,
             || 0 == strcmp("video", param1))
     {
         // Trigger update of ws status.
-        property_reobserve("track-list");
+        //property_reobserve("track-list");
+        /* (1) -> shifted into mpv event loop
+         * because here it can not react on changes in mpv's window
+         */
     }
 
     return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
@@ -484,7 +487,7 @@ int cmd_set_subtitle(const char *name,
 {
   int  ret = _cmd_set_int(name, "sub", param1, pOutput_message);
   // Trigger update of ws status.
-  property_reobserve("track-list");
+  //property_reobserve("track-list"); // See (1)
   return ret;
 }
 
@@ -494,7 +497,7 @@ int cmd_set_audio(const char *name,
 {
   int  ret = _cmd_set_int(name, "audio", param1, pOutput_message);
   // Trigger update of ws status.
-  property_reobserve("track-list");
+  //property_reobserve("track-list"); // See (1)
   return ret;
 }
 
@@ -504,7 +507,7 @@ int cmd_set_video(const char *name,
 {
   int  ret = _cmd_set_int(name, "video", param1, pOutput_message);
   // Trigger update of ws status.
-  property_reobserve("track-list");
+  //property_reobserve("track-list"); // See (1)
   return ret;
 }
 

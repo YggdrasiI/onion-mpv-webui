@@ -652,7 +652,6 @@ var touchmenu = {
     add_entry_args = []
     for (var i = 0; i < tracklist.length; i++){
       if (tracklist[i].type === 'sub') {
-
         var idx = tracklist[i].id
         add_entry_args.push([
           _text(tracklist[i]),
@@ -664,6 +663,14 @@ var touchmenu = {
           idx, [0, window.subs.count]])
       }
     }
+		if (add_entry_args.length > 0) {
+        add_entry_args.push([
+          "No subtitle",
+					function (evt) {
+              send("set_subtitle", 0)
+					},
+          -1, [0, window.subs.count]])
+		}
     this._fill_ul(menu, reverse, add_entry_args)
     this.show(menu)
 
@@ -710,7 +717,7 @@ var touchmenu = {
               send("set_video", arg)
             }
           }(idx),
-          idx, [0, window.subs.count]])
+          idx, [0, window.videos.count]])
       }
     }
     this._fill_ul(menu, reverse, add_entry_args)
@@ -758,7 +765,7 @@ var touchmenu = {
               send("play")
             }
           }(idx),
-          idx, [0, window.subs.count]])
+          idx, [0, window.audios.count]])
       }
     }
     this._fill_ul(menu, reverse, add_entry_args)
