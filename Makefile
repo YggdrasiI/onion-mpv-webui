@@ -91,7 +91,7 @@ run: "$(MPV_SCRIPT_DIR)/libwebui.conf"
 		mpv --quiet --pause "$$(xdg-user-dir MUSIC)"
 
 # Run 'make configure_debug' before
-#	ONION_DEBUG=127 ONION_DEBUG0='onion_ws_status.c onion_default_errors.c media.c' 
+#	ONION_DEBUG=127 ONION_DEBUG0='onion_ws_status.c onion_default_errors.c media.c'
 run_debug: "$(MPV_SCRIPT_DIR)/libwebui.conf"
 	ONION_DEBUG=1 \
 	mpv --quiet --pause \
@@ -116,6 +116,31 @@ valB: config
 		mpv --profile=webui --quiet\
 		"$${HOME}/Music"
 
+# JS watchdog to update bundle file
+js:
+	cd 3rdparty/watchdog && make run
+	
+jsmin:
+	cd 3rdparty/watchdog && make min
+
+jsmin1:
+	3rdparty/minimizer/terser.sh webui-page/*.js \
+		--compress \
+		> webui-page/static/js/webui.min.js
+
+# Still ok
+jsmin2:
+	3rdparty/minimizer/terser.sh webui-page/*.js \
+		--compress --mangle reserved=['$$','require','exports'] \
+		--mangle-props regex=/^_/ \
+		> webui-page/static/js/webui.min.js
+
+# This wont work because it renames too much and I'm using hasOwnProperty...
+jsmin3:
+	3rdparty/minimizer/terser.sh webui-page/*.js \
+		--compress --mangle reserved=['$$','require','exports'] \
+		--mangle-props \
+		> webui-page/static/js/webui.min.js
 
 # Integrate plugin into mpv-android package
 # (Integrate this plugin into mpv on android without NDK)

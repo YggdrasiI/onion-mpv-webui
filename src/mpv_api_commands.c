@@ -73,6 +73,23 @@ int cmd_toggle_pause(const char *name,
     return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
 }
 
+int cmd_toggle_mute(const char *name,
+        const char *param1, const char *param2,
+        char **pOutput_message)
+{
+    int mute;
+    int err = mpv_get_property(mpv, "mute", MPV_FORMAT_FLAG, &mute);
+    if (check_mpv_err(err)){
+        return CMD_FAIL;
+    }
+
+    mute = mute?0:1;
+    err = mpv_set_property(mpv, "mute", MPV_FORMAT_FLAG, &mute);
+    check_mpv_err(err);
+
+    return (err == MPV_ERROR_SUCCESS)?CMD_OK:CMD_FAIL;
+}
+
 int cmd_fullscreen(const char *name,
         const char *param1, const char *param2,
         char **pOutput_message)

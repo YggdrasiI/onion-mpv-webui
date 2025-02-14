@@ -383,6 +383,7 @@ onion_dict *setup_commands(){
   onion_dict_add(_commands, CMD(play), 0);
   onion_dict_add(_commands, CMD(pause), 0);
   onion_dict_add(_commands, CMD(toggle_pause), 0);
+  onion_dict_add(_commands, CMD(toggle_mute), 0);
   onion_dict_add(_commands, CMD(fullscreen), 0);
   onion_dict_add(_commands, CMD(seek), 0);
   onion_dict_add(_commands, CMD(set_position), 0);

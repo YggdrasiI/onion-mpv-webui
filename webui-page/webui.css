@@ -149,6 +149,13 @@ h3 {
   float: left;
 }
 
+.button label {
+  /* Otherwise in FF hand cursor switches back to text selection*/
+  /*  cursor: inherit;  */
+  /* or */
+  pointer-events:none;
+}
+
 table.prop-table {
   width:100%;
   margin-right:5rem;

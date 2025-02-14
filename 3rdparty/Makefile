@@ -37,3 +37,14 @@ update_bundle:
 	make apply_patches
 	cd onion && git bundle create "../${BUNDLE_NAME}" master..HEAD
 
+
+# Create new swiped-events.min.js
+swiped_events:
+	test -d "swiped-events" || (\
+		git clone --depth=1 https://github.com/john-doherty/swiped-events \
+		&& cp swiped-events.js swiped-events/src/. \
+	  && cd swiped-events && npm install)
+	cd swiped-events \
+		&& npm run build \
+		&& cp dist/swiped-events.min.js ../../webui-page/static/js/.
+

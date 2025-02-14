@@ -23,7 +23,6 @@
     <meta name="format-detection" content="telephone=no">
     <link rel="stylesheet" type="text/css" href="webui.css">
     <link rel="stylesheet" href="static/fontawesome-free-5.0.2/css/fontawesome-all.min.css">
-    <script src="json-diff.js" type="text/javascript"></script>
   </head>
   <body>
     <div id="overlay1" class="playlist-controls">
@@ -163,64 +162,64 @@
       <div id="rightControls2" class="button_grid">
         <div id="playbackSpeed1" class="button yellow control_left audio1">
           <div id="slowerPlayback" class="content text-content">
-            Playback ÷<!-- 1.1-->
+            <label>Playback ÷<!-- 1.1--></label>
           </div>
         </div>
         <div id="playbackSpeedReset" class="button yellow control_info hidden">1.0×</div>
         <div id="playbackSpeed2" class="button yellow control_right audio1">
           <div id="fasterPlayback" class="content text-content">
-            Playback ×<!-- 1.1-->
+            <label>Playback ×<!-- 1.1--></label>
           </div>
         </div>
 
 
         <div id="subDelay1" class="button yellow control_left subtitle">
           <div class="content text-content">
-            Sub delay -
+            <label>Sub delay -</label>
           </div>
         </div>
         <div id="subDelayInfo" class="control_info hidden">Info</div>
         <div id="subDelay2" class="button yellow control_right subtitle">
           <div class="content text-content">
-            Sub delay +
+            <label>Sub delay +</label>
           </div>
         </div>
         <div id="audioDelay1" class="button yellow control_left audio1">
           <div class="content text-content">
-            Audio delay -
+            <label>Audio delay -</label>
           </div>
         </div>
         <div id="audioDelayInfo" class="control_info hidden">Info</div>
         <div id="audioDelay2" class="button yellow control_right audio1">
           <div class="content text-content">
-            Audio delay +
+            <label>Audio delay +</label>
           </div>
         </div>
         <div id="toggleFullscreen" class="button gray control_left">
           <div id="fullscreenButton" class="content text-content">
-            Fullscreen
+            <label>Fullscreen</label>
           </div>
         </div>
         <div id="cycleAudioDevice" class="button gray control_right">
           <div class="content text-content">
-            Audio device
+            <label>Audio device</label>
           </div>
         </div>
       </div>
       <div id="cycleControls" class="button_grid">
         <div id="cycleVideo" class="button violet video hidden control_left with_mid">
           <div id="nextVideo" class="content text-content">
-            Video
+            <label>Video</label>
           </div>
         </div>
         <div id="cycleAudio" class="button violet audio2 hidden control_mid">
           <div id="nextAudio" class="content text-content">
-            Audio
+            <label>Audio</label>
           </div>
         </div>
         <div id="cycleSub" class="button violet subtitle hidden control_right with_mid">
           <div id="nextSub" class="content text-content">
-            Sub
+            <label>Sub</label>
           </div>
         </div>
       </div>
@@ -239,7 +238,29 @@
 
     <div id="debug"></div>
   </body>
-  <script src="touchmenu.js" type="text/javascript"></script>
+  <!--
   <script src="webui.js" type="text/javascript"></script>
+  <script src="json-diff.js" type="text/javascript"></script>
+  <script src="tools.js" type="text/javascript"></script>
+  <script src="chapter_marker.js" type="text/javascript"></script>
+  <script src="static/js/swiped-events.js" type="text/javascript"></script>
+  <script src="audio.js" type="text/javascript"></script>
+  <script src="shares.js" type="text/javascript"></script>
+  <script src="playlist.js" type="text/javascript"></script>
+  <script src="overlays.js" type="text/javascript"></script>
+  <script src="swipes.js" type="text/javascript"></script>
+  <script src="buttons.js" type="text/javascript"></script>
+  <script src="keybindings.js" type="text/javascript"></script>
+  <script src="touchmenu.js" type="text/javascript"></script>
   <script src="webui2.js" type="text/javascript"></script>
+  -->
+  <!--
+  <script src="static/js/webui.bundle.js" type="text/javascript"></script>
+  -->
+  <!-- As modlues  (Not working)
+  <script src="webui.js" type="text/javascript"></script>
+  <script src="static/js/modules.js" type="text/javascript"></script>
+  -->
+  <!---->
+  <script src="static/js/webui.min.js" type="text/javascript"></script>
 </html>

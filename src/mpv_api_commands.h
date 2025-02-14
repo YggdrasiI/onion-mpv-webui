@@ -56,6 +56,10 @@ int cmd_toggle_pause(const char *name,
         const char *param1, const char *param2,
         char **pOutput_message);
 
+int cmd_toggle_mute(const char *name,
+        const char *param1, const char *param2,
+        char **pOutput_message);
+
 int cmd_fullscreen(const char *name,
         const char *param1, const char *param2,
         char **pOutput_message);

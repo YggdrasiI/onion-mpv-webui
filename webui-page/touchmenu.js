@@ -1,4 +1,3 @@
-const DEBUG_TOUCH = false
 
 const options = {
   swap_short_and_long_press: true,     /* If true, menu will open with sort press/click.
@@ -460,18 +459,17 @@ var touchmenu = {
 
     // Search next M files
     const M = 15
-    const playlist = mpv_status['playlist']
-    if (!playlist) return;
+    const playlist = mpv_status['playlist'] || []
 
     // Range [A,B)
-    const A = current_playlist_index(playlist)+1
+    const A = current_playlist_index(playlist)+1 // -1 +1 is ok
     const B = Math.min(A+M, playlist.length)
-    if (A == playlist.length){
+    if (playlist.length == 0 || A == playlist.length){
       this._add_info(menu, "No further entries") // TODO: Did not respect looping
     }else{
 
       add_entry_args = []
-      for(var n=A; n<B; ++n){
+      for(let n=A; n<B; ++n){
         add_entry_args.push([
           playlist_get_title(playlist[n]),
           function (arg) {
@@ -506,18 +504,19 @@ var touchmenu = {
 
     // Search prev M files
     const M = 15
-    const playlist = mpv_status['playlist']
+    const playlist = mpv_status['playlist'] || []
 
     // Range [A,B)
     const B = current_playlist_index(playlist)
     const A = Math.max(0, B-M);
-    if (!playlist || playlist.length == 0){
+    if (playlist.length == 0 || A > B /* (A,B)=(0,-1)-case */){
       this._add_info(menu, "No previous entries")
-    } else if (A >= B && false /* Always show first entry */){
-      this._add_info(menu, "No previous entries")
+    /* Commented out to show always first entry */
+    //} else if (A >= B){
+    //  this._add_info(menu, "No previous entries")
     }else{
       add_entry_args = []
-      for(var n=B/*-1*/; n>=A; --n){ // -1 removed to allow jump back to start of current file.
+      for(let n=B/*-1*/; n>=A; --n){ // -1 removed to allow jump back to start of current file.
         add_entry_args.push([
           playlist_get_title(playlist[n]),
           function (arg) {
@@ -563,7 +562,7 @@ var touchmenu = {
     }else{
 
       add_entry_args = []
-      for(var n=A; n<B; ++n){
+      for(let n=A; n<B; ++n){
         add_entry_args.push([
           chapter_get_title(chapters, n),
           function (arg) {
@@ -609,7 +608,7 @@ var touchmenu = {
       this._add_info(menu, "No previous entries")
     }else{
       add_entry_args = []
-      for(var n=B/*-1*/; n>=A; --n){ // -1 removed to allow jump back to start of current chapter.
+      for(let n=B/*-1*/; n>=A; --n){ // -1 removed to allow jump back to start of current chapter.
         add_entry_args.push([
           chapter_get_title(chapters, n),
           function (arg) {
@@ -650,7 +649,7 @@ var touchmenu = {
     }
 
     add_entry_args = []
-    for (var i = 0; i < tracklist.length; i++){
+    for (let i = 0; i < tracklist.length; i++){
       if (tracklist[i].type === 'sub') {
         var idx = tracklist[i].id
         add_entry_args.push([
@@ -706,7 +705,7 @@ var touchmenu = {
     }
 
     add_entry_args = []
-    for (var i = 0; i < tracklist.length; i++){
+    for (let i = 0; i < tracklist.length; i++){
       if (tracklist[i].type === 'video') {
 
         var idx = tracklist[i].id
@@ -753,7 +752,7 @@ var touchmenu = {
     }
 
     add_entry_args = []
-    for (var i = 0; i < tracklist.length; i++){
+    for (let i = 0; i < tracklist.length; i++){
       if (tracklist[i].type === 'audio') {
 
         var idx = tracklist[i].id
@@ -796,7 +795,7 @@ var touchmenu = {
     const reverse = this._prepare(menu, currentTarget, kwargs)
 
     add_entry_args = []
-    for (var i = 0; i < seconds_list.length; i++){
+    for (let i = 0; i < seconds_list.length; i++){
       if (seconds_list[i] === seek_on_button) continue;
 
       let seek_label = format_time2(seconds_list[i])
@@ -963,3 +962,7 @@ function update_seek_button(el, seconds, label){
   //el.innerText = label
   el.getElementsByTagName("LABEL")[0].innerText = label
 }
+
+/*if (document.currentScript === "module"){
+  export { longpress, touchmenu };
+}*/

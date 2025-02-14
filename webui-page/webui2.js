@@ -1,622 +1,833 @@
-DEBUG_SORTINGS = false
 
-var sortings = {
-  "alpha": {
-    // id for direction, normally just 1 for forward and -1 for backward
-    "dirs": [-1, 1, 2, -2],
-    "icons": ["fa-sort-alpha-up", "fa-sort-alpha-down", "fa-folder-open", "fa-folder-open"],
-    "active": 0, //index of above lists
-  },
-  "date": {
-    "dirs": [-1, 1],
-    "icons": ["fa-sort-numeric-up", "fa-sort-numeric-down"],
-    "active": 0 //index of above lists
+// ===================================
+/* On MDN
+ * https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame
+ * is written:
+ *     'requestAnimationFrame() calls are paused in most browsers
+ *     when running in background tabs'
+ *
+ * but it turn out that just the intervall is reduced. So we
+ * need to build this by hand.
+ */
+function checkForStatusUpdate(immedialty){
+  if (immedialty && !window.connected && !window.tab_in_background){
+    clearTimeout(mpv_outstanding_status.restart)
+    status_init_ws()
+    return
   }
-}
+  if (!mpv_outstanding_status.pending) return;
 
-var shares = {
-  list: null,
-  sorting: null /* Using input lists unsorted */, //{'sname':'alpha'},
-  selected: null,
-  close_event_registered: false,
-  scroll_positions: {},
-  local_sorting: {}
-}
+  var _handler = function() {
+    if (tab_in_background) {
+      //console.log('Wait at ' + Date.now())
+      mpv_outstanding_status.timer = setTimeout(
+        _handler, mpv_outstanding_status.delay)
+      return
+    }
 
-function toggleShares(force) {
-  let overlay_is_visible = toggleOverlay("overlay2", force)
+    mpv_outstanding_status.timer = null
 
-  if (overlay_is_visible){
-    if (shares.list == null){
-      refresh_share_list()
+    //TODO Prepare async handling by storing update in local var (!?)
+    var updates = mpv_outstanding_status.updates
+    mpv_outstanding_status.updates = {}
+    //console.log('Handle update at ' + Date.now())
+    handleStatusUpdate(updates)
+  }
+
+  if (immedialty){
+    clearTimeout(mpv_outstanding_status.timer)
+    _handler()
+  }else if (mpv_outstanding_status.delay == 0 ){
+    _handler()
+  }else{
+    if (mpv_outstanding_status.timer == null ){
+      mpv_outstanding_status.timer = setTimeout(
+        _handler, mpv_outstanding_status.delay)
     }
   }
-  return overlay_is_visible
+
 }
 
-function browseShares() {
-  /* Open current folder in new tab */
-  var url = basename(shares.list[shares.selected].url);
-  var dir = shares.list[shares.selected].dir
-  //var local_path = encodeURIComponent(`${url}/${dir}`)
-  var local_path = `${url}/${dir}`
-  var cur_dir = `/media/html/${local_path}`
-  cur_dir = cur_dir.replace(/[/]+$/gm,"")
+document.addEventListener('visibilitychange', function (event) {
+  if (document.hidden) {
+    tab_in_background = true
+  } else {
+    tab_in_background = false
+    checkForStatusUpdate(true)
+  }
+})
+// ===================================
 
-  true | DEBUG && console.log(`Open ${cur_dir}`)
-  window.open(cur_dir, window.metadata.title).focus()
-}
-
-function share_change(el){
-  /* Save current scroll position */
-  var sharelist = document.getElementById("sharelist")
-  var prev_dirname = shares.scroll_positions["active_dirpath"]
-  if( prev_dirname !== undefined ){
-    var sT = sharelist.scrollTop;
-    DEBUG && console.log("Save scroll position of share " +
-      prev_dirname + " to " + sT)
-    shares.scroll_positions[prev_dirname] = sT
-
-    // Backup current sorting and its direction
-    if (shares.sorting) {
-      var sname = shares.sorting.sname
-      DEBUG_SORTINGS && console.log(`Save sorting ${shares.sorting.sname} ${sortings[sname].active}`)
-      shares.local_sorting[prev_dirname] = {
-        "sname": shares.sorting.sname,
-        "active": sortings[sname].active
+function setTrackList(tracklist) {
+  window.audios.selected = 0
+  window.audios.count = 0
+  window.subs.selected = 0
+  window.subs.count = 0
+  window.videos.selected = 0
+  window.videos.count = 0
+  for (let i = 0; i < tracklist.length; i++){
+    if (tracklist[i].type === 'audio') {
+      window.audios.count++
+      if (tracklist[i].selected) {
+        window.audios.selected = tracklist[i].id
+      }
+    } else if (tracklist[i].type === 'sub') {
+      window.subs.count++
+      if (tracklist[i].selected) {
+        window.subs.selected = tracklist[i].id
+      }
+    } else if (tracklist[i].type === 'video') {
+      window.videos.count++
+      if (tracklist[i].selected) {
+        window.videos.selected = tracklist[i].id
       }
     }
   }
 
-  var iSel = el.selectedIndex
+  // Subtitle
+  var el = document.getElementById("nextSub")
+  if (window.subs.count > 0) {
+    el.innerText = 'Sub ' + window.subs.selected + '/' + window.subs.count
+    displayElementClass('subtitle', true)
+  }else{
+    displayElementClass('subtitle', false)
+    el.innerText = 'No subtitle'
+  }
+
+  // Video streams
+  var el = document.getElementById("nextVideo")
+  if (window.videos.count > 1 || (window.videos.count > 0 && window.videos.selected == 0)) {
+    el.innerText = 'Video ' + window.videos.selected + '/' + window.videos.count
+    displayElementClass('video', true)
+  }else{
+    displayElementClass('video', false)
+    if (window.videos.count == 0) {
+      el.innerText = 'No video'
+    }
+  }
+
+  // Audio tracks
+  var el = document.getElementById("nextAudio")
+  if (window.audios.count > 1 || (window.audios.count > 0 && window.audios.selected == 0)) {
+    el.innerText = 'Audio ' + window.audios.selected + '/' + window.audios.count
+    displayElementClass('audio2', true) // for #audio tracks > 1
+    displayElementClass('audio1', true) // for #audio tracks > 0
+  }else{
+    displayElementClass('audio2', false)
+    if (window.audios.count == 1){
+      displayElementClass('audio1', true)
+      el.innerText = 'Audio ' + window.audios.selected + '/' + window.audios.count
+    }else{
+      displayElementClass('audio1', false)
+      el.innerText = 'No audio'
+    }
+  }
+}
+
+function current_chapter_index(mpv_status){
+  if (mpv_status.hasOwnProperty('chapter')){
+    return mpv_status['chapter']
+  }
+  return -1
+}
+
+function chapter_get_title(chapters, index){
+  if (chapters[index].hasOwnProperty('title'))
+    return chapters[index]['title']
+
+  //Fallback
+  return "Chapter " + index
+}
+
+
+function current_playlist_index(playlist){
+  for (let i = 0; i < playlist.length; i++){
+    if (playlist[i].hasOwnProperty('current' /* or 'playing' ?!*/)) {
+      return i
+    }
+  }
+  // This is ok with idle=yes
+  DEBUG && console.log("Can not detect playlist entry!")
+  return -1
+}
+
+
+function print_idle(){
+  var title = "Idle…"
+  window.metadata.title = title
+  window.metadata.artist = ''
+  window.metadata.album = ''
+
+  document.getElementById("title").innerText = window.metadata.title
+  document.getElementById("title").setAttribute('title', title)
+
+  document.getElementById("artist").innerText = window.metadata.artist
+  document.getElementById("album").innerText = window.metadata.album
+}
+
+function setMetadata(metadata, playlist, filename, new_status) {
+  // try to gather the track number
+  metadata = metadata?metadata:{}; // null to {}
+  var track = ''
+
+  if (check_idle(new_status) ){
+    return print_idle()
+  }
+
+  if (metadata['track']) {
+    track = metadata['track'] + ' - '
+  }
+
+  // try to gather the playing playlist element
+  var pl_index = current_playlist_index(playlist)
+
+  // set the title. Try values in this order:
+  // 1. title set in playlist
+  // 2. metadata['title']
+  // 3. metadata['TITLE']
+  // 4. filename
+  if (pl_index >= 0 && playlist[pl_index].title) {
+    var title = playlist[pl_index].title
+  } else if (metadata['title']) {
+    var title = track + metadata['title']
+  } else if (metadata['TITLE']) {
+    var title = track + metadata['TITLE']
+  } else {
+    var title = track + basename(filename)
+  }
+  window.metadata.title = trim_title_string(title, max_title_size)
+
+  // set the artist
+  if (metadata['artist']) {
+    window.metadata.artist = metadata['artist']
+  } else {
+    window.metadata.artist = ''
+  }
+
+  // set the album
+  if (metadata['album']) {
+    window.metadata.album = metadata['album']
+  } else {
+    window.metadata.album = ''
+  }
+
+  document.getElementById("title").innerText = window.metadata.title
+  document.getElementById("title").setAttribute('title', title) // may be longer string
+
+  document.getElementById("artist").innerText = window.metadata.artist
+  document.getElementById("album").innerText = window.metadata.album
+}
+
+function setPosSlider(position, duration, old_position, old_duration) {
+  var slider = document.getElementById("mediaPosition")
+  var pos = document.getElementById("position")
+  slider.max = duration
+  if (!window.block.active('posSlider')) {
+    slider.value = position
+
+    if (Math.round(position) != Math.round(old_position)){
+      pos.innerText = format_time(slider.value)
+    }
+  }
+}
+
+function setVolumeSlider(volume, volumeMax) {
+  var slider = document.getElementById("mediaVolume")
+  var vol = document.getElementById("volume")
+  if (!window.block.active('volSlider')) {
+    slider.value = volume
+    slider.max = volumeMax
+  }
+  vol.innerText = slider.value + "%"
+}
+
+function setPlayPause(value) {
+  if (value === null) {
+    // fallback for webui-onion.bin with incomplete status
+    value = (document.getElementById("audio").paused?"yes":"yes")
+  }
+
+  updatePlayPauseButton(value)
+
+  if ('mediaSession' in navigator) {
+    if (value == "yes") {
+      audioPause()
+    } else {
+      audioPlay()
+    }
+  }
+}
+
+
+function __mediaSession() {
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: window.metadata.title,
+      artist: window.metadata.artist,
+      album: window.metadata.album,
+      artwork: [
+        { src: '/favicons/android-chrome-192x192.png', sizes: '192x192', type: 'image/png' },
+        { src: '/favicons/android-chrome-512x512.png', sizes: '512x512', type: 'image/png' }
+      ]
+    })
+
+    navigator.mediaSession.setActionHandler('play', function() {send('play');})
+    navigator.mediaSession.setActionHandler('pause', function() {send('pause');})
+    navigator.mediaSession.setActionHandler('seekbackward', function() {send('seek', '-5');})
+    navigator.mediaSession.setActionHandler('seekforward', function() {send('seek', '10');})
+    navigator.mediaSession.setActionHandler('previoustrack', function() {send('playlist_prev');})
+    navigator.mediaSession.setActionHandler('nexttrack', function() {send('playlist_next');})
+
+    navigator.mediaSession.setPositionState({
+      duration: mpv_status["duration"],
+      position: Math.max(0, Math.min(mpv_status["time-pos"], mpv_status["duration"])),
+      playbackRate: mpv_status["speed"] //1.0
+    })
+
+    if ("pause" in mpv_status && mpv_status["pause"] == "yes" ){
+      navigator.mediaSession.playbackState = "paused"
+    }else{
+      navigator.mediaSession.playbackState = "playing"
+    }
+  }
+}
+
+function togglePlayPause() {
+  var pause = mpv_status["pause"]
+  //var audio = document.getElementById("audio")
+
+  if (pause === null) {
+    // fallback for webui-onion.bin with incomplete status
+    pause = (document.getElementById("audio").paused?"yes":"no")
+  }
+
+  if (pause == "yes"){
+    audioPlay()
+  }else{
+    audioPause()
+  }
+
+  /* Removed because audioPlay/Pause now trigger this already,
+   * see audioLoad(). */
+  send('toggle_pause')
+}
+
+
+function setChapter(num_chapters, chapter, metadata) {
+  var chapterContent = document.getElementById('chapterContent')
+  var chapter_title = ''
+  if (metadata !== null ){
+    if (metadata['title']) {
+      chapter_title = metadata['title']
+    } else if (metadata['TITLE']) {
+      chapter_title = metadata['TITLE']
+    } else {
+      //chapter_title = "No title"
+    }
+  }
+  if (num_chapters === 0) {
+    displayElementClass('chapter', false)
+    displayElementClass('no_chapter', true)
+    chapterContent.innerText = "0/0"
+  } else {
+    displayElementClass('chapter', true)
+    displayElementClass('no_chapter', false)
+    chapterContent.innerText = "" + (chapter + 1) + "/" + num_chapters
+      + " " + chapter_title
+  }
+}
+
+function setPlaybackSpeedButtons(speed){
+  if (window.metadata['speed'] == speed) return;
+
+  window.metadata['speed'] = speed;
+  var resetButton = document.getElementById('playbackSpeedReset')
+  if (speed && speed != 1.0) {
+    showInfoForControls(resetButton, ['playbackSpeed1', 'playbackSpeed2'] , true)
+  }else{
+    showInfoForControls(resetButton, ['playbackSpeed1', 'playbackSpeed2'] , false)
+  }
+}
+
+function setSubDelay(fDelay) {
+  var subContent = document.getElementById('subDelayInfo')
+  if ( fDelay == 0 ){
+    showInfoForControls(subContent, ['subDelay1', 'subDelay2'] , false)
+  }else{
+    const iDelay = parseInt(1000*fDelay)
+    subContent.innerText = (iDelay>0?'+':'') + iDelay + 'ms';
+    showInfoForControls(subContent, ['subDelay1', 'subDelay2'] , true)
+  }
+}
+
+function setAudioDelay(fDelay) {
+  var audioContent = document.getElementById('audioDelayInfo')
+  if ( fDelay == 0 ){
+    showInfoForControls(audioContent, ['audioDelay1', 'audioDelay2'] , false)
+  }else{
+    const iDelay = parseInt(1000*fDelay)
+    audioContent.innerText = (iDelay>0?'+':'') + iDelay + 'ms';
+    showInfoForControls(audioContent, ['audioDelay1', 'audioDelay2'] , true)
+  }
+}
+
+function setLoop(loopFile, loopPlaylist) {
+  var loopButton = document.getElementsByClassName('playlistLoopButton')
+  var html = '<i class="fas fa-redo-alt"></i>'
+  var value = ""
+  if (loopFile === "no") {
+    if (loopPlaylist === "no") {
+      html = '!<i class="fas fa-redo-alt"></i>'
+      value = "no"
+    } else {
+      html = '<i class="fas fa-redo-alt"></i>Σ'
+      value = "a"
+    }
+  } else {
+    html = '<i class="fas fa-redo-alt"></i>1'
+    value = "1"
+  }
+
+  ;[].slice.call(loopButton).forEach(function (div) {
+    div.innerHTML = html
+    div.setAttribute("value", value)
+    })
+
+}
+
+function handleStatusResponse(json) {
+  setMetadata(json['metadata'], json['playlist'], json['filename'], json)
+  setTrackList(json['track-list'])
+  document.getElementById("duration").innerText =
+    format_time(json['duration'])
+
+  document.getElementById("playtime-remaining").innerText =
+    "-" + format_time(json['playtime-remaining'])
+
+  setPlaybackSpeedButtons(json['speed'])
+  if (json['speed']) {
+    document.getElementById("speed").innerText =
+      (json['speed'] != 1.0)?`(x ${Number(json['speed']).toFixed(2)})`:''
+  }
+
+  setSubDelay(json['sub-delay'])
+  setAudioDelay(json['audio-delay'])
+  setPlayPause(json['pause'])
+  setPosSlider(json['time-pos'], json['duration'], -1, -1)
+  setVolumeSlider(json['volume'], json['volume-max'])
+  setLoop(json["loop-file"], json["loop-playlist"])
+  setFullscreenButton(json['fullscreen'])
+  setChapter(json['chapters'], json['chapter'], json['chapter-metadata'])
+  populatePlaylist(json['playlist'], json['pause'])
+  if ('mediaSession' in navigator) {
+    setupNotification()
+  }
+
+  updateCapterMarks(json['chapters'], json['chapter'], json['chapter-metadata'],
+    json['chapter-list'], json['duration'])
+}
+
+function handleStatusUpdate(status_updates) {
+  let new_status = Object.assign({}, mpv_status, status_updates)
+  mpv_outstanding_status.pending = false
+  if ("metadata" in status_updates
+    ||"playlist" in status_updates
+    ||"filename" in status_updates){
+    setMetadata(new_status['metadata'], new_status['playlist'], new_status['filename'], new_status)
+  }
+  if ("track-list" in status_updates){
+    setTrackList(new_status['track-list'])
+  }
+  if ("duration" in status_updates){
+    document.getElementById("duration").innerText =
+      format_time(new_status['duration'])
+  }
+  if ("speed" in status_updates){
+    setPlaybackSpeedButtons(new_status['speed'])
+
+    if( new_status['speed'] != mpv_status['speed']){
+      document.getElementById("speed").innerText =
+        (new_status['speed'] != 1.0)?`(x ${Number(new_status['speed']).toFixed(2)})`:''
+    }
+  }
+  if ("playtime-remaining" in status_updates){
+    if (Math.round(new_status["playtime-remaining"]) != Math.round(mpv_status["playtime-remaining"])){
+      document.getElementById("playtime-remaining").innerText =
+        "-" + format_time(new_status['playtime-remaining'])
+    }
+  }
+  if ("sub-delay" in status_updates){
+    setSubDelay(new_status['sub-delay'])
+  }
+  if ("audio-delay" in status_updates){
+    setAudioDelay(new_status['audio-delay'])
+  }
+  if ("time-pos" in status_updates
+    ||"duration" in status_updates){
+    setPosSlider(new_status['time-pos'], new_status['duration'],
+      mpv_status['time-pos'], mpv_status['duration'])
+  }
+  if ("volume" in status_updates
+    ||"volume-max" in status_updates){
+    setVolumeSlider(new_status['volume'], new_status['volume-max'])
+  }
+  if ("loop-file" in status_updates
+    ||"loop-playlist" in status_updates){
+    setLoop(new_status["loop-file"], new_status["loop-playlist"])
+  }
+  if ("fullscreen" in status_updates){
+    setFullscreenButton(new_status['fullscreen'])
+  }
+  if ("chapters" in status_updates
+    ||"chapter" in status_updates
+    ||"chapter-metadata" in status_updates){
+    setChapter(new_status['chapters'], new_status['chapter'], new_status['chapter-metadata'])
+  }
+
+  if ("chapter" in status_updates && mpv_status['chapter'] == -1){ /* See (4*) */
+    updateCapterMarks(new_status['chapters'], new_status['chapter'], new_status['chapter-metadata'],
+      new_status['chapter-list'], new_status['duration'])
+  } else if ("chapters" in status_updates){
+    updateCapterMarks(new_status['chapters'], new_status['chapter'], new_status['chapter-metadata'],
+      new_status['chapter-list'], new_status['duration'])
+  }
+  if ("playlist" in status_updates){
+    updateNotification(new_status)
+    updatePlaylist(new_status['playlist'],
+      mpv_status['playlist'], new_status['pause'])
+  }
+  if ("pause" in status_updates){
+    setPlayPause(new_status['pause'])
+    updateNotification(new_status)
+    updatePlaylistOnPause(new_status['playlist'],
+      new_status['pause'], mpv_status['pause'])
+  }
+  if ("metadata" in status_updates
+    ||"filename" in status_updates){
+    updateNotification(new_status)
+  }
+
+  mpv_status = new_status
+}
+
+function status_init_ws(){
+  ws = new WebSocket('ws://'+window.location.host+'/ws')
+
+  ws.__unhandled_data = []
+  ws.onmessage=function(ev){
+    try {
+      // Strip websocket metadata
+      //var metadata = Uint16Array.from(ev.data.slice(0,8)) // Wrong?!
+      metadata = [
+        (ev.data.charCodeAt(1) << 8) + ev.data.charCodeAt(0),
+        (ev.data.charCodeAt(3) << 8) + ev.data.charCodeAt(2),
+      ]
+      //console.log("Num chunks: " + metadata[0])
+      //console.log("Chunk   ID: " + metadata[1])
+    } catch (e) {
+      //e instanceof SyntaxError
+      console.log(e.name + ": " + e.message)
+      console.log("Input: " + ev.data)
+      return
+    }
+
+    // Remove pending data.
+    if ( metadata[1] == 0 && ws.__unhandled_data.length > 0 ){
+      console.log("Websocket communication error. New set of chunks begins,"
+        + "but previous one was not completed?!")
+      console.log("Old data:\n" + ws.__unhandled_data)
+      console.log("New data:\n" + ev.data.slice(4))
+      console.log("New Metadata: chunks/id= " + metadata[0] + "/" + metadata[1])
+
+      ws.__unhandled_data = []
+    }
+
+    if ( 1 == metadata[0] ){
+      // Just one chunk, skip call of join()...
+      ws.oncompletejson(ev.data.slice(4))
+    }else{
+      // Cache data
+      ws.__unhandled_data[metadata[1]] = ev.data.slice(4)
+
+      // Handle data if complete
+      if ( ws.__unhandled_data.length == metadata[0] ){
+        var data = ws.__unhandled_data.join('')
+        ws.__unhandled_data = []
+        ws.oncompletejson(data)
+      }
+    }
+  }
+
+  // Triggered after complete json-struct was recived
+  ws.oncompletejson=function(data){
+    try {
+      var json = JSON.parse(data)
+    } catch (e) {
+      //e instanceof SyntaxError
+      console.log(e.name + ": " + e.message)
+      console.log("Input: " + data)
+      return
+    }
+
+    if ("status_info" in json){
+      var  info = json["status_info"]
+      if (!info.connection){
+        console.log("Websocket error on connection:" + info)
+      }
+      if ("page_title" in info) {
+        document.title = info["page_title"]
+      }
+    }
+
+    if ("status" in json){
+      mpv_status = json["status"]
+      handleStatusResponse(mpv_status)
+    }
+    if ("status_diff" in json){
+
+      // Collect updates in global var
+      Object.assign(mpv_outstanding_status.updates, json["status_diff"])
+      mpv_outstanding_status.pending = true
+      checkForStatusUpdate(false)
+    }
+    if ("result" in json){
+      DEBUG && console.log(JSON.stringify(json))
+    }
+  }
+
+  ws.onopen = function(ev){
+    connected = true;
+    DEBUG && console.log("Websocket connected")
+  }
+  ws.onclose = function(ev){ // CloseEvent
+    DEBUG && console.log("Websocket closed with code " + ev.code)
+    if (connected) {
+      connected = false;
+      if (ev.code != 1001 /* GOING_AWAY reply. No need for further rendering */){
+        clearTimeout(mpv_outstanding_status.timer)
+        print_disconnected()
+        hide_overlays()
+      }
+    }
+
+    if (!window.tab_in_background) {
+      mpv_outstanding_status.restart = setTimeout(function() {
+        console.log("Try reconnecting websocket")
+        status_init_ws()
+      }, 5000)
+    }
+
+    ws = null
+  }
+  //ws.onerror = ws.onclose; // not required for reconnections
+
+}
+
+function print_disconnected(){
+  document.getElementById("title").innerHTML = "<span class='info'>Not connected to MPV!</span>"
+  document.getElementById("artist").innerText = ""
+  document.getElementById("album").innerText = ""
+  setPlayPause("yes")
+}
+
+/*
+function status(){
   var request = new XMLHttpRequest()
-  if (iSel == -1){
-    request.open("get", "/media/api/list/.current/.current")
-  }else{
-    //var value = el.options[el.selectedIndex].value
-    //var text = el.options[el.selectedIndex].text
-    var s = shares.list[el.selectedIndex]
-    request.open("get", s["url"] + "/" + s["dir"])
-    //request.open("get", s["url"] + "/" + encodeURIComponent(s["dir"]) )
-  }
+  request.open("get", "/api/status")
 
   request.onreadystatechange = function() {
     if (request.readyState === 4 && request.status === 200) {
       var json = JSON.parse(request.responseText)
-      update_selected_share(json);
-      print_share_list(json)
+      handleStatusResponse(json)
     } else if (request.status === 0) {
-      DEBUG && console.log("Fetching share list failed")
+      document.getElementById("title").innerHTML = "<h1><span class='error'>Couldn't connect to MPV!</span></h1>"
+      document.getElementById("artist").innerText = ""
+      document.getElementById("album").innerText = ""
+      setPlayPause("yes")
     }
   }
   request.send(null)
 }
+*/
 
-function update_selected_share(json){
-  console.log(json)
-  shares.selected = -1
-  for(var i = 0; i < shares.list.length; ++i) {
-    var full_dirpath = `${json.commands.list}/${json.dirpath}`
-    console.log(`${full_dirpath} vs ${shares.list[i].url}`)
-    if (full_dirpath.startsWith(shares.list[i].url)){
-      shares.selected = i
-      document.getElementById("share_selector").options.selectedIndex = i
-      DEBUG && console.log(`Selecting share ${i} (${shares.list[i].url})`)
-      break
-    }
-  }
-  if (shares.selected == -1){
-    console.log("Error. Given path is no child directory of a share.")
-    DEBUG && console.log(json)
-    shares.selected = 0
 
-    if (shares.list.length == 0) return;
-  }
-
-  if (shares.selected && shares.list[shares.selected].dir === ".current"){
-    DEBUG && console.log(`Replace .current by '${share_get_subdir(json.dirpath)}'`)
-    shares.list[shares.selected].dir = share_get_subdir(json.dirpath)
-  }
-
-  //shares.selected = el.selectedIndex
+function setupNotification() {
+  __mediaSession()
 }
 
-function share_change_dir(list_link){
-  DEBUG && console.log(`Selected share index: '${shares.selected}'`)
-  if (list_link === "..") {
-    var cur_dir = shares.list[shares.selected].url + "/"
-      + shares.list[shares.selected].dir
-      .replace(/[/]+$/gm,""); // remove '/' at end
+function trim_title_string(s, max_len, sub_char, end_char){
+  /* Trim string s by estimation of unrequired parts
+   * and finally cut at max_len chars. */
 
-    var last_token = basename(cur_dir)
-    var parent_dir = cur_dir.substring(0, cur_dir.length - last_token.length)
-    list_link = parent_dir
+  if (arguments.length < 4) end_char = '…';
+  if (arguments.length < 3) sub_char = '…';
+
+  //if (s.length <= max_len ) return s;
+
+  s = s.replace(REGEXS['brackets'], sub_char)
+  s = s.replace(REGEXS['checksumBeforeExtension'], RegExp.$1)
+
+  if (s.length > max_len ){
+    s = s.replace(REGEXS['extension'], end_char)
   }
-  if (list_link === "/") {
-    list_link  = shares.list[shares.selected].url + "/"
+
+  if (s.length > max_len ){
+    s = s.substr(0, max_len)
+    if (s.charAt(s.length-1) != end_char)
+      s = s.concat(end_char)
   }
-  DEBUG && console.log(`Link of new share dir: '${list_link}'`)
 
-  var new_dir = share_get_subdir(list_link);
-  DEBUG && console.log(`Relative dir of new share dir: '${new_dir}'`)
+  // Cleanup
+  s = s.replace(REGEXS['cleanup_dots'], sub_char)
 
-  shares.list[shares.selected].dir = new_dir
+  return s;
 }
 
-function share_get_subdir(dirname){
-  /* strips prefix /media/api/list/<sharename> from dirname
-   * and remove leading and trailing '/'.
-   */
-
-  var root = shares.list[shares.selected].url
-  if (!dirname.startsWith(root)) return ""
-
-  var relative_dir = dirname.replace(root, "")
-    .replace(/^[/]+|[/]+$/gm,'');  // Remove '/' at begin and end
-
-  return relative_dir
-}
-
-function share_add_file(add_link, bPlay){
-  if (add_link === "..") {
-    DEBUG && console.log("'..'-dirs cannot be added.")
-    return
-  }
-
-  //var url = shares.list[shares.selected].url + link
-  DEBUG && console.log("Add file: " + add_link)
-
-  if ( bPlay ){
-    add_link = add_link.replace("playlist_add","playlist_add/replace")
+/* To get one-liner... */
+function setClass(el, bDisplay, classname){
+  if (arguments.length < 3) classname = 'hidden';
+  if (bDisplay == true ){
+    el.classList.remove(classname)
   }else{
-    add_link = add_link.replace("playlist_add","playlist_add/append")
-  }
-
-  var request = new XMLHttpRequest();
-  //request.open("get", add_link)
-  //add_link = preserve_special_chars(add_link)
-  request.open("get", add_link)
-  //request.open("get", encode_raw_link(add_link))  // This can be used if the server not percent encoded on it's own.
-
-  request.onreadystatechange = function() {
-    if (request.readyState === 4 && request.status === 200) {
-      var json = JSON.parse(request.responseText);
-      DEBUG && console.log(json)
-    } else if (request.status === 0) {
-      console.log("Adding file to playlist failed")
-    }
-  }
-  request.send(null)
-}
-
-function print_share_list(json){
-  // dirname und files-dict
-  //DEBUG && console.log(json)
-
-  var sharelist = document.getElementById("sharelist")
-
-  var pEl = sharelist.parentElement
-
-  /* remove from DOM during inserting. Use try-catch to guarantee re-adding.*/
-  pEl.removeChild(sharelist)
-  try {
-
-    sharelist.replaceChildren()
-
-    var file_dotdot = {list: "..", play: "..", size: -1, modified: -1}
-
-
-    function add_li(file, idx){
-      var isdir = (file.size == -1)
-      var li = document.createElement("LI")
-      var bullet = document.createElement("I")
-      var fname = document.createElement("SPAN")
-
-      var play_link = decode(file.play || "" )
-      var list_link = decode(file.list || "")
-
-      function show_playable(el, isplay, isdir) {
-        var base_class = isdir?'fa-folder':'fa-file'
-        if (isplay){
-          el.classList.replace(base_class, 'fa-play')
-        }else{
-          el.classList.replace('fa-play', base_class)
-        }
-      }
-
-      li.classList.add('gray')
-      bullet.classList.add(idx>=0?'share_bullet':'share_bullet_dotdot')
-      if (isdir) {
-        bullet.classList.add('fas', 'fa-folder')
-      }else{
-        bullet.classList.add('fas', 'fa-file')
-      }
-
-      //fname.textContent = basename(play_link) // if play_link is not percentage encoded.
-      fname.textContent = file.name || decodeURIComponent(basename(play_link))
-      if (isdir) {
-        fname.classList.add('share_dir')
-        fname.addEventListener("click", function() {
-          share_change_dir(list_link)
-          share_change(document.getElementById("share_selector"))
-        })
-        if( idx >= 0 ){
-          bullet.addEventListener("click", function() {
-            share_add_file(play_link, true)
-          })
-        }
-      }else{
-        fname.classList.add('share_file')
-
-        if( idx >= 0 ){
-          fname.addEventListener("click", function() {
-            share_add_file(play_link, false) // playlist_add
-          })
-          bullet.addEventListener("click", function() {
-            share_add_file(play_link, true)  // playlist_play
-          })
-        }
-      }
-      if (idx >= 0){
-        bullet.addEventListener("mouseenter", function() {show_playable(bullet, 1, isdir)})
-        bullet.addEventListener("mouseleave", function() {show_playable(bullet, 0, isdir)})
-      }
-
-      li.setAttribute("timestamp", file.modified)
-      li.setAttribute("idx", idx)
-      //li.setAttribute("isdir", isdir) // Hm, this is always a string
-      li.isdir = isdir // this is still Boolean
-
-      li.appendChild(bullet)
-      li.appendChild(fname)
-      if ( idx >= 0 ){
-        var action1 = document.createElement("I")
-
-        action1.classList.add('share_action', 'fas', 'fa-plus-square')
-        //action1.textContent = "  [+]"
-        action1.addEventListener("click", function() {
-          share_add_file(play_link, false)
-        })
-
-        li.appendChild(action1)
-      }
-      if (idx == -2){ // Add button to go up to root dir.
-        var bullet2 = document.createElement("I")
-        bullet2.classList.add('share_bullet_dotdot', 'fas', 'fa-folder')
-        var go_top = document.createElement("SPAN")
-        go_top.textContent = "/"
-        go_top.classList.add('share_dir')
-        go_top.addEventListener("click", function() {
-          share_change_dir("/")
-          share_change(document.getElementById("share_selector"))
-        })
-        li.appendChild(bullet2)
-        li.appendChild(go_top)
-      }
-
-      return li
-    }
-    // Add .. if not root dir of share
-    if (json.dirpath !== shares.list[shares.selected].name_encoded){
-      var depth = (json.dirpath.split('/').length > 2)?-2:-1; // First level doesn't need '/' button
-      var li_dotdot = add_li(file_dotdot, depth)
-      li_dotdot.classList.add('dir_up')
-      sharelist.appendChild(li_dotdot)
-    }
-
-    var files = json.files
-    for(var i = 0; i < files.length; ++i) {
-      var file = files[i]
-      // Reconstruct full path for list/play
-      file.play = `${json.commands.play}/${json.dirpath}/${file.name_encoded}`
-      if (file.size == -1){
-        file.list = `${json.commands.list}/${json.dirpath}/${file.name_encoded}`
-      }
-
-      sharelist.appendChild(add_li(files[i], i))
-    }
-
-    /* Presort element before inserting into DOM */
-    var local_sorting = shares.local_sorting[json.dirpath]
-    if (local_sorting !== undefined){
-      DEBUG_SORTINGS && console.log(`Restore sorting ${local_sorting.sname} ${local_sorting.active}`)
-      // Use previous sorting option for this folder because the
-      // saved scrollingOffset matches just for this value
-      shares.sorting = {"sname": local_sorting.sname}
-      sortings[local_sorting.sname].active = local_sorting.active
-      __sortShareList(sharelist)
-      update_sort_buttons()
-    }else if(shares.sorting){
-      var sname = shares.sorting.sname
-      DEBUG_SORTINGS && console.log(`Use sorting ${sname} ${sortings[sname].active}`)
-      __sortShareList(sharelist)
-    }
-
-  }
-  catch(err){
-    console.log(err)
-  }
-
-  /* Reattach to DOM */
-  pEl.appendChild(sharelist)
-
-  /* Reset scrollPosition on saved value, if available.
-   * Assumes scarelist.style.overflow == "scroll"
-   */
-  var sT = shares.scroll_positions[json.dirpath]
-  DEBUG && console.log("Set scroll position of share " +
-    json.dirpath + " to " + (sT||0))
-  sharelist.scrollTop = sT || 0  // sT could be undefined
-
-  // Used name for next storage of scrollTop
-  shares.scroll_positions["active_dirpath"] = json.dirpath
-
-}
-
-function __sortShareList(ul) {
-  if (shares.sorting === null) return
-
-  var sname = shares.sorting.sname
-  var s = sortings[sname]
-  if (sname === "alpha" && s.dirs[s.active] == 1){
-    // A-Z
-    Array.from(ul.getElementsByTagName("LI"))
-      .sort((a, b) =>
-        {
-          if (Number(a.attributes.idx.value) < 0) return -1
-          if (Number(b.attributes.idx.value) < 0) return 1
-          return a.textContent.localeCompare(b.textContent)
-        })
-        .forEach(li =>
-          ul.appendChild(li))
-  }
-
-  if (sname === "alpha" && s.dirs[s.active] == -1){
-    // Z-A
-    Array.from(ul.getElementsByTagName("LI"))
-      .sort((a, b) =>
-        {
-          if (Number(a.attributes.idx.value) < 0) return -1
-          if (Number(b.attributes.idx.value) < 0) return 1
-          return -(a.textContent.localeCompare(b.textContent))
-        })
-        .forEach(li =>
-          ul.appendChild(li))
-  }
-
-  if (sname === "alpha" && s.dirs[s.active] == 2){
-    // A-Z
-    Array.from(ul.getElementsByTagName("LI"))
-      .sort((a, b) =>
-        {
-          //var isdir_diff_int = Boolean(b.attributes.isdir) - Boolean(a.attributes.isdir)
-          //console.log(`d: ${isdir_diff_int} ${b.attributes.isdir.value} - ${a.attributes.isdir.value}`)
-          var isdir_diff_int = b.isdir - a.isdir
-          if (isdir_diff_int) return isdir_diff_int;
-          if (Number(a.attributes.idx.value) < 0) return -1
-          if (Number(b.attributes.idx.value) < 0) return 1
-          return a.textContent.localeCompare(b.textContent)
-        })
-        .forEach(li =>
-          ul.appendChild(li))
-  }
-
-  if (sname === "alpha" && s.dirs[s.active] == -2){
-    // Z-A
-    Array.from(ul.getElementsByTagName("LI"))
-      .sort((a, b) =>
-        {
-          var isdir_diff_int = b.isdir - a.isdir
-          if (isdir_diff_int) return isdir_diff_int;
-          if (Number(a.attributes.idx.value) < 0) return -1
-          if (Number(b.attributes.idx.value) < 0) return 1
-          return -(a.textContent.localeCompare(b.textContent))
-        })
-        .forEach(li =>
-          ul.appendChild(li))
-  }
-
-  if (sname === "date" && s.dirs[s.active] == 1){
-    // newest top
-    Array.from(ul.getElementsByTagName("LI"))
-      .sort((a, b) =>
-        {
-          if (Number(a.attributes.idx.value) < 0) return -1
-          if (Number(b.attributes.idx.value) < 0) return 1
-          var ta = Number(a.attributes.timestamp.value)
-          var tb = Number(b.attributes.timestamp.value)
-          return (tb - ta)
-        })
-        .forEach(li =>
-          ul.appendChild(li))
-  }
-
-  if (sname === "date" && s.dirs[s.active] == -1){
-    // oldest top
-    Array.from(ul.getElementsByTagName("LI"))
-      .sort((a, b) =>
-        {
-          if (Number(a.attributes.idx.value) < 0) return -1
-          if (Number(b.attributes.idx.value) < 0) return 1
-          var ta = Number(a.attributes.timestamp.value)
-          var tb = Number(b.attributes.timestamp.value)
-          return -(tb - ta)
-        })
-        .forEach(li =>
-          ul.appendChild(li))
+    el.classList.add(classname)
   }
 }
 
-function sortShareList() {
-  var ul = document.getElementById("sharelist")
-
-  if (ul === null){
-    DEBUG && console.log("Hey, sharelist element not found.")
-    return
-  }
-
-  var pEl = ul.parentElement
-
-  /* remove from DOM during sorting*/
-  pEl.removeChild(ul)
-
-  __sortShareList(ul)
-
-  /* Reattach to DOM after sorting */
-  pEl.appendChild(ul)
-}
-
-function share_change_sorting(sname){
-  var s = sortings[sname]
-  if (shares.sorting && shares.sorting.sname === sname){
-    // go to next index 
-    s.active = (s.active + 1) % s.dirs.length
-  }else{
-    shares.sorting = {"sname": sname}
-  }
-  update_sort_buttons()
-}
-
-function update_sort_buttons()
-{
-  function get_fa_nodes(css_class1, css_class2){
-    /* Return children of class2 from elements of class1. */
-    var els = document.getElementsByClassName(css_class1)
-    var out = [];
-    [].slice.call(els).forEach(function (div) {
-      var els2 = div.getElementsByClassName(css_class2)
-      out = out.concat(Array.from(els2))
-    })
-    return out
-  }
-
-  for (var sname in sortings ){
-    var s = sortings[sname]
-    var cur = s.active
-    DEBUG_SORTINGS && console.log(`Change Icon from ${sname} to ${cur}`)
-    var prev = (s.dirs.length + cur - 1) % s.dirs.length
-    var x = get_fa_nodes("shareSortButton_" + sname, "fas")
-    x.forEach(function (fasEl) {
-      fasEl.classList.remove(...s["icons"])
-      fasEl.classList.add(s["icons"][cur])
-    })
-  }
-}
-
-function refresh_share_list(){
-  var request = new XMLHttpRequest();
-  request.open("get", "/media/api/list")
-
-  function _refresh_share_list(json){
-    shares.list = []
-
-    var share_selector = document.getElementById("share_selector")
-    /*while (share_selector.childElementCount > 0){
-    share_selector.removeChild(share_selector.children[0])
-  }*/
-    share_selector.replaceChildren()
-
-    for (var s in json.shares){
-      shares.list.push({"name": s,
-        "name_encoded": json.shares[s],
-        "url": `${json.commands.list}/${json.shares[s]}`,
-        //"dir": "" 
-        // '.current': Server return last requested dir for this share
-        "dir": ".current"
-      })
-      var opt = document.createElement('option')
-      opt.value = json.shares[s]
-      opt.text = s
-      share_selector.appendChild(opt)
-    }
-
-    share_selector.options.selectedIndex = -1; // Starting unselect
-    // to ask server for .current
-    share_change(share_selector)
-  }
-
-
-  request.onreadystatechange = function() {
-    if (request.readyState === 4 && request.status === 200) {
-      var json = JSON.parse(request.responseText)
-      _refresh_share_list(json)
-    } else if (request.status === 0) {
-      console.log("Fetching share list failed")
-    }
-  }
-  request.send(null)
-}
-
-function decode(s){
-  /* json was generated by otemplate and contains
-   * encoded html chars.
-   *
-   * Without changing otemplate tool we just
-   * can undo this by reverting onion_html_add_enc()
-   * (called in otemplate/variables.c by  onion_response_write_html_safe(…) ).
-   */
-
-  /*var doc = new DOMParser().parseFromString(s, "text/html");
-    return doc.documentElement.textContent;
-    */
-  // or
-  s = s.replaceAll('&#39;', '\'').replaceAll('&quot;','"')
-  s = s.replaceAll('&lt;', '<').replaceAll('&gt;', '>')
-  s = s.replaceAll('&amp;', '&')
-  return s
-}
-
-
-function encodeResolveDifference(s){
-  const critical_chars = Array.from("#$&+,/:;=?@")
-  map = {};
-  critical_chars.forEach((el) => {map[el] = encodeURIComponent(el)}) // Schmerz…
-
-  function replacer(match, offset, string) {
-    //console.log("X" + match + " => " + map[match])
-    return map[match]
-  }
-  const r = RegExp("["+Object.keys(map)+"]", "g")
-  console.log(Object.keys(map))
-  return s.replace(r, replacer);
-}
-
-function encode_raw_link(s){
-  // Converts reative and absolute urls in same form.
-  // Encodes everything behind the hostname.
+function displayElementClass(cls_of_elements, bDisplay, classname){
+  // Note: We didn't change the css class property, but add/remove
+  // class '.hidden'
+  // So be careful if this is called twice for the same element
+  // (one adds 'hidden' and one removes…)
   //
-  var url = new URL(s, window.location)
-  /* Notes: • url.href. is already encoded, but with the 'wrong' variant.
-   *        • This approach encodes all slashes!
-   */
-  //url.pathname = encodeResolveDifference(url.href.slice(1+url.origin.length))
-  //or
-  url.pathname = encodeURIComponent(decodeURI(url.href.slice(1+url.origin.length)))
+  if (arguments.length < 3)
+    classname = 'hidden'
 
-  return url.href
+  let classElements = document.getElementsByClassName(cls_of_elements)
+  ;[].slice.call(classElements).forEach(function(div) {
+    setClass(div, bDisplay, classname)
+  })
 }
 
-function preserve_special_chars(s){
-  // onion runs decode() on every %XX-string.
-  // Encode '%' itsself and then ' ' and '+' should be good enough
-  // to get correct filenames on server side after decoding.
-  // Well, using encodeURIComponent() should also work.
-  return s.replaceAll("%", "%25").replaceAll("+", "%2B").replaceAll(" ", "%20")
-  // The should fix error for files with '%', ' ', '+'. 
+function __changeControls(el, nearby_element_names, bDisplay, classname){
+  /* Show/hide elInfo
+   * and add/remove 'with_info' class to all elements of nearby_element_names */
+  setClass(el, bDisplay, 'hidden')
+
+  nearby_element_names.forEach( nearby_el_name_or_id => {
+    setClass(document.getElementById(nearby_el_name_or_id), !bDisplay, classname)
+    document.getElementsByName(nearby_el_name_or_id).forEach( div => {
+      setClass(div, !bDisplay, classname)
+    })
+  })
+}
+function showMiddleControl(elMiddle, nearby_element_names, bDisplay){
+  /* Show/hide middle button
+   * and add/remove 'with_mid' class to all elements of nearby_element_names */
+  __changeControls(elMidle, nearby_element_names, bDisplay, 'with_mid')
+}
+function showInfoForControls(elInfo, nearby_element_names, bDisplay){
+  /* Show/hide elInfo
+   * and add/remove 'with_info' class to all elements of nearby_element_names */
+  __changeControls(elInfo, nearby_element_names, bDisplay, 'with_info')
 }
 
-// From simple-mpv-webui
-function sanitize(string) {
-  // https://stackoverflow.com/a/48226843
-  const map = {
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#x27;",
-    "/": "&#x2F;",
-    "`": "&grave;",
-  };
-  const reg = /[&<>"'/`]/gi;
-  return string.replace(reg, (match) => map[match]);
+
+function updateNotification(mpv_status) {
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: window.metadata.title,
+      artist: window.metadata.artist,
+      album: window.metadata.album,
+      artwork: [
+        { src: '/favicons/android-chrome-192x192.png', sizes: '192x192', type: 'image/png' },
+        { src: '/favicons/android-chrome-512x512.png', sizes: '512x512', type: 'image/png' }
+      ]
+    })
+
+    navigator.mediaSession.setPositionState({
+      duration: mpv_status["duration"],
+      position: Math.max(0, Math.min(mpv_status["time-pos"], mpv_status["duration"])),
+      playbackRate: mpv_status["speed"] //1.0
+    })
+
+    if ("pause" in mpv_status && mpv_status["pause"] == "yes" ){
+      navigator.mediaSession.playbackState = "paused"
+    }else{
+      navigator.mediaSession.playbackState = "playing"
+    }
+  }
+}
+
+// To check log on Mobile-Browser.
+// Clearing with double click or double touch.
+function logging_in_page(){
+  var log = document.createElement('div')
+  log.style.cssText = `
+    position: absolute;
+    top:0em; left:0em;
+    width:90%; height: 20%;
+    background-color:rgba(0,0,0,0.8);
+    color:lightgrey;
+    z-index: 1002; overflow:scroll;
+  `;
+  console.log = function(s) {
+    if (typeof(s) == 'object'){
+      var t = JSON.stringify(s)
+      if (t.length>100) t = t.substr(0,99)+'…'
+    }else{
+      var t = s.valueOf()
+    }
+    log.innerHTML += "<br />" + t
+    log.scrollTo({'top': 10000})
+  }
+  log.addEventListener('dblclick',
+    function(evt) { this.innerHTML=''})
+  log.addEventListener('touchstart',
+    function(evt) {
+      if (evt.targetTouches.length == 2){this.innerHTML=''}
+    })
+  document.getElementsByTagName('body')[0].appendChild(log)
+}
+
+function elementsByNameOrId(name_or_id){
+  return document.querySelectorAll(`[name=${name_or_id}], #${name_or_id}`)
+  // Node merging .getElementsByName() and .getElementById() isn't
+  // possible without converting results into real Arrays…
+  // using the combined query selector avoids this problem.
+}
+
+
+function init(){
+  Object.assign(overlays,
+    {
+      "overlay1": togglePlaylist,
+      "overlay2": toggleShares,
+    })
+
+  status_init_ws()
+  add_button_listener()
+}
+
+window.addEventListener('keydown', webui_keydown, true) /* capture=true to skip scrolling on overlays*/
+window.addEventListener('load', init, false)
+
+
+// prevent zoom-in on double-click
+// https://stackoverflow.com/questions/37808180/disable-viewport-zooming-ios-10-safari/38573198#38573198
+var lastTouchEnd = 0
+document.addEventListener('touchend', function (evt) {
+  var now = (new Date()).getTime()
+  if (now - lastTouchEnd <= 300) {
+    evt.preventDefault()
+  }
+  lastTouchEnd = now
+}, false)
+
+if (DEBUG) {
+  // For testing long touch events in 'FF + touch simulation':
+  // Otherwise the right click simulation aborts my long press detection.
+  window.addEventListener("contextmenu", function(e) { e.preventDefault(); })
+}
+if (DEBUG_MOBILE) {
+  logging_in_page()
 }
