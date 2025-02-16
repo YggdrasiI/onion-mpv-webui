@@ -446,6 +446,9 @@ input[type="range"] {
   overflow:hidden; /* Prevents
   1. Right shift of buttons by too long texts in buttons
   2. Too high buttons do not match top-/baseline*/
+
+  /* Avoids pull down to refresh on overlays */
+  overscroll-behavior: none;
 }
 
 .playlist-controls .position1 {

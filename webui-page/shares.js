@@ -141,10 +141,10 @@ function share_change_dir(list_link){
   if (list_link === "/") {
     list_link  = shares.list[shares.selected].url + "/"
   }
-  DEBUG && console.log(`Link of new share dir: '${list_link}'`)
+  true | DEBUG && console.log(`Link of new share dir: '${list_link}'`)
 
   let new_dir = share_get_subdir(list_link);
-  DEBUG && console.log(`Relative dir of new share dir: '${new_dir}'`)
+  true | DEBUG && console.log(`Relative dir of new share dir: '${new_dir}'`)
 
   shares.list[shares.selected].dir = new_dir
 }

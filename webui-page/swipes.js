@@ -36,8 +36,12 @@ function add_overlay_swipes(oname){
     if (overlays[onames[i]] === toggleShares){
       //if (onames[i] === "overlay2"){
       hmap["down"] = function(){
-        DEBUG && console.log("Refresh current share directory");
+        true | DEBUG && console.log("Refresh current share directory");
         share_change_dir('.')
+        share_change(document.getElementById("share_selector"))
+      }
+      hmap["up"] = function(){
+        true | DEBUG && console.log("Up");
       }
     }
 
