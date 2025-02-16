@@ -84,6 +84,10 @@ config_develop: .config_defaults
 
 "$(MPV_SCRIPT_DIR)/libwebui.conf": .config_defaults
 
+package:
+	BUILD_DIR=build_package PREFIX=$(ROOT_DIR)/package make configure
+	BUILD_DIR=build_package make build
+	BUILD_DIR=build_package make install
 
 # Assumes profile=webui in mpv.conf
 run: "$(MPV_SCRIPT_DIR)/libwebui.conf"

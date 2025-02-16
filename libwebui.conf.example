@@ -5,7 +5,7 @@ profile-desc="Enables webinterface"
 script="${SCRIPT_DIR}/libwebui.so"
 script-opts-add=libwebui-root_dir="${HTTP_DIR}/webui-page"
 
-# Keeps mpv open without files
+## Keeps mpv alive even if playlist is empty
 # idle=yes
 
 ## Optional arguments

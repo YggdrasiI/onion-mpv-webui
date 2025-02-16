@@ -212,7 +212,7 @@ compile_template(media_share.html webui)
 
 if(HAVE_MSGFMT)
 	# Localization
-	compile_localization(de)
+	#compile_localization(de)
 	# compile_localization(es)
 	# compile_localization(fr)
 	# compile_localization(zh)
