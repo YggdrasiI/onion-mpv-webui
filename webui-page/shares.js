@@ -93,6 +93,13 @@ function share_change(el){
   request.send(null)
 }
 
+function cycle_share(iDir) {
+  var sel = document.getElementById("share_selector")
+  const M = sel.options.length
+  sel.selectedIndex = (M + sel.selectedIndex + iDir) % M
+  share_change(sel)
+}
+
 function update_selected_share(json){
   //console.log(json)
   shares.selected = -1

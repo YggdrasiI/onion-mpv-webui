@@ -20,29 +20,55 @@ function add_overlay_swipes(oname){
   function _overlay_switch(hmap){
     return function(evt){
       let h = hmap[evt.detail.dir]
-      if (h !== undefined) h()
+      if (h !== undefined) h(evt)
     }
   }
   for(let i = 1; i < n+1; ++i) {
     if (oname && oname !== onames[i]) continue
     DEBUG && console.log("Add swipe event listener")
 
-    let hmap = {
-      //left: function(){ toggleOverlay(onames[i], false); toggleOverlay(onames[i-1], true)},
-      left: function(){ overlays[onames[i]](false); overlays[onames[i-1]](true)},
-      right: function(){ overlays[onames[i]](false); overlays[onames[i+1]](true)},
+    function _switch_overlay(from, to){
+      let hFrom = overlays[onames[from]]
+      let hTo = overlays[onames[to]]
+      return function (){
+        hFrom(false)
+        hTo(true)
+      }
     }
 
+    let hmap = {}
+
     if (overlays[onames[i]] === toggleShares){
+      // refresh share with swipeDown and switch Share with two fingers + left/right
+      hmap.left = function(evt) {
+        if (evt.detail.fingers > 1){
+          cycle_share(-1)
+        }else{
+          _switch_overlay(i, i-1)()
+        }
+      }
+      hmap.right = function(evt) {
+        if (evt.detail.fingers > 1){
+          cycle_share(1)
+        }else{
+          _switch_overlay(i, i+1)()
+        }
+      }
       //if (onames[i] === "overlay2"){
       hmap["down"] = function(){
-        true | DEBUG && console.log("Refresh current share directory");
+        DEBUG && console.log("Refresh current share directory");
         share_change_dir('.')
         share_change(document.getElementById("share_selector"))
       }
-      hmap["up"] = function(){
-        true | DEBUG && console.log("Up");
+      /*hmap["up"] = function(){
+        DEBUG && console.log("Up");
+        cycle_share(1)
       }
+      */
+    }else{
+      // Just left/right swipe to next overlay
+      hmap.left = _switch_overlay(i, i-1)
+      hmap.right = _switch_overlay(i, i+1)
     }
 
     document.getElementById(onames[i]).addEventListener('swiped',

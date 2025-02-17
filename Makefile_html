@@ -17,10 +17,10 @@ MIN_JS=webui-page/static/js/webui.min.js
 MAKEFILE:=$(lastword $(MAKEFILE_LIST))
 
 SED_HTML_COMMENT_SWAP= \
-	-e 's/\(\s*<!--[[]\($(BUILD_TYPE)\):Begin[]]\).*$$/    \1-->/' \
-	-e 's/\([[]\($(BUILD_TYPE)\):End[]]-->\).*$$/<!--\1/' \
-	-e 's/\(\s*<!--[[]\($(OTHER_BUILD_TYPES)\):Begin[]]\).*$$/    \1/' \
-	-e 's/.*\([[]\($(OTHER_BUILD_TYPES)\):End[]]-->\).*$$/    \1/' 
+	-e 's/\s*\(<!--[[]\($(BUILD_TYPE)\):Begin[]]\).*$$/    \1-->/' \
+	-e 's/\([[]\($(BUILD_TYPE)\):End[]]-->\)\s*/<!--\1/' \
+	-e 's/\s*\(<!--[[]\($(OTHER_BUILD_TYPES)\):Begin[]]\).*$$/    \1/' \
+	-e 's/.*\([[]\($(OTHER_BUILD_TYPES)\):End[]]-->\)\s*/    \1/' 
 
 all:
 	@echo -e "Use target release, develop or debug\n" \
