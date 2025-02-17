@@ -18,6 +18,8 @@ help:
 	• 'make config_develop'  Directly use compiled plugin from\n\t\
 	                   'build/src' and web stuff from './webui-page'\n\t\
 \n\t\
+	• 'make watch'     Observe JS and CSS files for changes. This will\n\t
+	                   implicit setup webui-page in 'develop mode', see Makefile_html\n\t\
 	• 'make run'       for test run of mpv with plugin\n\t\
 	• 'make bin'       testing standalone binary (webui without mpv)\n\t\
 	"
@@ -119,6 +121,11 @@ valB: config
 	valgrind --leak-check=full \
 		mpv --profile=webui --quiet\
 		"$${HOME}/Music"
+
+# Setup webpage in develop mode and then start watchdog(s) for JS and CSS changes
+watch:
+	make -f Makefile_html develop \
+		&& cd 3rdparty/watchdog && make run
 
 # JS watchdog to update bundle file
 js:
