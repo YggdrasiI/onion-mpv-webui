@@ -1,5 +1,5 @@
 BIN=js-bundle-watchdog
-SOURCES=js-bundle-watchdog.c argparse.c
+SOURCES=js-bundle-watchdog.c argparse.c hashmap.c
 BUNDLE=/run/shm/webui.bundle.js
 #BUNDLE=/dev/shm/webui.bundle.js
 
@@ -29,3 +29,10 @@ min: $(BIN)
 	./$(BIN) -o "$(BUNDLE)" --oneshot --terser="--compress --mangle reserved=['$$','require','exports']" \
 			$(FILES_TO_WATCH)
 
+valgrind: $(BIN)
+	valgrind ./$(BIN) -o "$(BUNDLE)" \
+			$(FILES_TO_WATCH)
+
+nemiver: $(BIN)
+	valgrind ./$(BIN) -o "$(BUNDLE)" \
+			$(FILES_TO_WATCH)
