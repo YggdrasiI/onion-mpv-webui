@@ -1,6 +1,14 @@
 BIN=css-bundle-watchdog
 SOURCES=css-bundle-watchdog.c argparse.c hashmap.c
-BUNDLE=/tmp/onion-mpv-webui/webui.bundle.css
+
+# About folder for temp files:
+# /tmp not on Ubuntu 20.04, /run/shm not on Manjaro
+# $TMPDIR not always set
+# Lets try /var/tmp…
+TMPDIR:=/var/tmp
+
+BUNDLE=$(TMPDIR)/onion-mpv-webui/webui.bundle.css
+MIN=$(TMPDIR)/onion-mpv-webui/webui.min.css
 #BUNDLE=/dev/shm/webui.bundle.css
 
 # Name of current makefile
@@ -55,7 +63,7 @@ min: $(BIN)
 	./$(BIN)  --oneshot --uglifycss="--max-line-len 400" \
 			$(FILES_TO_WATCH) \
 			| sed -e "s/url('/url('..\/..\//g" -- \
-			> "$(BUNDLE)"
+			> "$(MIN)"
 
 
 # Debugging targets

@@ -106,8 +106,8 @@ run_debug: "$(MPV_SCRIPT_DIR)/libwebui.conf"
 		"$$(xdg-user-dir MUSIC)"
 
 
-bin:
-	./$(BUILD_DIR)/src/onion-webui.bin ./webui-page
+#bin:
+#	./$(BUILD_DIR)/src/onion-webui.bin ./webui-page
 
 nemiver:
 	nemiver ./$(BUILD_DIR)/src/onion-webui.bin ./webui-page/
@@ -127,38 +127,12 @@ watch:
 	make -f Makefile_html develop \
 		&& cd 3rdparty/watchdog && make run
 
-# JS watchdog to update bundle file
-js:
-	cd 3rdparty/watchdog && make run
 	
 jsmin:
-	cd 3rdparty/watchdog && make min
-
-jsmin1:
-	3rdparty/minimizer/terser.sh webui-page/*.js \
-		--compress \
-		> webui-page/static/js/webui.min.js
-
-# Still ok
-jsmin2:
-	3rdparty/minimizer/terser.sh webui-page/*.js \
-		--compress --mangle reserved=['$$','require','exports'] \
-		--mangle-props regex=/^_/ \
-		> webui-page/static/js/webui.min.js
-
-# This wont work because it renames too much and I'm using hasOwnProperty...
-jsmin3:
-	3rdparty/minimizer/terser.sh webui-page/*.js \
-		--compress --mangle reserved=['$$','require','exports'] \
-		--mangle-props \
-		> webui-page/static/js/webui.min.js
+	cd 3rdparty/watchdog && make -f Makefile_js min
 
 cssmin:
-	3rdparty/minimizer/uglifycss.sh \
-		--max-line-len 400 \
-		webui-page/*.css \
-		| sed -e "s/url('/url('..\/..\//g" -- \
-		> webui-page/static/css/webui.min.css
+	cd 3rdparty/watchdog && make -f Makefile_css min
 
 
 # Integrate plugin into mpv-android package

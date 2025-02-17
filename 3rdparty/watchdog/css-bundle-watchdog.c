@@ -352,9 +352,12 @@ void refresh_webui_js_files(int delay_ms){
         m->hit = 0;
     }
 
-    FILE *outfile = fopen(uglifycss_input_file?uglifycss_input_file:target_file, "w");
+    const char *_target_file = uglifycss_input_file?uglifycss_input_file:target_file;
+    FILE *outfile = fopen(_target_file, "w");
     if (outfile == NULL) {
-        perror("Error opening output file");
+        fprintf(stderr, "Error for output file '%s': %s",
+                _target_file,
+                strerror(errno));
         exit(EXIT_FAILURE);
     }
 

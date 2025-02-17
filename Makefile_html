@@ -1,9 +1,17 @@
 BUILD_TYPE?=Debug
 INDEX_HTML=webui-page/index.html
 
-BUNDLE_TMP_DIR=/tmp/onion-mpv-webui
+# About folder for temp files:
+# /tmp not on Ubuntu 20.04, /run/shm not on Manjaro
+# $TMPDIR not always set
+# Lets try /var/tmp…
+TMPDIR:=/var/tmp
+
+BUNDLE_TMP_DIR=$(TMPDIR)/onion-mpv-webui
 BUNDLE_CSS=webui-page/static/css/webui.bundle.css
 BUNDLE_JS=webui-page/static/js/webui.bundle.js
+MIN_CSS=webui-page/static/css/webui.min.css
+MIN_JS=webui-page/static/js/webui.min.js
 
 # Name of current makefile
 MAKEFILE:=$(lastword $(MAKEFILE_LIST))
@@ -42,18 +50,20 @@ debug:
 .Release: $(MAKEFILE)
 	sed -i $(SED_HTML_COMMENT_SWAP) \
 		"$(INDEX_HTML)"
+	mkdir -p $$( dirname $(MIN_JS))
+	mkdir -p $$( dirname $(MIN_CSS))
 	@touch .$(BUILD_TYPE)
 
 .Develop: $(MAKEFILE)
 	sed -i $(SED_HTML_COMMENT_SWAP) \
 		"$(INDEX_HTML)"
 	test -d "$(BUNDLE_TMP_DIR)" || mkdir $(BUNDLE_TMP_DIR)
-	test -h "$(BUNDLE_JS)" || ( \
-		mkdir -p $$( dirname $(BUNDLE_JS)) \
-		&& ln -s "$(BUNDLE_TMP_DIR)/$$( basename $(BUNDLE_JS))" "$(BUNDLE_JS)" )
-	test -h "$(BUNDLE_CSS)" || ( \
-		mkdir -p $$( dirname $(BUNDLE_CSS)) \
-		&& ln -s "$(BUNDLE_TMP_DIR)/$$( basename $(BUNDLE_CSS))" "$(BUNDLE_CSS)" )
+	test ! -h "$(BUNDLE_JS)" || rm "$(BUNDLE_JS)"
+	mkdir -p $$( dirname $(BUNDLE_JS)) \
+		&& ln -s "$(BUNDLE_TMP_DIR)/$$( basename $(BUNDLE_JS))" "$(BUNDLE_JS)"
+	test ! -h "$(BUNDLE_CSS)" || rm "$(BUNDLE_CSS)"
+	mkdir -p $$( dirname $(BUNDLE_CSS)) \
+		&& ln -s "$(BUNDLE_TMP_DIR)/$$( basename $(BUNDLE_CSS))" "$(BUNDLE_CSS)"
 	@touch .$(BUILD_TYPE)
 
 .Debug: $(MAKEFILE)
