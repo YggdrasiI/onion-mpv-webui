@@ -1,0 +1,62 @@
+BUILD_TYPE?=Debug
+INDEX_HTML=webui-page/index.html
+
+BUNDLE_TMP_DIR=/tmp/onion-mpv-webui
+BUNDLE_CSS=webui-page/static/css/webui.bundle.css
+BUNDLE_JS=webui-page/static/js/webui.bundle.js
+
+# Name of current makefile
+MAKEFILE:=$(lastword $(MAKEFILE_LIST))
+
+SED_HTML_COMMENT_SWAP= \
+	-e 's/\(\s*<!--[[]\($(BUILD_TYPE)\):Begin[]]\).*$$/    \1-->/' \
+	-e 's/\([[]\($(BUILD_TYPE)\):End[]]-->\).*$$/<!--\1/' \
+	-e 's/\(\s*<!--[[]\($(OTHER_BUILD_TYPES)\):Begin[]]\).*$$/    \1/' \
+	-e 's/.*\([[]\($(OTHER_BUILD_TYPES)\):End[]]-->\).*$$/    \1/' 
+
+all:
+	@echo -e "Use target release, develop or debug\n" \
+		"    release: Minimize JS/CSS files\n\n" \
+		"    develop: Merge JS/CSS files without compression.\n" \
+		"             Use watchdog for automatic update of file by running\n" \
+		"             'make watch'\n\n" \
+		"    debug:   Include all uncompressed files in HTML\n\n"
+
+
+release:
+	@echo "Release build"
+	@rm .Debug .Develop 2>/dev/null || true
+	@BUILD_TYPE=Release OTHER_BUILD_TYPES="Develop\|Debug" make -f $(MAKEFILE) .Release
+
+develop:
+	@echo "Develop build"
+	@rm .Release .Debug 2>/dev/null || true
+	@BUILD_TYPE=Develop OTHER_BUILD_TYPES="Debug\|Release" make -f $(MAKEFILE) .Develop
+
+debug:
+	@echo "Debug build"
+	@rm .Develop .Release 2>/dev/null || true
+	@BUILD_TYPE=Debug OTHER_BUILD_TYPES="Release\|Develop" make -f $(MAKEFILE) .Debug
+
+
+.Release: $(MAKEFILE)
+	sed -i $(SED_HTML_COMMENT_SWAP) \
+		"$(INDEX_HTML)"
+	@touch .$(BUILD_TYPE)
+
+.Develop: $(MAKEFILE)
+	sed -i $(SED_HTML_COMMENT_SWAP) \
+		"$(INDEX_HTML)"
+	test -d "$(BUNDLE_TMP_DIR)" || mkdir $(BUNDLE_TMP_DIR)
+	test -h "$(BUNDLE_JS)" || ( \
+		mkdir -p $$( dirname $(BUNDLE_JS)) \
+		&& ln -s "$(BUNDLE_TMP_DIR)/$$( basename $(BUNDLE_JS))" "$(BUNDLE_JS)" )
+	test -h "$(BUNDLE_CSS)" || ( \
+		mkdir -p $$( dirname $(BUNDLE_CSS)) \
+		&& ln -s "$(BUNDLE_TMP_DIR)/$$( basename $(BUNDLE_CSS))" "$(BUNDLE_CSS)" )
+	@touch .$(BUILD_TYPE)
+
+.Debug: $(MAKEFILE)
+	sed -i $(SED_HTML_COMMENT_SWAP) \
+		"$(INDEX_HTML)"
+	@touch .$(BUILD_TYPE)
