@@ -146,6 +146,14 @@ jsmin3:
 		--mangle-props \
 		> webui-page/static/js/webui.min.js
 
+cssmin:
+	3rdparty/minimizer/uglifycss.sh \
+		--max-line-len 400 \
+		webui-page/*.css \
+		| sed -e "s/url('/url('..\/..\//g" -- \
+		> webui-page/static/css/webui.min.css
+
+
 # Integrate plugin into mpv-android package
 # (Integrate this plugin into mpv on android without NDK)
 # Assumption: Proper libwebui.so (Termux build) is in $(APK_DIR) stored.

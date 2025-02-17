@@ -10,12 +10,13 @@
  *     $> gcc -o js-bundle-watchdog js-bundle-watchdog.c
  *
  *   Run as:
- *     $> ./js-bundle-watchdog {bundle-file.js} /path/to/monitor /another/path/to/monitor ...
+ *     $> ./js-bundle-watchdog -o {bundle-file.js} /path/to/monitor /another/path/to/monitor ...
  */
 #define _POSIX_SOURCE 1 // for SIG_BLOCK
 #define _POSIX_C_SOURCE 200809L // for strdup()
 #define _GNU_SOURCE     // for asprintf
 
+#include <libgen.h>  // POSIX dirname, basename
 
 #include <stdio.h>
 #include <signal.h>
@@ -28,10 +29,25 @@
 #include <dirent.h>
 #include <sys/signalfd.h>
 
+#include <assert.h>
+
 //#include <linux/inotify.h>
 #include <sys/inotify.h>
 
 #include "argparse.h"
+#include "hashmap.h"
+
+/* Size of buffer to use when reading inotify events */
+#define INOTIFY_BUFFER_SIZE 8192
+
+#ifndef _NDEBUG
+#define DEBUG 1
+#endif
+
+/* Minimal time distance between updates in seconds.
+ *
+ */
+int MINIMAL_UPDATE_DISTANCE_S = 10;
 
 const char *const usages[] = {
     "basic [options] [[--] args]",
@@ -40,15 +56,70 @@ const char *const usages[] = {
 };
 
 /* Structure to keep track of monitored directories */
-typedef struct {
-  /* Path of the directory */
+typedef struct monitored_t {
+  /* Path of the observed directory */
   char *path;
-  /* inotify watch descriptor */
-  int wd;
+  union {
+      /* inotify watch descriptor */
+      int wd;
+      /* ref counter during loop over all monitored paths. */
+      int hit;
+  };
 } monitored_t;
 
-/* Size of buffer to use when reading inotify events */
-#define INOTIFY_BUFFER_SIZE 8192
+typedef struct path_t {
+    /* Path of the directory */
+    char *path;
+    monitored_t *m;
+} path_t;
+
+// Handlers for hashmaps
+int monitor_compare_by_wd(const void *a, const void *b, void *udata) {
+    const monitored_t *ma = a;
+    const monitored_t *mb = b;
+    return mb->wd - ma->wd;
+}
+
+int monitor_compare_by_path(const void *a, const void *b, void *udata) {
+    const monitored_t *ma = a;
+    const monitored_t *mb = b;
+    return strcmp(ma->path, mb->path);
+}
+
+bool monitor_iter(const void *item, void *udata) {
+    const monitored_t *m = item;
+    if (DEBUG) fprintf(stderr, "%s (wd=%d)\n", m->path, m->wd);
+    return true;
+}
+
+uint64_t monitor_hash_by_wd(const void *item, uint64_t seed0, uint64_t seed1) {
+    const monitored_t *m = item;
+    return m->wd;
+}
+
+uint64_t monitor_hash_by_path(const void *item, uint64_t seed0, uint64_t seed1) {
+    const monitored_t *m = item;
+    return hashmap_sip(m->path, strlen(m->path), seed0, seed1);
+}
+
+int path_compare(const void *a, const void *b, void *udata) {
+    const path_t *pa = a;
+    const path_t *pb = b;
+    return strcmp(pa->path, pb->path);
+}
+
+bool path_iter(const void *item, void *udata) {
+    const path_t *p = item;
+    if (DEBUG) fprintf(stderr, "path: %s (monitored path=%s)\n", p->path, p->m->path);
+    return true;
+}
+
+uint64_t path_hash(const void *item, uint64_t seed0, uint64_t seed1) {
+    const path_t *p = item;
+    return hashmap_sip(p->path, strlen(p->path), seed0, seed1);
+}
+// End Handlers for hashmaps
+
 
 /* Enumerate list of FDs to poll */
 enum {
@@ -105,7 +176,6 @@ int event_mask2 =
 monitored_t *monitors;
 int n_monitors;
 
-int MINIMAL_UPDATE_DISTANCE_S = 10;
 time_t last_refresh_time = 0;
 char *target_file = NULL;
 char *terser_input_file = NULL;
@@ -113,48 +183,25 @@ const char *terser_args = NULL;
 char *tmp_path = NULL;
 const size_t tmp_path_len = 1024;
 
-// To avoid duplicates store already copied files in list
-typedef struct path_t {
-    /* Path of the directory */
-    char *path;
-    /* inotify watch descriptor */
-    struct path_t *next;
-} path_t;
+struct hashmap *wd_to_mon_map;
+struct hashmap *file_to_mon_map;
+struct hashmap *files_refreshed;
+struct hashmap *files_delayed;
 
-// Returns first?first:el
-path_t * extend_list(path_t *first, const char *path){
-    path_t *el = malloc(sizeof(path_t));
-    el->next = NULL;
-    el->path = strdup(path);
+// hashmap elements not sorted
+// Backup insert order. The elements can be used as keys
+// for file_to_mon_map.
+const char **file_to_mon_order;
 
-    if(first != NULL){
-        path_t *prev = first;
-        while (prev->next != NULL) prev=prev->next;
-        prev->next = el;
-    }else{
-        first = el;
-    }
-    return first;
-}
-void free_list(path_t **pbegin){
-    path_t *begin = *pbegin;
-    path_t *next;
-    while(begin){
-        next = begin->next;
-        free(begin->path);
-        begin = next;
-    }
-    *pbegin = NULL;
-}
-int already_copied(path_t *el, const char *path){
-    while(el){
-        if( 0 == strcmp(el->path,path)) return 1;
-        el = el->next;
-    }
-    return 0;
-}
 
-path_t *copied_files = NULL;
+char *path_join(const char *folder, const char *basename){
+    int ps = snprintf(tmp_path, tmp_path_len, "%s/%s", folder, basename);
+    if( ps < 0 || ps >= tmp_path_len ){
+        perror("snprintf failed!");
+        exit(EXIT_FAILURE);
+    }
+    return tmp_path;
+}
 
 
 const char *sprint_time(time_t t){
@@ -174,23 +221,45 @@ const char *sprint_time(time_t t){
         exit(EXIT_FAILURE);
     }
 
-    //printf("%s", outstr);
+    //fprintf(stderr, "%s", outstr);
     return outstr;
 }
 
+/* Check if path was already processed and wrote otherwise */
 void bundle_write(const char *input_file, FILE *outfile){
 
-    if (already_copied(copied_files, input_file)) {
-        printf("Skip '%s'\n", input_file);
+    char *_input_file = strdup(input_file);
+    const monitored_t *f = hashmap_get(files_refreshed,
+            &(monitored_t){ .path=_input_file, .hit=1 });
+    int hit;
+    if (f){
+        // Reuse existing entry (Attention, hit==0 is possible)
+        hit = f->hit + 1;
+        hashmap_set(files_refreshed,
+                &(monitored_t){ .path=f->path, .hit=hit});
+
+        free(_input_file);
+    }else{
+        // Create new entry
+        hit = 1;
+        hashmap_set(files_refreshed,
+                &(monitored_t){.path=_input_file, .hit=hit});
+    }
+
+    if(hit > 1){
+        if (DEBUG) fprintf(stderr, "  Skip  '%s'\n", input_file);
         return;
     }
-    copied_files = extend_list(copied_files, input_file);
 
-    printf("Cat  '%s'\n", input_file);
+    if (DEBUG) fprintf(stderr, "  Cat   '%s'\n", input_file);
     FILE *infile = fopen(input_file, "r");
     if (infile == NULL) {
-        perror("Error opening input file");
-        exit(EXIT_FAILURE);
+        //perror("Error opening input file");
+        //exit(EXIT_FAILURE);
+        fprintf(stderr,
+                "Reading error for '%s': %s\n",
+                input_file, strerror (errno));
+        return;
     }
 
     char buffer[BUFSIZ];
@@ -203,7 +272,7 @@ void bundle_write(const char *input_file, FILE *outfile){
 }
 
 void refresh(const char *path, FILE *outfile){
-
+    if (DEBUG) fprintf(stderr, "Refresh '%s'\n", path);
 
     DIR *dir = opendir(path);
     if (!dir){
@@ -212,9 +281,7 @@ void refresh(const char *path, FILE *outfile){
         return;
     }
 
-
     // its a dir, loop over *.js-files
-
     struct dirent *de;
     while ((de = readdir(dir))) {     // Fill one files.[filename] per file.
         // Skip ".", ".." and hidden files in listing
@@ -225,17 +292,21 @@ void refresh(const char *path, FILE *outfile){
             continue;
         }
 
-        int ps = snprintf(tmp_path, tmp_path_len, "%s/%s", path, de->d_name);
-        if( ps >= 0 && ps < tmp_path_len ){
-            bundle_write(tmp_path, outfile);
+        path_join(path, de->d_name);
+
+        // Skip if marked as delayed
+        if (hashmap_get(files_delayed,
+                &(monitored_t){ .path=tmp_path})){
+            if (DEBUG) fprintf(stderr, "  Delay  '%s'\n", tmp_path);
+            continue;
         }
+
+        bundle_write(tmp_path, outfile);
     }
     closedir(dir);
-
 }
 
-
-void refresh_webui_js_files(){
+void refresh_webui_js_files(int delay_ms){
     time_t current_time = time(NULL);
     double tdiff = difftime(current_time, last_refresh_time);
     if (tdiff < 0.0) { // (*)
@@ -246,8 +317,24 @@ void refresh_webui_js_files(){
     if (tdiff < (double)MINIMAL_UPDATE_DISTANCE_S){
         // Wait on more changes of other files
         int wait_s = MINIMAL_UPDATE_DISTANCE_S - (int)tdiff;
-        printf("Sleep…\n");
+        if (DEBUG) fprintf(stderr, "Sleep %d s…\n", wait_s);
         sleep(wait_s);
+    }else if (delay_ms > 0){
+        // To give user/system time to update multiple nodes in filesystem.
+
+        struct timespec rem;
+        struct timespec ts = { .tv_sec = (delay_ms/1000), .tv_nsec = 1000000L * (delay_ms)%1000};
+
+        fflush(stdout);
+        while (nanosleep(&ts, &rem) == -1) {
+            if (errno == EINTR) {
+                // Continue with remainting time
+                ts = rem;
+            } else {
+                perror("nanosleep error");
+                break;
+            }
+        }
     }
 
     current_time = time(NULL);
@@ -255,8 +342,15 @@ void refresh_webui_js_files(){
     last_refresh_time = current_time + 2;
 
     // Merge all js files into one big.
-    printf("Update at '%s'\n", sprint_time(current_time));
-    free_list(&copied_files);
+    fprintf(stderr, "Update at '%s'\n", sprint_time(current_time));
+
+    // Reset hit counter
+    size_t iter = 0;
+    void *item;
+    while (hashmap_iter(files_refreshed, &iter, &item)) {
+        struct monitored_t *m = item;
+        m->hit = 0;
+    }
 
     FILE *outfile = fopen(terser_input_file?terser_input_file:target_file, "w");
     if (outfile == NULL) {
@@ -264,10 +358,14 @@ void refresh_webui_js_files(){
         exit(EXIT_FAILURE);
     }
 
-    int i;
-    for (i = 0; i < n_monitors; ++i){
-        refresh(monitors[i].path, outfile);
+    // Loop over keys of file_to_mon_map by input argument order
+    // (this is preserved in file_to_mon_order)
+    size_t iterEnd = hashmap_count(file_to_mon_map);
+    for (iter = 0; iter < iterEnd; ++iter){
+        const char *path = file_to_mon_order[iter];
+        refresh(path, outfile);
     }
+
     fclose(outfile);
 
     if (terser_input_file){ // Compress step to get target_file
@@ -279,91 +377,185 @@ void refresh_webui_js_files(){
             perror("asprintf failed!");
             exit(EXIT_FAILURE);
         }
-        printf("Call '%s'\n", command);
-        system(command);
+        if (DEBUG) fprintf(stderr, "Calling '%s'…\n", command);
+        int ret = system(command);
+        if (ret != 0){
+            if (ret < 0)
+                perror("Terser command failed");
+            else
+                fprintf(stderr,
+                    "Terser command returned non zero status code: %d\n",
+                    ret);
+        }
     }
 
+}
+
+/* Returns: 
+ *  1 is file
+ *  0 is dir
+ * -1 failed access, check errno
+ */
+int __isdir(const char *path){
+  //int fd = open(path, O_PATH|O_NOATIME);
+  //if (fd < 0) return errno;
+  //DIR *dir = fopendir(fd);
+  DIR *dir = opendir(path);
+  if (!dir){
+      if (errno == ENOTDIR) return 1;
+      return -1;
+  }
+  closedir(dir);
+  //close(fd);
+  return 0;
+  
 }
 
 
 void
 __event_process (struct inotify_event *event)
 {
-  int i;
+    int i;
 
-  /* Need to loop all registered monitors to find the one corresponding to the
-   * watch descriptor in the event. A hash table here would be quite a better
-   * approach. */
-  for (i = 0; i < n_monitors; ++i)
-    {
-      /* If watch descriptors match, we found our directory */
-      if (monitors[i].wd == event->wd)
-        {
-          const char *fname = (event->len==0)?monitors[i].path:event->name;
+    const monitored_t *m = hashmap_get(wd_to_mon_map,
+            &(monitored_t){ .wd=event->wd });
 
-          // Just lock for *.js files and abort otherwise
-          size_t l = strlen(fname);
-          if (l < 3 || 0 != strcmp(".js", &fname[l-3])){
-              //printf ("Skip event in '%s'\n", fname);
-              //fflush (stdout);
-              return;
-          }
-
-          if (event->len > 0)
-            printf ("Received event in '%s/%s': ",
-                    monitors[i].path,
-                    event->name);
-          else
-            printf ("Received event in '%s': ",
-                    monitors[i].path);
-
-          if (event->mask & IN_ACCESS)
-            printf ("\tIN_ACCESS\n");
-          if (event->mask & IN_ATTRIB)
-            printf ("\tIN_ATTRIB\n");
-          if (event->mask & IN_OPEN)
-            printf ("\tIN_OPEN\n");
-          if (event->mask & IN_CLOSE_WRITE)
-            printf ("\tIN_CLOSE_WRITE\n");
-          if (event->mask & IN_CLOSE_NOWRITE)
-            printf ("\tIN_CLOSE_NOWRITE\n");
-          if (event->mask & IN_CREATE)
-            printf ("\tIN_CREATE\n");
-          if (event->mask & IN_DELETE)
-            printf ("\tIN_DELETE\n");
-          if (event->mask & IN_DELETE_SELF)
-            printf ("\tIN_DELETE_SELF\n");
-          if (event->mask & IN_MODIFY)
-            printf ("\tIN_MODIFY\n");
-          if (event->mask & IN_MOVE_SELF)
-            printf ("\tIN_MOVE_SELF\n");
-          if (event->mask & IN_MOVED_FROM)
-            printf ("\tIN_MOVED_FROM (cookie: %d)\n",
-                    event->cookie);
-          if (event->mask & IN_MOVED_TO)
-            printf ("\tIN_MOVED_TO (cookie: %d)\n",
-                    event->cookie);
-
-          refresh_webui_js_files();
-          fflush (stdout);
-
-          return;
-        }
+    if (!m){
+        fprintf(stderr, "Hey, hashmap contains no element for this event->wd.");
+        return;
     }
+
+    char *fname = NULL;
+    int event_can_be_skiped = 1;
+
+    if (event->len==0) {
+        fname = m->path;
+    }else{
+        fname = path_join(m->path, event->name);
+    }
+
+    // Check if it's one of the explicit named files;
+    const path_t *f = hashmap_get(file_to_mon_map,
+            &(path_t){.path=fname});
+    if (f){
+        event_can_be_skiped = 0;
+    }
+
+    // Just lock for *.js files and abort otherwise
+    size_t l = strlen(fname);
+    if (l >= 3 && 0 == strcmp(".js", &fname[l-3])){
+        event_can_be_skiped = 0;
+    }
+
+    if (event_can_be_skiped) return;
+
+    fprintf(stderr, "Received event for '%s': ", fname);
+
+    if (DEBUG) {
+        if (event->mask & IN_ACCESS)
+            fprintf(stderr, "\tIN_ACCESS\n");
+        if (event->mask & IN_ATTRIB)
+            fprintf(stderr, "\tIN_ATTRIB\n");
+        if (event->mask & IN_OPEN)
+            fprintf(stderr, "\tIN_OPEN\n");
+        if (event->mask & IN_CLOSE_WRITE)
+            fprintf(stderr, "\tIN_CLOSE_WRITE\n");
+        if (event->mask & IN_CLOSE_NOWRITE)
+            fprintf(stderr, "\tIN_CLOSE_NOWRITE\n");
+        if (event->mask & IN_CREATE)
+            fprintf(stderr, "\tIN_CREATE\n");
+        if (event->mask & IN_DELETE)
+            fprintf(stderr, "\tIN_DELETE\n");
+        if (event->mask & IN_DELETE_SELF)
+            fprintf(stderr, "\tIN_DELETE_SELF\n");
+        if (event->mask & IN_MODIFY)
+            fprintf(stderr, "\tIN_MODIFY\n");
+        if (event->mask & IN_MOVE_SELF)
+            fprintf(stderr, "\tIN_MOVE_SELF\n");
+        if (event->mask & IN_MOVED_FROM)
+            fprintf(stderr, "\tIN_MOVED_FROM (cookie: %d)\n",
+                    event->cookie);
+        if (event->mask & IN_MOVED_TO)
+            fprintf(stderr, "\tIN_MOVED_TO (cookie: %d)\n",
+                    event->cookie);
+    }
+
+    refresh_webui_js_files(20*100);
+    fflush (stdout);
+
+    return;
 }
 
-void
-__shutdown_inotify (int inotify_fd)
+monitored_t *__get_monitored_by_path(const char *path)
 {
-  int i;
-
-  for (i = 0; i < n_monitors; ++i)
-    {
-      free (monitors[i].path);
-      inotify_rm_watch (inotify_fd, monitors[i].wd);
+    // Searching by loop, because we're not using the key of the hash map.
+    monitored_t *m_found = NULL;
+    size_t iter = 0;
+    void *item;
+    while (hashmap_iter(wd_to_mon_map, &iter, &item)) {
+        const monitored_t *m = item;
+        if (0 == strcmp(m->path, path)){
+            m_found = (monitored_t *)m;
+            break;
+        }
     }
-  free (monitors);
-  close (inotify_fd);
+    return m_found;
+}
+
+void __add_file(
+        char *path,
+        char *file,
+        int wd)
+{
+      hashmap_set(wd_to_mon_map,
+              &(monitored_t){.path=strdup(path), .wd=wd});
+      monitored_t *m_found = (monitored_t *)hashmap_get(wd_to_mon_map,
+              &(monitored_t){.path=path}); // not returned by _set call
+
+      char *p = strdup(file?file:path);
+      const void *prev = hashmap_set(file_to_mon_map,
+              &(path_t){.path=p, .m=m_found});
+      assert(prev == NULL);
+      file_to_mon_order[hashmap_count(file_to_mon_map)-1] = p;
+
+      fprintf(stderr, "Started monitoring: '%s'…\n",
+              file?file:path);
+}
+
+void __add_file_if_no_duplicate(
+        char *path,
+        char *file,
+        monitored_t *mon)
+{
+    /* We know that this path is already monitored but not if
+     * explicit this file was already added.
+     */
+
+    // Check if this file was already added.
+    const path_t *f1 = hashmap_get(file_to_mon_map,
+            &(path_t){.path=(file?file:path)});
+    if (f1) {
+        fprintf(stderr, "Path '%s' is given twice.\n", file);
+        return;
+    }
+
+
+    const path_t *f2 = hashmap_get(file_to_mon_map,
+            &(path_t){.path=path});
+    if (f2) {
+        // The path is already observed because the whole dir is monitored.
+        // Mark this file as delayed and process it after
+        // unmarked files in the dir
+        hashmap_set(files_delayed,
+                &(monitored_t){ .path=strdup(file), .hit=-1});
+    }
+
+    //fprintf(stderr, "Adding file to file_to_mon-map.\n");
+    char *p = strdup(file?file:path);
+    const void *prev = hashmap_set(file_to_mon_map,
+            &(path_t){.path=p, .m=mon});
+    assert(prev == NULL);
+    file_to_mon_order[hashmap_count(file_to_mon_map)-1] = p;
 }
 
 int
@@ -371,6 +563,7 @@ __initialize_inotify (int          argc,
                       const char **argv)
 {
   int i;
+  int wd;
   int inotify_fd;
 
   /* Create new inotify device */
@@ -384,25 +577,65 @@ __initialize_inotify (int          argc,
 
   /* Allocate array of monitor setups */
   n_monitors = argc;
-  monitors = malloc (n_monitors * sizeof (monitored_t));
+  file_to_mon_order = calloc (n_monitors, sizeof (char *));
 
   /* Loop all input directories, setting up watches */
   for (i = 0; i < n_monitors; ++i)
-    {
-      monitors[i].path = strdup (argv[i]);
-      if ((monitors[i].wd = inotify_add_watch (inotify_fd,
-                                               monitors[i].path,
-                                               event_mask)) < 0)
-        {
-          fprintf (stderr,
-                   "Couldn't add monitor in file/directory '%s': '%s'\n",
-                   monitors[i].path,
-                   strerror (errno));
+  {
+      // Check if file or dir
+      int isdir = __isdir(argv[i]);
+      char *path = NULL;
+      char *file = NULL;
+      if (isdir < 0){
+          fprintf(stderr,
+                  "Couldn't monitoring '%s': '%s'\n",
+                  argv[i],
+                  strerror (errno));
           exit (EXIT_FAILURE);
-        }
-      printf ("Started monitoring: '%s'...\n",
-              monitors[i].path);
-    }
+      }
+      else if (isdir == 0) { // it's a dir
+          path = strdup(argv[i]);
+          file = NULL;
+      }
+      else if (isdir == 1) { // it's a file
+          char *_tmp_path = strdup(argv[i]);
+          path = strdup(dirname(_tmp_path));
+          file = strdup(argv[i]);
+          free(_tmp_path);
+      }else{
+          fprintf(stderr,
+                  "Hey, __isdir() returned wrong value %d\n",
+                  isdir);
+          exit (EXIT_FAILURE);
+      }
+
+      // Check if folder is already monitored
+      monitored_t *m_found = __get_monitored_by_path(path);
+      if (m_found) {
+          fprintf(stderr, "This path is already monitored.\n");
+          __add_file_if_no_duplicate(path, file, m_found);
+
+          free(path);
+          free(file);
+          continue;
+      }
+
+      if ((wd = inotify_add_watch (inotify_fd,
+                      path,
+                      event_mask)) < 0)
+      {
+          fprintf (stderr,
+                  "Couldn't add monitor in directory '%s': '%s'\n",
+                  path,
+                  strerror (errno));
+          exit (EXIT_FAILURE);
+      }
+
+      __add_file(path, file, wd);
+
+      free(path);
+      free(file);
+  }
 
   return inotify_fd;
 }
@@ -444,16 +677,45 @@ __initialize_signals (void)
   return signal_fd;
 }
 
+void __clear_hashmaps(int inotify_fd){
+
+    size_t iter = 0;
+    void *item;
+    while (hashmap_iter(files_delayed, &iter, &item)) {
+        const path_t *f = item;
+        free(f->path);
+    }
+
+    item = 0;
+    while (hashmap_iter(files_refreshed, &iter, &item)) {
+        const path_t *f = item;
+        free(f->path);
+    }
+
+    item = 0;
+    while (hashmap_iter(file_to_mon_map, &iter, &item)) {
+        const path_t *p = item;
+        free(p->path);
+    }
+
+    item = 0;
+    while (hashmap_iter(wd_to_mon_map, &iter, &item)) {
+        const monitored_t *m = item;
+        inotify_rm_watch (inotify_fd, m->wd);
+        free(m->path);
+    }
+}
+
 int main (int argc, const char **argv)
 {
     int signal_fd;
     int inotify_fd;
     struct pollfd fds[FD_POLL_MAX];
 
-    // for some {path}/{filename}
+    // for some {path}/{filename} merges
     tmp_path = malloc(tmp_path_len * sizeof (char));
 
-
+    // Argparse
     int oneshot = 0;
     //int terser = 0; // call minimizer TODO
     const char *default_target_file = "/run/shm/webui.bundle.js";
@@ -483,17 +745,46 @@ int main (int argc, const char **argv)
         }
     }
 
-    if (argc != 0) {
-        printf("argc: %d\n", argc);
-        int i;
-        for (i = 0; i < argc; i++) {
-            printf("argv[%d]: %s\n", i, *(argv + i));
+    if (DEBUG) {
+        if (argc != 0) {
+            fprintf(stderr, "argc: %d\n", argc);
+            int i;
+            for (i = 0; i < argc; i++) {
+                fprintf(stderr, "argv[%d]: %s\n", i, *(argv + i));
+            }
         }
     }
     if (argc == 0) {
         perror("No input files/directories defined!");
         exit(EXIT_FAILURE);
     }
+    // End Argparse
+
+    // Hashmaps
+    /* To find correct instance of monitor_t store
+     * wd->monitored_path map
+     * wd is inotify watch descriptor. */
+    wd_to_mon_map = hashmap_new(
+            sizeof(monitored_t), 0, 0, 0, 
+            monitor_hash_by_wd, monitor_compare_by_wd, NULL, NULL);
+
+    /* Input arguments like 'path/file1' 'path' 'path/file2' will map
+     * on the same target. */
+    file_to_mon_map = hashmap_new(
+            sizeof(path_t), 0, 0, 0, 
+            path_hash, path_compare, NULL, NULL);
+
+    // To avoid double processing store files processed by refresh().
+    files_refreshed = hashmap_new(
+            sizeof(monitored_t), 0, 0, 0, 
+            monitor_hash_by_path, monitor_compare_by_path, NULL, NULL);
+
+    /* Stores file={path/fname} where path was previous input argument.
+     * This file will not be processed if path is handled. */
+    files_delayed = hashmap_new(
+            sizeof(monitored_t), 0, 0, 0, 
+            monitor_hash_by_path, monitor_compare_by_path, NULL, NULL);
+
 
     /* Initialize signals FD */
     if ((signal_fd = __initialize_signals ()) < 0)
@@ -509,10 +800,10 @@ int main (int argc, const char **argv)
         exit (EXIT_FAILURE);
     }
 
-    printf ("Target bundle file: '%s'\n", target_file);
+    fprintf(stderr, "Target bundle file: '%s'\n", target_file);
 
     // First run at startup
-    refresh_webui_js_files();
+    refresh_webui_js_files(0);
     if (oneshot) goto main_clean;
 
     /* Setup polling */
@@ -584,14 +875,17 @@ int main (int argc, const char **argv)
 
 main_clean:
     /* Clean exit */
-    __shutdown_inotify (inotify_fd);
     __shutdown_signals (signal_fd);
     free (target_file);
     free (terser_input_file);
     free (tmp_path);
-    free_list(&copied_files);
 
-    printf ("Exiting inotify example...\n");
+    __clear_hashmaps(inotify_fd);
+    hashmap_free(files_delayed);
+    hashmap_free(files_refreshed);
+    hashmap_free(file_to_mon_map);
+    hashmap_free(wd_to_mon_map);
+    free(file_to_mon_order);
 
     return EXIT_SUCCESS;
 }
