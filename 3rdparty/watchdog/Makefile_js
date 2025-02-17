@@ -8,7 +8,7 @@ SOURCES=js-bundle-watchdog.c argparse.c hashmap.c
 TMPDIR:=/var/tmp
 
 BUNDLE=$(TMPDIR)/onion-mpv-webui/webui.bundle.js
-MIN=$(TMPDIR)/onion-mpv-webui/webui.min.css
+MIN=../../webui-page/static/js/webui.min.js
 
 # Name of current makefile
 MAKEFILE:=$(lastword $(MAKEFILE_LIST))
