@@ -10,7 +10,7 @@
  *     $> gcc -o js-bundle-watchdog js-bundle-watchdog.c
  *
  *   Run as:
- *     $> ./js-bundle-watchdog {bundle-file.js} /path/to/monitor /another/path/to/monitor ...
+ *     $> ./js-bundle-watchdog -o {bundle-file.js} /path/to/monitor /another/path/to/monitor ...
  */
 #define _POSIX_SOURCE 1 // for SIG_BLOCK
 #define _POSIX_C_SOURCE 200809L // for strdup()
@@ -88,7 +88,7 @@ int monitor_compare_by_path(const void *a, const void *b, void *udata) {
 
 bool monitor_iter(const void *item, void *udata) {
     const monitored_t *m = item;
-    if (DEBUG) printf("%s (wd=%d)\n", m->path, m->wd);
+    if (DEBUG) fprintf(stderr, "%s (wd=%d)\n", m->path, m->wd);
     return true;
 }
 
@@ -110,7 +110,7 @@ int path_compare(const void *a, const void *b, void *udata) {
 
 bool path_iter(const void *item, void *udata) {
     const path_t *p = item;
-    if (DEBUG) printf("path: %s (monitored path=%s)\n", p->path, p->m->path);
+    if (DEBUG) fprintf(stderr, "path: %s (monitored path=%s)\n", p->path, p->m->path);
     return true;
 }
 
@@ -221,7 +221,7 @@ const char *sprint_time(time_t t){
         exit(EXIT_FAILURE);
     }
 
-    //printf("%s", outstr);
+    //fprintf(stderr, "%s", outstr);
     return outstr;
 }
 
@@ -247,11 +247,11 @@ void bundle_write(const char *input_file, FILE *outfile){
     }
 
     if(hit > 1){
-        if (DEBUG) printf("  Skip  '%s'\n", input_file);
+        if (DEBUG) fprintf(stderr, "  Skip  '%s'\n", input_file);
         return;
     }
 
-    if (DEBUG) printf("  Cat   '%s'\n", input_file);
+    if (DEBUG) fprintf(stderr, "  Cat   '%s'\n", input_file);
     FILE *infile = fopen(input_file, "r");
     if (infile == NULL) {
         //perror("Error opening input file");
@@ -272,7 +272,7 @@ void bundle_write(const char *input_file, FILE *outfile){
 }
 
 void refresh(const char *path, FILE *outfile){
-    if (DEBUG) printf("Refresh '%s'\n", path);
+    if (DEBUG) fprintf(stderr, "Refresh '%s'\n", path);
 
     DIR *dir = opendir(path);
     if (!dir){
@@ -297,7 +297,7 @@ void refresh(const char *path, FILE *outfile){
         // Skip if marked as delayed
         if (hashmap_get(files_delayed,
                 &(monitored_t){ .path=tmp_path})){
-            if (DEBUG) printf("  Delay  '%s'\n", tmp_path);
+            if (DEBUG) fprintf(stderr, "  Delay  '%s'\n", tmp_path);
             continue;
         }
 
@@ -317,7 +317,7 @@ void refresh_webui_js_files(int delay_ms){
     if (tdiff < (double)MINIMAL_UPDATE_DISTANCE_S){
         // Wait on more changes of other files
         int wait_s = MINIMAL_UPDATE_DISTANCE_S - (int)tdiff;
-        if (DEBUG) printf("Sleep %d s…\n", wait_s);
+        if (DEBUG) fprintf(stderr, "Sleep %d s…\n", wait_s);
         sleep(wait_s);
     }else if (delay_ms > 0){
         // To give user/system time to update multiple nodes in filesystem.
@@ -325,7 +325,6 @@ void refresh_webui_js_files(int delay_ms){
         struct timespec rem;
         struct timespec ts = { .tv_sec = (delay_ms/1000), .tv_nsec = 1000000L * (delay_ms)%1000};
 
-        printf("Ping\n");
         fflush(stdout);
         while (nanosleep(&ts, &rem) == -1) {
             if (errno == EINTR) {
@@ -336,7 +335,6 @@ void refresh_webui_js_files(int delay_ms){
                 break;
             }
         }
-        printf("Pong\n");
     }
 
     current_time = time(NULL);
@@ -344,7 +342,7 @@ void refresh_webui_js_files(int delay_ms){
     last_refresh_time = current_time + 2;
 
     // Merge all js files into one big.
-    printf("Update at '%s'\n", sprint_time(current_time));
+    fprintf(stderr, "Update at '%s'\n", sprint_time(current_time));
 
     // Reset hit counter
     size_t iter = 0;
@@ -379,7 +377,7 @@ void refresh_webui_js_files(int delay_ms){
             perror("asprintf failed!");
             exit(EXIT_FAILURE);
         }
-        if (DEBUG) printf("Calling '%s'…\n", command);
+        if (DEBUG) fprintf(stderr, "Calling '%s'…\n", command);
         int ret = system(command);
         if (ret != 0){
             if (ret < 0)
@@ -451,34 +449,34 @@ __event_process (struct inotify_event *event)
 
     if (event_can_be_skiped) return;
 
-    printf ("Received event for '%s': ", fname);
+    fprintf(stderr, "Received event for '%s': ", fname);
 
     if (DEBUG) {
         if (event->mask & IN_ACCESS)
-            printf ("\tIN_ACCESS\n");
+            fprintf(stderr, "\tIN_ACCESS\n");
         if (event->mask & IN_ATTRIB)
-            printf ("\tIN_ATTRIB\n");
+            fprintf(stderr, "\tIN_ATTRIB\n");
         if (event->mask & IN_OPEN)
-            printf ("\tIN_OPEN\n");
+            fprintf(stderr, "\tIN_OPEN\n");
         if (event->mask & IN_CLOSE_WRITE)
-            printf ("\tIN_CLOSE_WRITE\n");
+            fprintf(stderr, "\tIN_CLOSE_WRITE\n");
         if (event->mask & IN_CLOSE_NOWRITE)
-            printf ("\tIN_CLOSE_NOWRITE\n");
+            fprintf(stderr, "\tIN_CLOSE_NOWRITE\n");
         if (event->mask & IN_CREATE)
-            printf ("\tIN_CREATE\n");
+            fprintf(stderr, "\tIN_CREATE\n");
         if (event->mask & IN_DELETE)
-            printf ("\tIN_DELETE\n");
+            fprintf(stderr, "\tIN_DELETE\n");
         if (event->mask & IN_DELETE_SELF)
-            printf ("\tIN_DELETE_SELF\n");
+            fprintf(stderr, "\tIN_DELETE_SELF\n");
         if (event->mask & IN_MODIFY)
-            printf ("\tIN_MODIFY\n");
+            fprintf(stderr, "\tIN_MODIFY\n");
         if (event->mask & IN_MOVE_SELF)
-            printf ("\tIN_MOVE_SELF\n");
+            fprintf(stderr, "\tIN_MOVE_SELF\n");
         if (event->mask & IN_MOVED_FROM)
-            printf ("\tIN_MOVED_FROM (cookie: %d)\n",
+            fprintf(stderr, "\tIN_MOVED_FROM (cookie: %d)\n",
                     event->cookie);
         if (event->mask & IN_MOVED_TO)
-            printf ("\tIN_MOVED_TO (cookie: %d)\n",
+            fprintf(stderr, "\tIN_MOVED_TO (cookie: %d)\n",
                     event->cookie);
     }
 
@@ -518,10 +516,9 @@ void __add_file(
       const void *prev = hashmap_set(file_to_mon_map,
               &(path_t){.path=p, .m=m_found});
       assert(prev == NULL);
-      printf("ZZZZ1 Add at index %ld\n", hashmap_count(file_to_mon_map)-1);
       file_to_mon_order[hashmap_count(file_to_mon_map)-1] = p;
 
-      printf ("Started monitoring: '%s'…\n",
+      fprintf(stderr, "Started monitoring: '%s'…\n",
               file?file:path);
 }
 
@@ -535,11 +532,10 @@ void __add_file_if_no_duplicate(
      */
 
     // Check if this file was already added.
-    printf("XXX %s\nYYY%s\n", file, path);
     const path_t *f1 = hashmap_get(file_to_mon_map,
             &(path_t){.path=(file?file:path)});
     if (f1) {
-        printf("Path '%s' is given twice.\n", file);
+        fprintf(stderr, "Path '%s' is given twice.\n", file);
         return;
     }
 
@@ -554,12 +550,11 @@ void __add_file_if_no_duplicate(
                 &(monitored_t){ .path=strdup(file), .hit=-1});
     }
 
-    //printf("Adding file to file_to_mon-map.\n");
+    //fprintf(stderr, "Adding file to file_to_mon-map.\n");
     char *p = strdup(file?file:path);
     const void *prev = hashmap_set(file_to_mon_map,
             &(path_t){.path=p, .m=mon});
     assert(prev == NULL);
-    printf("ZZZZ2 Add at index %ld\n", hashmap_count(file_to_mon_map)-1);
     file_to_mon_order[hashmap_count(file_to_mon_map)-1] = p;
 }
 
@@ -617,7 +612,7 @@ __initialize_inotify (int          argc,
       // Check if folder is already monitored
       monitored_t *m_found = __get_monitored_by_path(path);
       if (m_found) {
-          printf("This path is already monitored.\n");
+          fprintf(stderr, "This path is already monitored.\n");
           __add_file_if_no_duplicate(path, file, m_found);
 
           free(path);
@@ -750,11 +745,13 @@ int main (int argc, const char **argv)
         }
     }
 
-    if (argc != 0) {
-        printf("argc: %d\n", argc);
-        int i;
-        for (i = 0; i < argc; i++) {
-            printf("argv[%d]: %s\n", i, *(argv + i));
+    if (DEBUG) {
+        if (argc != 0) {
+            fprintf(stderr, "argc: %d\n", argc);
+            int i;
+            for (i = 0; i < argc; i++) {
+                fprintf(stderr, "argv[%d]: %s\n", i, *(argv + i));
+            }
         }
     }
     if (argc == 0) {
@@ -803,7 +800,7 @@ int main (int argc, const char **argv)
         exit (EXIT_FAILURE);
     }
 
-    printf ("Target bundle file: '%s'\n", target_file);
+    fprintf(stderr, "Target bundle file: '%s'\n", target_file);
 
     // First run at startup
     refresh_webui_js_files(0);

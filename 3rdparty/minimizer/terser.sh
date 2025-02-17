@@ -39,7 +39,7 @@ install() {
 	# Install terser with -g flag (for bin/-scripts)
 	mkdir "$TERSER_ROOT"
 	npm config set prefix "$TERSER_ROOT"
-	npm install -g terser
+	npm install terser -g
 
 	# Reset prefix
 	if [ "$ORIG_PREFIX" = "$ORIG_ROOT/lib/node_modules" ] ; then
@@ -58,12 +58,12 @@ if [ "$1" = "install" ] ; then
 
 elif [ "$1" = "path" ] ; then
 	search_terser || true
-	test "$TERSER_BIN" = "" && echo "Error" && exit -1
+	test "$TERSER_BIN" = "not-found" && echo "Error" && exit -1
 	echo "$TERSER_BIN"
 
 else
 	search_terser || true
-	test "$TERSER_BIN" = "" && echo "Terser not found" && exit -1
+	test "$TERSER_BIN" = "not-found" && echo "Terser not found" && exit -1
 
 	# Run terser
 	"$TERSER_BIN" "$@"
