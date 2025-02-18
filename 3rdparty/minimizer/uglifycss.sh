@@ -10,7 +10,7 @@ UGLIFYCSS_BIN="not-found"
 
 
 search_uglifycss() {
-	which "uglifycss"
+	which "uglifycss" 2> /dev/null
 	if [ "0" = "$?" ] ; then
 		UGLIFYCSS_BIN="uglifycss"
 		return 0
@@ -58,7 +58,7 @@ if [ "$1" = "install" ] ; then
 
 elif [ "$1" = "path" ] ; then
 	search_uglifycss || true
-	test "$UGLIFYCSS_BIN" = "not-found" && echo "Error" && exit -1
+	test "$UGLIFYCSS_BIN" = "not-found" && echo "not-found" && exit -1
 	echo "$UGLIFYCSS_BIN"
 
 else

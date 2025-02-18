@@ -154,7 +154,7 @@ int event_mask =
    //IN_MOVE_SELF |     /* Directory moved */
    //IN_MOVED_FROM |    /* File moved away from the directory */
    IN_MOVED_TO        /* File moved into the directory */
-   );      
+   );
 
 int event_mask2 =
   (
@@ -170,18 +170,23 @@ int event_mask2 =
    //IN_MOVE_SELF |     /* Directory moved */
    //IN_MOVED_FROM |    /* File moved away from the directory */
    IN_MOVED_TO        /* File moved into the directory */
-   );      
+   );
 
 /* Array of directories being monitored */
 monitored_t *monitors;
 int n_monitors;
 
 time_t last_refresh_time = 0;
-char *target_file = NULL;
-char *uglifycss_input_file = NULL;
+const char *target_file = NULL;
 const char *uglifycss_args = NULL;
+
+// For some {path}/{filename} snprintf merges
 char *tmp_path = NULL;
 const size_t tmp_path_len = 1024;
+
+// For potential temp file
+char *tempfile = NULL;
+int tempfile_fd = -1;
 
 struct hashmap *wd_to_mon_map;
 struct hashmap *file_to_mon_map;
@@ -226,7 +231,7 @@ const char *sprint_time(time_t t){
 }
 
 /* Check if path was already processed and wrote otherwise */
-void bundle_write(const char *input_file, FILE *outfile){
+void bundle_write(const char *input_file, FILE *outfile_fd){
 
     char *_input_file = strdup(input_file);
     const monitored_t *f = hashmap_get(files_refreshed,
@@ -265,19 +270,19 @@ void bundle_write(const char *input_file, FILE *outfile){
     char buffer[BUFSIZ];
     size_t n;
     while ((n = fread(buffer, 1, sizeof(buffer), infile)) > 0) {
-        fwrite(buffer, 1, n, outfile);
+        fwrite(buffer, 1, n, outfile_fd);
     }
 
     fclose(infile);
 }
 
-void refresh(const char *path, FILE *outfile){
+void refresh(const char *path, FILE *outfile_fd){
     if (DEBUG) fprintf(stderr, "Refresh '%s'\n", path);
 
     DIR *dir = opendir(path);
     if (!dir){
         // Its a file
-        bundle_write(path, outfile);
+        bundle_write(path, outfile_fd);
         return;
     }
 
@@ -301,7 +306,7 @@ void refresh(const char *path, FILE *outfile){
             continue;
         }
 
-        bundle_write(tmp_path, outfile);
+        bundle_write(tmp_path, outfile_fd);
     }
     closedir(dir);
 }
@@ -352,13 +357,25 @@ void refresh_webui_js_files(int delay_ms){
         m->hit = 0;
     }
 
-    const char *_target_file = uglifycss_input_file?uglifycss_input_file:target_file;
-    FILE *outfile = fopen(_target_file, "w");
-    if (outfile == NULL) {
-        fprintf(stderr, "Error for output file '%s': %s",
-                _target_file,
-                strerror(errno));
-        exit(EXIT_FAILURE);
+    // Reset temp file if used
+    if (tempfile_fd != -1){
+        if (-1 == lseek(tempfile_fd, 0, SEEK_SET) // optional/not needed?!
+                || -1 ==  ftruncate(tempfile_fd, 0)) {
+            perror("Reset of temp file failed!");
+            return;
+        }
+    }
+
+    const char *outfile = tempfile?tempfile:target_file;
+    FILE *outfile_fd = stdout;
+    if (outfile) {
+        outfile_fd = fopen(outfile, "w");
+        if (outfile_fd == NULL) {
+            fprintf(stderr, "Error for output file '%s': %s",
+                    outfile,
+                    strerror(errno));
+            exit(EXIT_FAILURE);
+        }
     }
 
     // Loop over keys of file_to_mon_map by input argument order
@@ -366,35 +383,45 @@ void refresh_webui_js_files(int delay_ms){
     size_t iterEnd = hashmap_count(file_to_mon_map);
     for (iter = 0; iter < iterEnd; ++iter){
         const char *path = file_to_mon_order[iter];
-        refresh(path, outfile);
+        refresh(path, outfile_fd);
     }
 
-    fclose(outfile);
+    if (outfile) fclose(outfile_fd);
 
-    if (uglifycss_input_file){ // Compress step to get target_file
+    if (tempfile){ // Compress step to get target_file
         char *command = NULL;
-        if ( -1 == asprintf(&command,
-                    "../minimizer/uglifycss.sh \"%s\" "
-                    "--output \"%s\" " 
-                    "%s", uglifycss_input_file, target_file, uglifycss_args)){
-            perror("asprintf failed!");
-            exit(EXIT_FAILURE);
+        if (target_file) {
+            if ( -1 == asprintf(&command,
+                        "../minimizer/uglifycss.sh \"%s\" "
+                        "--output \"%s\" "
+                        "%s", tempfile, target_file, uglifycss_args)){
+                perror("asprintf failed!");
+                exit(EXIT_FAILURE);
+            }
+        }else{ // to stdout 
+            if ( -1 == asprintf(&command,
+                        "../minimizer/uglifycss.sh \"%s\" "
+                        "%s", tempfile, uglifycss_args)){
+                perror("asprintf failed!");
+                exit(EXIT_FAILURE);
+            }
         }
+
         if (DEBUG) fprintf(stderr, "Calling '%s'…\n", command);
         int ret = system(command);
         if (ret != 0){
             if (ret < 0)
-                perror("Terser command failed");
+                perror("Uglifycss command failed");
             else
                 fprintf(stderr,
-                    "Terser command returned non zero status code: %d\n",
+                    "Uglifycss command returned non zero status code: %d\n",
                     ret);
         }
     }
 
 }
 
-/* Returns: 
+/* Returns:
  *  1 is file
  *  0 is dir
  * -1 failed access, check errno
@@ -411,7 +438,7 @@ int __isdir(const char *path){
   closedir(dir);
   //close(fd);
   return 0;
-  
+
 }
 
 
@@ -483,7 +510,7 @@ __event_process (struct inotify_event *event)
                     event->cookie);
     }
 
-    refresh_webui_js_files(20*100);
+    refresh_webui_js_files(100);
     fflush (stdout);
 
     return;
@@ -715,13 +742,12 @@ int main (int argc, const char **argv)
     int inotify_fd;
     struct pollfd fds[FD_POLL_MAX];
 
-    // for some {path}/{filename} merges
+    // For some {path}/{filename} snprintf merges
     tmp_path = malloc(tmp_path_len * sizeof (char));
 
     // Argparse
     int oneshot = 0;
     //int uglifycss = 0; // call minimizer TODO
-    const char *default_target_file = "/run/shm/webui.bundle.css";
     struct argparse_option options[] = {
         OPT_HELP(),
         OPT_GROUP("Basic options"),
@@ -737,17 +763,6 @@ int main (int argc, const char **argv)
     argparse_describe(&argparse, "\nBundles CSS files into one big file", "\nThis tool watches for changes in the input files by Linux's inotify and updates the output file on changes.\n\nIn input directories it observes all *.css files.");
     argc = argparse_parse(&argparse, argc, argv);
 
-    // Copy input string or default value.
-    target_file = strdup(target_file?target_file:default_target_file);
-
-    if (uglifycss_args) {
-        // Interleave temp file
-        if (-1 == asprintf(&uglifycss_input_file, "%s.tmp", target_file)){
-            perror("asprintf failed!");
-            exit(EXIT_FAILURE);
-        }
-    }
-
     if (DEBUG) {
         if (argc != 0) {
             fprintf(stderr, "argc: %d\n", argc);
@@ -758,34 +773,35 @@ int main (int argc, const char **argv)
         }
     }
     if (argc == 0) {
-        perror("No input files/directories defined!");
+        fprintf(stderr, "No input files/directories defined!");
         exit(EXIT_FAILURE);
     }
     // End Argparse
+
 
     // Hashmaps
     /* To find correct instance of monitor_t store
      * wd->monitored_path map
      * wd is inotify watch descriptor. */
     wd_to_mon_map = hashmap_new(
-            sizeof(monitored_t), 0, 0, 0, 
+            sizeof(monitored_t), 0, 0, 0,
             monitor_hash_by_wd, monitor_compare_by_wd, NULL, NULL);
 
     /* Input arguments like 'path/file1' 'path' 'path/file2' will map
      * on the same target. */
     file_to_mon_map = hashmap_new(
-            sizeof(path_t), 0, 0, 0, 
+            sizeof(path_t), 0, 0, 0,
             path_hash, path_compare, NULL, NULL);
 
     // To avoid double processing store files processed by refresh().
     files_refreshed = hashmap_new(
-            sizeof(monitored_t), 0, 0, 0, 
+            sizeof(monitored_t), 0, 0, 0,
             monitor_hash_by_path, monitor_compare_by_path, NULL, NULL);
 
     /* Stores file={path/fname} where path was previous input argument.
      * This file will not be processed if path is handled. */
     files_delayed = hashmap_new(
-            sizeof(monitored_t), 0, 0, 0, 
+            sizeof(monitored_t), 0, 0, 0,
             monitor_hash_by_path, monitor_compare_by_path, NULL, NULL);
 
 
@@ -805,15 +821,32 @@ int main (int argc, const char **argv)
 
     fprintf(stderr, "Target bundle file: '%s'\n", target_file);
 
-    // First run at startup
-    refresh_webui_js_files(0);
-    if (oneshot) goto main_clean;
-
     /* Setup polling */
     fds[FD_POLL_SIGNAL].fd = signal_fd;
     fds[FD_POLL_SIGNAL].events = POLLIN;
     fds[FD_POLL_INOTIFY].fd = inotify_fd;
     fds[FD_POLL_INOTIFY].events = POLLIN;
+
+    /* Create temp file if needed */
+    if (uglifycss_args) {
+        const char *env = getenv ("TMPDIR");
+        const char *dest_dir = (env && *env ? env : "/tmp");
+        if (0 > asprintf(&tempfile, "%s/temp.XXXXXX.css", dest_dir)) {
+            fprintf(stderr, "asprintf failed!");
+            exit(EXIT_FAILURE);
+        }
+
+        int tempfile_fd = mkstemps(tempfile, 4);
+        if (DEBUG) fprintf(stderr, "Used tempfile: %s\n", tempfile);
+        if (tempfile_fd < 0){
+            perror("Can not create temp file.");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    // First run at startup
+    refresh_webui_js_files(0);
+    if (oneshot) goto main_clean;
 
     /* Now loop */
     for (;;)
@@ -879,8 +912,6 @@ int main (int argc, const char **argv)
 main_clean:
     /* Clean exit */
     __shutdown_signals (signal_fd);
-    free (target_file);
-    free (uglifycss_input_file);
     free (tmp_path);
 
     __clear_hashmaps(inotify_fd);
@@ -889,6 +920,15 @@ main_clean:
     hashmap_free(file_to_mon_map);
     hashmap_free(wd_to_mon_map);
     free(file_to_mon_order);
+
+    if (tempfile_fd != -1){
+      if (-1 == close(tempfile_fd) || -1 == remove(tempfile)){
+          perror("Can not remove tempfile: ");
+      }else{
+          if (DEBUG) fprintf(stderr, "Removed tempfile\n");
+      }
+    }
+    free (tempfile);
 
     return EXIT_SUCCESS;
 }

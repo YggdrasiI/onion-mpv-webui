@@ -602,7 +602,7 @@ var touchmenu = {
     // Range [A,B)
     const B = current_chapter_index(mpv_status)
     const A = Math.max(0, B-M);
-    if (capthers.length == 0){
+    if (chapters.length == 0){
       this._add_info(menu, "No previous entries")
     } else if (A >= B && false /* Always show first entry */){
       this._add_info(menu, "No previous entries")

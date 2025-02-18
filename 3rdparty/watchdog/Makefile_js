@@ -59,9 +59,12 @@ oneshot: $(BIN)
 			$(FILES_TO_WATCH)
 
 # Compress bundle file and exit
-min: $(BIN)
+min: $(BIN) install_terser
 	./$(BIN) -o "$(MIN)" --oneshot --terser="--compress --mangle reserved=['$$','require','exports']" \
 			$(FILES_TO_WATCH)
+
+install_terser:
+	test ! "$$(../minimizer/terser.sh path 2>/dev/null)" = "not-found" || ../minimizer/terser.sh install
 
 
 # Debugging targets

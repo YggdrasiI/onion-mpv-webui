@@ -59,12 +59,14 @@ oneshot: $(BIN)
 			$(FILES_TO_WATCH)
 
 # Compress bundle file and exit
-min: $(BIN)
+min: $(BIN) install_uglifycss
 	./$(BIN)  --oneshot --uglifycss="--max-line-len 400" \
 			$(FILES_TO_WATCH) \
 			| sed -e "s/url('/url('..\/..\//g" -- \
 			> "$(MIN)"
 
+install_uglifycss:
+	test ! "$$(../minimizer/uglifycss.sh path 2>/dev/null)" = "not-found" || ../minimizer/uglifycss.sh install
 
 # Debugging targets
 valgrind: $(BIN)

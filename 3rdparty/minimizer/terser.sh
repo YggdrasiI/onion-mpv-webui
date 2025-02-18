@@ -10,7 +10,7 @@ TERSER_BIN="not-found"
 
 
 search_terser() {
-	which "terser"
+	which "terser" 2> /dev/null
 	if [ "0" = "$?" ] ; then
 		TERSER_BIN="terser"
 		return 0
@@ -58,7 +58,7 @@ if [ "$1" = "install" ] ; then
 
 elif [ "$1" = "path" ] ; then
 	search_terser || true
-	test "$TERSER_BIN" = "not-found" && echo "Error" && exit -1
+	test "$TERSER_BIN" = "not-found" && echo "not-found" && exit -1
 	echo "$TERSER_BIN"
 
 else
