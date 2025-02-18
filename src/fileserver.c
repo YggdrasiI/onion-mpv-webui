@@ -118,7 +118,7 @@ onion_connection_status fileserver_page(
         onion_dict_add(d, "files", files, OD_DICT | OD_FREE_VALUE);
 #ifdef TEMPLATES_WITH_ENCODED_NAMES
         onion_dict_add(d, "path_encoded",
-                encodeURIComponent(path), OD_FREE_VALUE);
+                encodeURIComponentNoSlash(path), OD_FREE_VALUE);
 #endif
 
         struct dirent *de;
@@ -131,7 +131,7 @@ onion_connection_status fileserver_page(
                     OD_DUP_KEY | OD_DICT | OD_FREE_VALUE);
 
             const char *name = onion_low_strdup(de->d_name);
-            onion_dict_add(file, "name", de->d_name, OD_FREE_VALUE);
+            onion_dict_add(file, "name", name, OD_FREE_VALUE);
 #ifdef TEMPLATES_WITH_ENCODED_NAMES
             // Encode filename
             onion_dict_add(file, "name_encoded",
@@ -143,11 +143,7 @@ onion_connection_status fileserver_page(
             if( ps >= 0 && ps < tmp_path_len && 0 == stat(tmp_path2, &st))
             {
                 int is_dir = S_ISDIR(st.st_mode);
-                if (is_dir){
-                    onion_dict_add(file, "type", "dir", 0);
-                }else{
-                    onion_dict_add(file, "type", "file", 0);
-                }
+                onion_dict_add(file, "type", is_dir?"dir":"file", 0);
 
                 if (!is_dir){
                     //ps = snprintf(tmp_path2, tmp_path_len, "%d", (int)st.st_size);

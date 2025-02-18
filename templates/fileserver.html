@@ -19,7 +19,7 @@
 <tbody>
 {% for file in files %}
  <tr>
-	 <td><a href="{{path_encoded}}/{{file.name_encoded}}{% if file.type == "dir" %}/{% endif %}">{{file.name_short}}</a></td>
+	 <td><a href="/{{path_encoded}}/{{file.name_encoded}}{% if file.type == "dir" %}/{% endif %}">{{file.name_short}}</a></td>
   <td>{{file.size}}</td>
   <td>{{file.owner}}</td>
  </tr>
