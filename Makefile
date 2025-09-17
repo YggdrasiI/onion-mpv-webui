@@ -18,7 +18,7 @@ help:
 	• 'make config_develop'  Directly use compiled plugin from\n\t\
 	                   'build/src' and web stuff from './webui-page'\n\t\
 \n\t\
-	• 'make watch'     Observe JS and CSS files for changes. This will\n\t
+	• 'make watch'     Observe JS and CSS files for changes. This will\n\t\
 	                   implicit setup webui-page in 'develop mode', see Makefile_html\n\t\
 	• 'make run'       for test run of mpv with plugin\n\t\
 	• 'make bin'       testing standalone binary (webui without mpv)\n\t\
