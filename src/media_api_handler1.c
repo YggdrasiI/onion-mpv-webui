@@ -1,3 +1,5 @@
+#include <inttypes.h>
+
 // media_api_list
 // For /media/api/list/{sharename}[/{folder}[/]*]
 //     =>  Template file: media_api_list.json
@@ -324,7 +326,7 @@ int media_api_list_root(
     // Convert json into block and write it to output.
     onion_block *jresb = onion_dict_to_json(to_json);
     onion_response_set_header(res, "Content-Type", onion_mime_get("_.json"));
-    snprintf(to_json_length, 22, "%ld", onion_block_size(jresb));
+    snprintf(to_json_length, 22, "%" PRIu64 /* "%ld" */, onion_block_size(jresb));
     onion_response_set_header(res, "Content-Length",to_json_length);
     onion_response_write(res, onion_block_data(jresb), onion_block_size(jresb));
     ret = OCS_PROCESSED;

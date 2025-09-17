@@ -339,8 +339,6 @@ char *handle_command_p2(
         int ps = 0;
 
         if( cmd ){
-            char *output_message = NULL;
-
             pthread_mutex_lock(&mpv_lock);
             ONION_DEBUG("Locked for %s %s %s\n",
                     substrings[0],

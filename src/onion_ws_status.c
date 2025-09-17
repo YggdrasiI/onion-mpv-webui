@@ -17,6 +17,7 @@
 
 #include <stdarg.h>
 #include <stdint.h>
+#include <inttypes.h>
 
 // for pthread_cond_timedwait
 #include <time.h>
@@ -616,17 +617,13 @@ void parse_value(
                 case MPV_FORMAT_INT64:
                     {
                         int64_t ivalue = (out->value.u.int64);
-                        //asprintf(&out->json, "\"%s\": %ld",
-                        //        out->node.name, ivalue);
-                        ps = asprintf(&out->json, "%ld", ivalue);
+                        ps = asprintf(&out->json, "%" PRIu64 /* "%ld" */, ivalue);
                         out->value.format = MPV_FORMAT_STRING;
                         break;
                     }
                 case MPV_FORMAT_FLAG:
                     {
                         int bvalue = (out->value.u.flag);
-                        //asprintf(&out->json, "\"%s\": \"%s\"",
-                        //        out->node.name, bvalue?"yes":"no");
                         ps = asprintf(&out->json, "\"%s\"", bvalue?"yes":"no");
                         out->value.format = MPV_FORMAT_STRING;
                         break;
@@ -634,8 +631,6 @@ void parse_value(
                 case MPV_FORMAT_DOUBLE:
                     {
                         double fvalue = (out->value.u.double_);
-                        //asprintf(&out->json, "\"%s\": %lf",
-                        //        out->node.name, fvalue);
                         ps = asprintf(&out->json, "%lf", fvalue);
                         out->value.format = MPV_FORMAT_STRING;
                         break;
@@ -675,7 +670,7 @@ void parse_value(
             switch(out->value.format){
                 case MPV_FORMAT_INT64:
                     {
-                        ps = asprintf(&out->json, "%ld", out->value.u.int64);
+                        ps = asprintf(&out->json, "%" PRIu64 /* "%ld" */, out->value.u.int64);
                         break;
                     }
                 case MPV_FORMAT_FLAG:
@@ -1126,6 +1121,7 @@ void status_unobserve(
 #ifdef WITH_MPV
             __property *prop = &status->props[pos];
             int u = mpv_unobserve_property(mpv, prop->userdata);
+            check_mpv_err(u);
             assert(u == 1); // assume that just one observation for each userdata exists
 #endif
         }
@@ -1269,6 +1265,10 @@ void status_build_full_json(
             }
         }
         end = stpcpy(end, __json_end);
+
+        if (end > END){
+            ONION_ERROR("Write over buffer end!");
+        }
     }
     //printf("New json: %s\n", json);
 
@@ -1331,6 +1331,9 @@ char *status_build_update_json(
             }
         }
         end = stpcpy(end, __json_end);
+        if (end > END){
+            ONION_ERROR("Write over buffer end!");
+        }
     }
 
     return json;

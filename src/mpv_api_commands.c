@@ -6,6 +6,7 @@
 #include <signal.h>
 #include <string.h>
 #include <unistd.h>
+#include <inttypes.h>
 
 #include <mpv/client.h>
 extern mpv_handle *mpv;
@@ -785,7 +786,7 @@ char *json_status_response(){
             ",\n\"idle\":"              "%d"
             ",\n\"speed\":"             "%f"
 
-            ",\n\"chapter\":"          "%ld"
+            ",\n\"chapter\":"          "%" PRIu64 /* "%ld" */
             "}\n"
 
             , STR(filename)

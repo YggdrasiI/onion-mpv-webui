@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <unistd.h>
-
 #include <inttypes.h>
 
 #include <string.h>
@@ -388,7 +387,7 @@ int rstrip_slash(
 char *left_slashed_string_if_not_empty(
         const char *path)
 {
-    if (path[0] == '\0' || path[0] == '/' && path[1] == '\0' ){
+    if (path[0] == '\0' || (path[0] == '/' && path[1] == '\0')) {
         return onion_low_calloc(1, sizeof(char));
     }
     // strip all leading /

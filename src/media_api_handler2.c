@@ -16,7 +16,7 @@ onion_connection_status media_api_loadfile(
     char *uri_rel_path = strdup(consume_leading_slashs(onion_request_get_path(req)));
     // Example: 'folder/subfolder/file.mp3'
 
-    const char * share_key = onion_dict_get((onion_dict *)privdata->share_info, "key");
+    //const char * share_key = onion_dict_get((onion_dict *)privdata->share_info, "key");
     // Example: 'example'
 
     const char * share_path = onion_dict_get((onion_dict *)privdata->share_info, "path");
