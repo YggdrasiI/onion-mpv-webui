@@ -336,6 +336,7 @@ char *handle_command_p2(
     }else{
         CommandHandler cmd = (CommandHandler) onion_dict_get(
                 current_commands, substrings[0]);
+        int ps = 0;
 
         if( cmd ){
             char *output_message = NULL;
@@ -354,18 +355,19 @@ char *handle_command_p2(
 
 
             if (cmd_status > 0){
-                asprintf(&output, 
+                ps = asprintf(&output,
                         "{\"message\": \"success\"}");
             }else{
-                asprintf(&output, 
+                ps = asprintf(&output,
                         "{\"message\": \"%s\"}",
                         message);
             }
         }else{
-            asprintf(&output, 
+            ps = asprintf(&output,
                     "{\"message\": \"Command '%s' not defined.\"}",
                     substrings[0]);
         }
+        if (ps < 0) output=strdup("{\"message\": \"asprintf failed\"}");
     }
 
     // Cleanup

@@ -611,13 +611,14 @@ void parse_value(
         }
     } else if (out->value.format == MPV_FORMAT_NODE) {
         if( out->value.format == out->format_out ){
+            int ps = 0;
             switch(out->value.format){
                 case MPV_FORMAT_INT64:
                     {
                         int64_t ivalue = (out->value.u.int64);
                         //asprintf(&out->json, "\"%s\": %ld",
                         //        out->node.name, ivalue);
-                        asprintf(&out->json, "%ld", ivalue);
+                        ps = asprintf(&out->json, "%ld", ivalue);
                         out->value.format = MPV_FORMAT_STRING;
                         break;
                     }
@@ -626,7 +627,7 @@ void parse_value(
                         int bvalue = (out->value.u.flag);
                         //asprintf(&out->json, "\"%s\": \"%s\"",
                         //        out->node.name, bvalue?"yes":"no");
-                        asprintf(&out->json, "\"%s\"", bvalue?"yes":"no");
+                        ps = asprintf(&out->json, "\"%s\"", bvalue?"yes":"no");
                         out->value.format = MPV_FORMAT_STRING;
                         break;
                     }
@@ -635,7 +636,7 @@ void parse_value(
                         double fvalue = (out->value.u.double_);
                         //asprintf(&out->json, "\"%s\": %lf",
                         //        out->node.name, fvalue);
-                        asprintf(&out->json, "%lf", fvalue);
+                        ps = asprintf(&out->json, "%lf", fvalue);
                         out->value.format = MPV_FORMAT_STRING;
                         break;
                     }
@@ -658,6 +659,7 @@ void parse_value(
                         break;
                     }
             }
+            if (ps < 0) out->json = strdup("");
         }else{
             // case already handled in property_update
             out->json = out->value.u.string;
@@ -669,20 +671,21 @@ void parse_value(
         out->json = out->value.u.string;
     }else{
         if( out->value.format == out->format_out ){
+            int ps = 0;
             switch(out->value.format){
                 case MPV_FORMAT_INT64:
                     {
-                        asprintf(&out->json, "%ld", out->value.u.int64);
+                        ps = asprintf(&out->json, "%ld", out->value.u.int64);
                         break;
                     }
                 case MPV_FORMAT_FLAG:
                     {
-                        asprintf(&out->json, "\"%s\"", out->value.u.flag?"yes":"no");
+                        ps = asprintf(&out->json, "\"%s\"", out->value.u.flag?"yes":"no");
                         break;
                     }
                 case MPV_FORMAT_DOUBLE:
                     {
-                        asprintf(&out->json, "%lf", out->value.u.double_);
+                        ps = asprintf(&out->json, "%lf", out->value.u.double_);
                         break;
                     }
                 case MPV_FORMAT_STRING:
@@ -705,6 +708,7 @@ void parse_value(
                         break;
                     }
             }
+            if (ps < 0) out->json = strdup("");
         }else{
             // case already handled in property_update
             out->json = out->value.u.string;

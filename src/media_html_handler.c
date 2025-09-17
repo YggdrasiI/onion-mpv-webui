@@ -1,3 +1,4 @@
+#include <inttypes.h>
 
 #if 0
 // Begin page /media.html, /media/html lists all shares
@@ -226,7 +227,7 @@ onion_connection_status list_share_page(
 
                 if (!is_dir){
                     ps = snprintf(__tmp_path, __tmp_path_len,
-                            "%lld", st.st_size);
+                            "%" PRIu64, st.st_size); //"%lld", st.st_size);
                     if( ps >= 0 && ps < __tmp_path_len ){
                         onion_dict_add(file, "size", __tmp_path, OD_DUP_VALUE);
                     }else{
@@ -338,21 +339,25 @@ onion_connection_status media_html_redirect_current(
     // Consumed prefix:  "/media/html/.current[/]*", 
     char *redirect_url=NULL;
     const char *uri_rel_path = onion_request_get_path(req);
+    onion_connection_status ret = OCS_NOT_PROCESSED;
 #if 1
     const char *prefix = share_info_get_preferred_key(share_info);
-    asprintf(&redirect_url, "media/html/%s/%s", prefix, uri_rel_path);
-    ONION_DEBUG("Internal redirect to '%s'\n", redirect_url);
-    /* Differences between onion_shortcut_internal_redirect and onion_shortcut_redirect:
-     *   1. newurl without leading slash...
-     *   2. url in decoded state (decoding step skipped) */
-    onion_connection_status ret = onion_shortcut_internal_redirect(redirect_url, req, res);
+    if (-1 < asprintf(&redirect_url, "media/html/%s/%s", prefix, uri_rel_path)) {
+        ONION_DEBUG("Internal redirect to '%s'\n", redirect_url);
+        /* Differences between onion_shortcut_internal_redirect and onion_shortcut_redirect:
+         *   1. newurl without leading slash...
+         *   2. url in decoded state (decoding step skipped) */
+        ret = onion_shortcut_internal_redirect(redirect_url, req, res);
+        free(redirect_url);
+    }
 #else
     const char *prefix = share_info->key_encoded;
     char *tmp = encodeURIComponentNoSlash(uri_rel_path);
-    asprintf(&redirect_url, "/media/html/%s/%s", prefix, tmp);
-    onion_connection_status ret = onion_shortcut_redirect(redirect_url, req, res);
+    if (-1 < asprintf(&redirect_url, "/media/html/%s/%s", prefix, tmp)) {
+        ret = onion_shortcut_redirect(redirect_url, req, res);
+        free(redirect_url);
+    }
     free(tmp);
 #endif
-    free(redirect_url);
     return ret;
 }

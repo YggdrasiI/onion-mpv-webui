@@ -330,9 +330,11 @@ void __add_handler_for_shares_cont(
 
     // Url pattern matches top-level of share
     char *url_pattern1=NULL;
-    asprintf(&url_pattern1, "^[/]+%s", keychars_in_braces);
-    ONION_DEBUG0("Connect url '%s' with '%s'", url_pattern1, path);
-    onion_url_add_handler(data->html, url_pattern1, list_share);
+    if (-1 < asprintf(&url_pattern1, "^[/]+%s", keychars_in_braces)) {
+        ONION_DEBUG0("Connect url '%s' with '%s'", url_pattern1, path);
+        onion_url_add_handler(data->html, url_pattern1, list_share);
+        free(url_pattern1);
+    }
 
 
     // 2. /media/api/list/{sharename}
@@ -343,9 +345,11 @@ void __add_handler_for_shares_cont(
 
     // Url pattern matches top-level of share
     char *url_pattern2=NULL;
-    asprintf(&url_pattern2, "^[/]+list[/]+%s", keychars_in_braces);
-    ONION_DEBUG0("Connect url '%s' with '%s'", url_pattern2, path);
-    onion_url_add_handler(data->api, url_pattern2, json_media_handler);
+    if (-1 < asprintf(&url_pattern2, "^[/]+list[/]+%s", keychars_in_braces)) {
+        ONION_DEBUG0("Connect url '%s' with '%s'", url_pattern2, path);
+        onion_url_add_handler(data->api, url_pattern2, json_media_handler);
+        free(url_pattern2);
+    }
 
     // 3. Other /media/api/ stuff
     // Url pattern to add file of share
@@ -355,8 +359,10 @@ void __add_handler_for_shares_cont(
             __share_data_media_api_new("playlist_add", "append", "", share_info),
             (onion_handler_private_data_free) __share_data_media_api_free);
 
-    asprintf(&url_pattern3, "^[/]+playlist_add[/]+append[/+]%s", keychars_in_braces);
-    onion_url_add_handler(data->api, url_pattern3, add_media);
+    if (-1 < asprintf(&url_pattern3, "^[/]+playlist_add[/]+append[/+]%s", keychars_in_braces)) {
+        onion_url_add_handler(data->api, url_pattern3, add_media);
+        free(url_pattern3);
+    }
 
     // Url pattern to add file of share
     char *url_pattern4=NULL;
@@ -365,13 +371,11 @@ void __add_handler_for_shares_cont(
             __share_data_media_api_new("playlist_add", "replace", "", share_info),
             (onion_handler_private_data_free) __share_data_media_api_free);
 
-    asprintf(&url_pattern4, "^[/]+playlist_add[/]+replace[/]+%s", keychars_in_braces);
-    onion_url_add_handler(data->api, url_pattern4, add_media4);
+    if (-1 < asprintf(&url_pattern4, "^[/]+playlist_add[/]+replace[/]+%s", keychars_in_braces)) {
+        onion_url_add_handler(data->api, url_pattern4, add_media4);
+        free(url_pattern4);
+    }
 
-    free(url_pattern4);
-    free(url_pattern3);
-    free(url_pattern2);
-    free(url_pattern1);
     free(keychars_in_braces);
 }
 

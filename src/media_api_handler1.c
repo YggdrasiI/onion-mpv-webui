@@ -271,9 +271,13 @@ void __list_share_func(
     const char *key_encoded = share_info->key_encoded;
     if (key_encoded == NULL) key_encoded = key;
 
-    char *api_path;
-    //asprintf(&api_path, "/media/api/list/%s", key_encoded);
-    //onion_dict_add(to_json, key, api_path, OD_FREE_VALUE);
+#if 0
+    char *api_path = NULL;
+    if (-1 < asprintf(&api_path, "/media/api/list/%s", key_encoded)) {
+        onion_dict_add(to_json, key, api_path, OD_FREE_VALUE);
+        free(api_path);
+    }
+#endif
     onion_dict_add(to_json, key, key_encoded, OD_DUP_VALUE);
 }
 
@@ -355,23 +359,28 @@ onion_connection_status media_api_list_redirect_current(
     // Consumed prefix:  "/media/html/.current[/]*", 
     char *redirect_url=NULL;
     const char *uri_rel_path = onion_request_get_path(req);
+    onion_connection_status ret = OCS_NOT_PROCESSED;
 #if 1
     const char *prefix = share_info_get_preferred_key(share_info);
-    asprintf(&redirect_url, "media/api/list/%s/%s", prefix, uri_rel_path);
-    ONION_DEBUG("Internal redirect to '%s'\n", redirect_url);
-    /* Differences between onion_shortcut_internal_redirect and onion_shortcut_redirect:
-     *   1. newurl without leading slash...
-     *   2. url in decoded state (decoding step skipped) */
-    onion_connection_status ret = onion_shortcut_internal_redirect(redirect_url, req, res);
+    if (-1 < asprintf(&redirect_url, "media/api/list/%s/%s",
+                prefix, uri_rel_path)) {
+        ONION_DEBUG("Internal redirect to '%s'\n", redirect_url);
+        /* Differences between onion_shortcut_internal_redirect and onion_shortcut_redirect:
+         *   1. newurl without leading slash...
+         *   2. url in decoded state (decoding step skipped) */
+        ret = onion_shortcut_internal_redirect(redirect_url, req, res);
+        free(redirect_url);
+    }
 #else
     const char *prefix = share_info->key_encoded;
     char *tmp = encodeURIComponentNoSlash(uri_rel_path);
-    asprintf(&redirect_url, "/media/api/list/%s/%s", prefix, tmp);
-    onion_connection_status ret = onion_shortcut_redirect(redirect_url, req, res);
+    if (-1 < asprintf(&redirect_url, "/media/api/list/%s/%s", prefix, tmp)) {
+        ret = onion_shortcut_redirect(redirect_url, req, res);
+        free(redirect_url);
+    }
     free(tmp);
 #endif
 
-    free(redirect_url);
     return ret;
 }
 

@@ -139,13 +139,14 @@ int cmd_playlist_prev(const char *name,
 {
     char *position = mpv_get_property_string(mpv, "time-pos");
     double fposition;
-    int err;
+    int err = MPV_ERROR_GENERIC;
     if (sscanf(STR(position), "%lf", &fposition) != 1){ fposition = 0.0; }
     if (fposition > 5.0) {
         char *cmd[] = {"seek", NULL, NULL};
-        asprintf(&cmd[1], "%lf", -fposition); // Negative seek
-        err = _mpv_command(mpv, (const char **)cmd);
-        free(cmd[1]);
+        if (-1 < asprintf(&cmd[1], "%lf", -fposition)) { // Negative seek
+            err = _mpv_command(mpv, (const char **)cmd);
+            free(cmd[1]);
+        }
     }else{
         const char *cmd[] = {"playlist-prev", NULL};
         err = _mpv_command(mpv, cmd);
@@ -213,17 +214,17 @@ int cmd_playlist_move_up(const char *name,
     if( !check_int_or_float(param1, pOutput_message) ) return CMD_FAIL;
 
     int iposition;
-    int err;
+    int err = MPV_ERROR_GENERIC;
     if (sscanf(param1, "%d", &iposition) != 1){ iposition = 0; }
     if (iposition > 0){
         // Construct 'playlist-move p p-1'
         char *cmd[] = {"playlist-move", NULL, NULL, NULL};
         cmd[1] = strdup(param1);
-        asprintf(&cmd[2], "%d", iposition - 1);
-
-        err = _mpv_command(mpv, (const char **)cmd);
+        if (-1 < asprintf(&cmd[2], "%d", iposition - 1)) {
+            err = _mpv_command(mpv, (const char **)cmd);
+            free(cmd[2]);
+        }
         free(cmd[1]);
-        free(cmd[2]);
     }else{
         err = MPV_ERROR_SUCCESS;
     }
@@ -437,9 +438,8 @@ int cmd_increase_playback_speed(const char *name,
 
     // Convert parsed value back to string
     char *new_speed = NULL;
-    if ( asprintf(&new_speed, "%lf", fnew_speed) < 0 ){
+    if (0 > asprintf(&new_speed, "%lf", fnew_speed)) {
         perror("asprintf failed.\n");
-        free(new_speed);
         return CMD_FAIL;
     }
 
@@ -821,7 +821,7 @@ char *json_status_response(){
     goto gen_status_end;
 
 gen_status_error:
-    free(json);
+    // Here, json not pointing on allocated buffer. => No free needed.
     json = strdup("{}");
 
 gen_status_end:
