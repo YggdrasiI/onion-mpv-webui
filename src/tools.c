@@ -8,6 +8,8 @@
 #include <stddef.h>
 #include <unistd.h>
 
+#include <inttypes.h>
+
 #include <string.h>
 #include <assert.h>
 
@@ -530,26 +532,29 @@ int check_is_non_hidden_file(
 }
 
 // Size in binary units
-// Define _LARGE_FILES (and or D_FILE_OFFSET_BITS 64 ?!) for big files on 32bit Systems, and use off_t type, see
-int print_filesize_BIN64(char *buf, size_t buf_size, off_t num_bytes){
+// Define _LARGE_FILES (and or D_FILE_OFFSET_BITS 64 ?!) for big files on 32bit Systems, and use off_t type
+// https://sites.ualberta.ca/dept/chemeng/AIX-43/share/man/info/C/a_doc_lib/aixprggd/genprogc/prg_lrg_files.htm
+int print_filesize_BIN64(char *buf, size_t buf_size, off_t _num_bytes){
     // num_bytes is signed. Interpret errors(directories?!) like zero bytes.
-    num_bytes = (num_bytes < 0)?0:num_bytes;
+    _num_bytes = (_num_bytes < 0)?0:_num_bytes;
     int ps;
 
+    uint64_t num_bytes = _num_bytes; // Attention, use "%" PRIu64  instead of "%lu" or "%llu" (for 32bit systems?!) 
+
     if( num_bytes > (1 << 30)){
-        ps = snprintf(buf, buf_size, "%4lld.%03lld GiB",
+        ps = snprintf(buf, buf_size, "%4" PRIu64 ".%03" PRIu64 " GiB",
                 (num_bytes >> 30),
                 1000 * ((num_bytes >> 20) & ((1 << 10)-1)) >> 10 ); /* Next 10 Bits scaled by 1000/1024 */
     }else if( num_bytes > (1 << 20)){
-        ps = snprintf(buf, buf_size, "%4lld.%03lld MiB",
+        ps = snprintf(buf, buf_size, "%4" PRIu64 ".%03" PRIu64 " MiB",
                 (num_bytes >> 20),
                 1000 * ((num_bytes >> 10) & ((1 << 10)-1)) >> 10 ); /* Next 10 Bits scaled by 1000/1024 */
     }else if( num_bytes >= (1 << 10)){
-        ps = snprintf(buf, buf_size, "%4lld.%03lld KiB",
+        ps = snprintf(buf, buf_size, "%4" PRIu64 ".%03" PRIu64 " KiB",
                 (num_bytes >> 10),
                 1000 * ((num_bytes >> 0) & ((1 << 10)-1)) >> 10 ); /* Next 10 Bits scaled by 1000/1024 */
     }else{
-        ps = snprintf(buf, buf_size, "%u", num_bytes);
+        ps = snprintf(buf, buf_size, "%" PRIu64 " B", num_bytes);
     }
     return ps;
 }
