@@ -14,7 +14,7 @@ function add_overlay_swipes(oname){
   let onames = Object.keys(overlays)
   let n = onames.length
   if (n < 2) return
-  onames.push(onames[0])   // First at end 
+  onames.push(onames[0])   // First at end
   onames.unshift(onames[n-1])// Last at begin
 
   function _overlay_switch(hmap){
@@ -42,14 +42,14 @@ function add_overlay_swipes(oname){
       // refresh share with swipeDown and switch Share with two fingers + left/right
       hmap.left = function(evt) {
         if (evt.detail.fingers > 1){
-          cycle_share(-1)
+          cycle_share(1)
         }else{
           _switch_overlay(i, i-1)()
         }
       }
       hmap.right = function(evt) {
         if (evt.detail.fingers > 1){
-          cycle_share(1)
+          cycle_share(-1)
         }else{
           _switch_overlay(i, i+1)()
         }
@@ -74,19 +74,14 @@ function add_overlay_swipes(oname){
     document.getElementById(onames[i]).addEventListener('swiped',
       _overlay_switch(hmap))
 
-    /*document.addEventListener('swiped', function(e) {
-      console.log(e.target); // element that was swiped
-      console.log(e.detail); // see event data below
-      console.log(e.detail.dir); // swipe direction
-    })
-    document.getElementById(onames[i]).addEventListener('swiped', function(e) {
-      console.log(e.target); // element that was swiped
-      console.log(e.detail); // see event data below
-      console.log(e.detail.dir); // swipe direction
-    })*/
-    document.getElementById(onames[i]).addEventListener('scroll', function() {
-      console.log("Scroll");
-    }, false);
+
+    document.getElementById(onames[i]).addEventListener('mousedown',
+      function(evt) {
+        if (evt.button == 1) { // Middle or scroll wheel
+          _switch_overlay(i, i+1)()
+        }
+      }, true)
+
   }
 }
 
