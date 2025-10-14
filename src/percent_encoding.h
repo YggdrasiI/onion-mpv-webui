@@ -9,22 +9,19 @@
 // Percent encoding functions…
 char *encodeURI(const char *text);
 char *encodeURIComponent(const char *text);
-#define NON_STANDARD_FUNC
-#ifdef NON_STANDARD_FUNC
 // Just for testing a non-standard case of encoding
-char *encodeNonCharNum(const char *text);
-#endif
-// Filenames with Slashes are not allowed. This 
+char *encodeAllReserved(const char *text);
+// Filenames with Slashes are not allowed. This
 // modification of the standard encodeURIComponent ignores '/'.
 // during the encoding.
 // This leads to better readable links (with the same result.)
-char *encodeURIComponentNoSlash(const char *text);
+char *encodeUnixPath(const char *text);
 
 char *encode(const char *text);
 
 /* …  and it's counterparts.
  *
- * Attention: 
+ * Attention:
  *   • Due the difference of the affected chares,
  *     decoding with the wrong function resolves
  *     too much %XX or too less %XX.
@@ -37,7 +34,7 @@ char *encode(const char *text);
  */
 char *decodeURI(const char *text);
 char *decodeURIComponent(const char *text);
-#ifdef NON_STANDARD_FUNC
-char *decodeNonCharNum(const char *text);
-#endif
+
+char *decodeAllReserved(const char *text);
+char *decodeText(const char *text);
 char *decode(const char *text);

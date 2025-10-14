@@ -166,7 +166,7 @@ onion_connection_status list_share_page(
          * 2a. wenn ich es mit encodeURIComponent() encodiere erwische ich alle
          * Slashs.
          * 2b. wenn ich encodeURI() nehme, vergesse ich '+'.  
-         * => Benutze encodeURIComponentNoSlash(…)
+         * => Benutze encodeUnixPath(…)
          */
         
         if (uri_rel_path[0] == '\0' || uri_rel_path[1] == '\0') { // To avoid empty dir string "/"
@@ -182,7 +182,7 @@ onion_connection_status list_share_page(
             onion_dict_add(d, "uri_rel_path", uri_rel_path, 0);
 #ifdef TEMPLATES_WITH_ENCODED_NAMES
         onion_dict_add(d, "uri_rel_path_encoded",
-                encodeURIComponentNoSlash(uri_rel_path), OD_FREE_VALUE);
+                encodeUnixPath(uri_rel_path), OD_FREE_VALUE);
 #endif
         }
 
@@ -352,7 +352,7 @@ onion_connection_status media_html_redirect_current(
     }
 #else
     const char *prefix = share_info->key_encoded;
-    char *tmp = encodeURIComponentNoSlash(uri_rel_path);
+    char *tmp = encodeUnixPath(uri_rel_path);
     if (-1 < asprintf(&redirect_url, "/media/html/%s/%s", prefix, tmp)) {
         ret = onion_shortcut_redirect(redirect_url, req, res);
         free(redirect_url);

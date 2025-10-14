@@ -118,7 +118,7 @@ onion_connection_status fileserver_page(
         onion_dict_add(d, "files", files, OD_DICT | OD_FREE_VALUE);
 #ifdef TEMPLATES_WITH_ENCODED_NAMES
         onion_dict_add(d, "path_encoded",
-                encodeURIComponentNoSlash(path), OD_FREE_VALUE);
+                encodeUnixPath(path), OD_FREE_VALUE);
 #endif
 
         struct dirent *de;

@@ -131,7 +131,7 @@ onion_connection_status media_api_list(
 #endif
 #ifdef TEMPLATES_WITH_ENCODED_NAMES
         onion_dict_add(d, "uri_rel_path_encoded",
-                encodeURIComponentNoSlash(uri_rel_path), OD_FREE_VALUE);
+                encodeUnixPath(uri_rel_path), OD_FREE_VALUE);
 #endif
         }
 
@@ -375,7 +375,7 @@ onion_connection_status media_api_list_redirect_current(
     }
 #else
     const char *prefix = share_info->key_encoded;
-    char *tmp = encodeURIComponentNoSlash(uri_rel_path);
+    char *tmp = encodeUnixPath(uri_rel_path);
     if (-1 < asprintf(&redirect_url, "/media/api/list/%s/%s", prefix, tmp)) {
         ret = onion_shortcut_redirect(redirect_url, req, res);
         free(redirect_url);
