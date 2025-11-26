@@ -316,6 +316,7 @@ function togglePlayPause() {
 function setChapter(num_chapters, chapter, metadata) {
   var chapterContent = document.getElementById('chapterContent')
   var chapter_title = ''
+  if (chapter < /* not <=, -1 is value before first (named) chapter begins. Some podcast did not set first chapter on start of file */ -1 || chapter >= num_chapters) chapter = 0
   if (metadata !== null ){
     if (metadata['title']) {
       chapter_title = metadata['title']
@@ -424,7 +425,7 @@ function handleStatusResponse(json) {
   }
 
   updateCapterMarks(json['chapters'], json['chapter'], json['chapter-metadata'],
-    json['chapter-list'], json['duration'])
+    json['chapter-list'], json['duration'], json['time-pos'])
 }
 
 function handleStatusUpdate(status_updates) {
@@ -486,11 +487,17 @@ function handleStatusUpdate(status_updates) {
 
   if ("chapter" in status_updates && mpv_status['chapter'] == -1){ /* See (4*) */
     updateCapterMarks(new_status['chapters'], new_status['chapter'], new_status['chapter-metadata'],
-      new_status['chapter-list'], new_status['duration'])
+      new_status['chapter-list'], new_status['duration'], new_status['time-pos'])
   } else if ("chapters" in status_updates){
     updateCapterMarks(new_status['chapters'], new_status['chapter'], new_status['chapter-metadata'],
-      new_status['chapter-list'], new_status['duration'])
+      new_status['chapter-list'], new_status['duration'], new_status['time-pos'])
+  } else if (delayed_chapter_marks && new_status['time-pos'] >= 0.1){
+    delayed_chapter_marks = false
+    updateCapterMarks(new_status['chapters'], new_status['chapter'], new_status['chapter-metadata'],
+      new_status['chapter-list'], new_status['duration'], new_status['time-pos'])
   }
+
+
   if ("playlist" in status_updates){
     updateNotification(new_status)
     updatePlaylist(new_status['playlist'],

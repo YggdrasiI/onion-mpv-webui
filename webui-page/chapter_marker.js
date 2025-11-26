@@ -1,5 +1,6 @@
+let delayed_chapter_marks = false // to show chapters after status update provides all ness. info.
 
-function updateCapterMarks(num_chapters, chapter, metadata, chapter_list, duration) {
+function updateCapterMarks(num_chapters, chapter, metadata, chapter_list, duration, time_pos) {
   /* Enrich the position slider by the chapter marks. Currently
    * this is realized by drawing the marks into a SVG background-image.
    */
@@ -7,12 +8,14 @@ function updateCapterMarks(num_chapters, chapter, metadata, chapter_list, durati
   if (num_chapters === 0) {
     chapter_marker.style.backgroundImage = 'none'
   }else{
-    if( chapter == -1 ){
+    if( chapter == -1 && time_pos < 0.1){
       /* If mpv is paused and the played file is changed, duration of the previous file is
-       * still the active. We need to wait until chapter >= 0 to guarantee that the correct
+       * still the active. We need to wait until chapter >= 0 or time-pos > 0
+       * to guarantee that the correct
        * time was extracted from the file. (*4)
        *
        */
+      delayed_chapter_marks = true
       return;
     }
 

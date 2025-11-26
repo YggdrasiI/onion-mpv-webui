@@ -617,7 +617,7 @@ void parse_value(
                 case MPV_FORMAT_INT64:
                     {
                         int64_t ivalue = (out->value.u.int64);
-                        ps = asprintf(&out->json, "%" PRIu64 /* "%ld" */, ivalue);
+                        ps = asprintf(&out->json, "%" PRIi64 /* "%ld" */, ivalue);
                         out->value.format = MPV_FORMAT_STRING;
                         break;
                     }
@@ -670,7 +670,7 @@ void parse_value(
             switch(out->value.format){
                 case MPV_FORMAT_INT64:
                     {
-                        ps = asprintf(&out->json, "%" PRIu64 /* "%ld" */, out->value.u.int64);
+                        ps = asprintf(&out->json, "%" PRIi64 /* "%ld" */, out->value.u.int64);
                         break;
                     }
                 case MPV_FORMAT_FLAG:

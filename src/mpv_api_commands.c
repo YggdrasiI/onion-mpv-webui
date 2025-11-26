@@ -764,13 +764,13 @@ char *json_status_response(){
     int printf_status = asprintf(&json
             , "{"
             "\"filename\":"           "\"%s\""
-            ",\n\"duration\":"          "%d"
-            ",\n\"position\":"          "%d"
-            ",\n\"remaining\":"         "%d"
+            ",\n\"duration\":"          "%.4f"  // now float like ws_status
+            ",\n\"time-pos\":"          "%.4f"  // now float and renamed like ws_status
+            ",\n\"remaining\":"         "%.4f"  // now float like ws_status
             ",\n\"metadata\":"          "%s"  // obj
             ",\n\"chapter-metadata\":"  "%s"  // obj
-            ",\n\"volume\":"            "%d"
-            ",\n\"volume-max\":"        "%d"
+            ",\n\"volume\":"            "%.2f"  // now float like ws_status
+            ",\n\"volume-max\":"        "%.2f"  // now float like ws_status
             ",\n\"playlist\":"          "%s"  // obj
             ",\n\"track-list\":"        "%s"  // obj
             ",\n\"chapter-list\":"      "%s"  // obj
@@ -786,17 +786,17 @@ char *json_status_response(){
             ",\n\"idle\":"              "%d"
             ",\n\"speed\":"             "%f"
 
-            ",\n\"chapter\":"          "%" PRIu64 /* "%ld" */
+            ",\n\"chapter\":"          "%" PRIi64 /* "%ld" */
             "}\n"
 
             , STR(filename)
-            , (int)(fduration)
-            , (int)(fposition)
-            , (int)(fremaining)
+            , fduration
+            , fposition
+            , fremaining
             , OBJ(metadata)
             , OBJ(chapter_metadata)
-            , (int)(fvolume)
-            , (int)(fvolume_max)
+            , fvolume
+            , fvolume_max
             , OBJ(playlist)
             , OBJ(track_list)
             , OBJ(chapter_list)
