@@ -5,7 +5,7 @@ function setFullscreenButton(fullscreen) {
     } else {
         fullscreenText = 'Fullscreen on'
     }
-    document.getElementById("fullscreenButton").innerText =
+    document.getElementById("fullscreenButton").children[0].innerText =
         fullscreenText
 }
 

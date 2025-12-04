@@ -23,7 +23,7 @@
     <meta name="format-detection" content="telephone=no">
     <!--<link rel="stylesheet" type="text/css" href="webui.css">-->
     <link rel="stylesheet" href="static/fontawesome-free-5.0.2/css/fontawesome-all.min.css">
-    <!-- Use 'make -f Makefile_html {Release|Develop|Debug}' selects variant -->
+    <!-- Use 'make -f Makefile_html {release|develop|debug}' selects variant -->
     <!--[Debug:Begin]
     <script src="webui.js" type="text/javascript"></script>
     <script src="audio.js" type="text/javascript"></script>
@@ -156,12 +156,12 @@
           </div>
         </div>
 
-        <div id="seekBack1" class="button blue control_left" seek="-5">
+        <div id="seekBack1" class="button blue control_left" seek="-5" aria-label="Seek back">
           <div class="content icon-content"><i class="fas fa-backward"></i></div>
-          <label>-5 s</label>
+          <span class="label">-5 s</span>
         </div>
-        <div id="seekForward1" class="button blue control_right" seek="10">
-          <label>+10 s</label>
+        <div id="seekForward1" class="button blue control_right" seek="10" aria-label="Seek forward">
+          <span class="label">+10 s</span>
           <div class="content icon-content"><i class="fas fa-forward"></i></div>
         </div>
 
@@ -175,10 +175,10 @@
 
         <div id="seekBack2" class="button blue no_chapter control_left hidden">
           <div class="content icon-content"><i class="fas fa-backward"></i></div>
-          <label>-1 min</label>
+          <span class="label">-1 min</span>
         </div>
         <div id="seekForward2" class="button blue no_chapter control_right hidden">
-          <label>+2 min</label>
+          <span class="label">+2 min</span>
           <div class="content icon-content"><i class="fas fa-forward"></i></div>
         </div>
 
@@ -187,72 +187,72 @@
       <div id="rightControls2" class="button_grid">
         <div id="playbackSpeed1" class="button yellow control_left audio1">
           <div id="slowerPlayback" class="content text-content">
-            <label>Playback ÷<!-- 1.1--></label>
+            <span class="label">Playback ÷<!-- 1.1--></span>
           </div>
         </div>
         <div id="playbackSpeedReset" class="button yellow control_info hidden">1.0×</div>
         <div id="playbackSpeed2" class="button yellow control_right audio1">
           <div id="fasterPlayback" class="content text-content">
-            <label>Playback ×<!-- 1.1--></label>
+            <span class="label">Playback ×<!-- 1.1--></span>
           </div>
         </div>
 
 
         <div id="subDelay1" class="button yellow control_left subtitle">
           <div class="content text-content">
-            <label>Sub delay -</label>
+            <span class="label">Sub delay -</span>
           </div>
         </div>
         <div id="subDelayInfo" class="control_info hidden">Info</div>
         <div id="subDelay2" class="button yellow control_right subtitle">
           <div class="content text-content">
-            <label>Sub delay +</label>
+            <span class="label">Sub delay +</span>
           </div>
         </div>
         <div id="audioDelay1" class="button yellow control_left audio1">
           <div class="content text-content">
-            <label>Audio delay -</label>
+            <span class="label">Audio delay -</span>
           </div>
         </div>
         <div id="audioDelayInfo" class="control_info hidden">Info</div>
         <div id="audioDelay2" class="button yellow control_right audio1">
           <div class="content text-content">
-            <label>Audio delay +</label>
+            <span class="label">Audio delay +</span>
           </div>
         </div>
         <div id="toggleFullscreen" class="button gray control_left">
           <div id="fullscreenButton" class="content text-content">
-            <label>Fullscreen</label>
+            <span class="label">Fullscreen</span>
           </div>
         </div>
         <div id="cycleAudioDevice" class="button gray control_right">
           <div class="content text-content">
-            <label>Audio device</label>
+            <span class="label">Audio device</span>
           </div>
         </div>
       </div>
       <div id="cycleControls" class="button_grid">
         <div id="cycleVideo" class="button violet video hidden control_left with_mid">
           <div id="nextVideo" class="content text-content">
-            <label>Video</label>
+            <span class="label">Video</span>
           </div>
         </div>
         <div id="cycleAudio" class="button violet audio2 hidden control_mid">
           <div id="nextAudio" class="content text-content">
-            <label>Audio</label>
+            <span class="label">Audio</span>
           </div>
         </div>
         <div id="cycleSub" class="button violet subtitle hidden control_right with_mid">
           <div id="nextSub" class="content text-content">
-            <label>Sub</label>
+            <span class="label">Sub</span>
           </div>
         </div>
       </div>
     </div>
 
     <div class="burger">
-      <div name="togglePlaylist" title="Playlist"><i class="fas fa-list-ul"></i></div>
-      <div name="toggleShares" title="Shared folders"><i class="fas fa-folder-open"></i></div>
+      <div name="togglePlaylist" title="Playlist"><div class="fas fa-list-ul"></div></div>
+      <div name="toggleShares" title="Shared folders"><div class="fas fa-folder-open"></div></div>
     </div>
 
     <audio id="audio" loop>

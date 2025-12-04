@@ -751,6 +751,10 @@ td.playlist.playing:hover {
   justify-content:space-between;
 }
 
+.no_events {
+  pointer-events:none;
+}
+
 #rightControls2 {
   /* As subelement */
   grid-column-start:Cmid;
