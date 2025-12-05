@@ -1,10 +1,45 @@
 var overlays = {}
+var id_prev = undefined  // Last active overlay
 
 function hide_overlays(){
   for (id in overlays){
     var el = document.getElementById(id)
     if (el && el.style.visibility === "visible") overlays[id](false)
   }
+}
+
+function show_overlay(id) {
+	overlays[id](true)
+}
+
+function hide_overlay(id) {
+	overlays[id](false)
+}
+
+function show_next_overlay(){
+	/* Assuming that just zero or one overlay is visible */
+	let id_next = undefined
+	let id_cur = undefined
+  for (id in overlays){
+		if (id_next === undefined) id_next = id  // First element is fallback
+		if (id_cur !== undefined) { 
+			id_next = id
+			break;
+		}
+    let el = document.getElementById(id)
+    if (el && el.style.visibility === "visible"){
+			id_cur = id // to break in next loop step
+		}
+  }
+
+	// Use last open id instead of first overlay if none is open
+	if (id_cur === undefined && id_prev != undefined){
+		id_next = id_prev
+	}
+
+	// Hide old and show new
+	if (id_cur) hide_overlay(id_cur)
+	if (id_next) show_overlay(id_next)
 }
 
 function toggleOverlay(id, force) {
@@ -15,6 +50,8 @@ function toggleOverlay(id, force) {
 
   document.body.classList.toggle('noscroll', overlay_is_visible_new)
   el.style.setProperty("visibility", (overlay_is_visible_new ? "visible" : "hidden"))
+
+	if (!overlay_is_visible_new) id_prev = id
 
   /* Close overlay by click on background area. */
   if (!el.hasOwnProperty("close_event_registered") ){

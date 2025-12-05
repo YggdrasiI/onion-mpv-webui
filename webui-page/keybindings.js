@@ -136,6 +136,11 @@ class KeyBindings {
       "handle": function(evt) { hide_overlays(); }
     },
     {
+      "key": "Enter",
+      "code": 13,
+      "handle": function(evt) { show_next_overlay(); }
+    },
+    {
       "key": "m",
       "code": 58,
       "command": "toggle_mute",
