@@ -5,9 +5,9 @@
  */
 
 // Variables in global context
-const DEBUG = false,
+const DEBUG = true,
     DEBUG_MOBILE = false,
-    DEBUG_TOUCH = false,
+    DEBUG_TOUCH = true,
     USE_DUMMY_AUDIO_ELEMENT = false, /* for controls on lock screen. */
     USE_SWIPES = true
 

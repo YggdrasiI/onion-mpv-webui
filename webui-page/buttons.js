@@ -147,11 +147,14 @@ function add_button_listener() {
       vol.innerText = slider.value + "%"
     }],
 
-    ['playlistAdd', 'click', send_url_input],
+    ['playlistAdd_btn', 'click', function(evt) {
+      send_url_input(evt, true)
+    }
+    ],
     ['playlistAdd_input', 'keyup', function (evt) {
       //console.log(evt)
       if (evt.key === "Enter") {
-        send_url_input(evt)
+        send_url_input(evt, false)
       }
     }],
 

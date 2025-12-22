@@ -58,12 +58,14 @@ function send(command, param1, param2, encode){
   request.send(null)
 }
 
-function send_url_input(evt) {
+function send_url_input(evt, select_if_empty) {
   let url_field = document.getElementById("playlistAdd_input")
   let url = url_field.value
   if (url) {
     send("playlist_add", "append", url, false)
     url_field.value = ""
+  } else if (select_if_empty === true) {
+    url_field.s
   }
 }
 

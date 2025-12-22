@@ -813,6 +813,8 @@ function init(){
 
   status_init_ws()
   add_button_listener()
+
+  USE_SWIPES && add_mainy_swipes()
 }
 
 window.addEventListener('keydown', webui_keydown, true) /* capture=true to skip scrolling on overlays*/
@@ -836,5 +838,5 @@ if (DEBUG) {
   window.addEventListener("contextmenu", function(e) { e.preventDefault(); })
 }
 if (DEBUG_MOBILE) {
-  logging_in_page()
+  window.addEventListener('load', logging_in_page, false)
 }

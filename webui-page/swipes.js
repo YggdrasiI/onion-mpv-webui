@@ -1,3 +1,9 @@
+function _overlay_switch(hmap){
+  return function(evt){
+    let h = hmap[evt.detail.dir]
+    if (h !== undefined) h(evt)
+  }
+}
 
 /* Adds swipe handlers for all overlays (if oname === undefined)
  * or given overlay id */
@@ -17,12 +23,6 @@ function add_overlay_swipes(oname){
   onames.push(onames[0])   // First at end
   onames.unshift(onames[n-1])// Last at begin
 
-  function _overlay_switch(hmap){
-    return function(evt){
-      let h = hmap[evt.detail.dir]
-      if (h !== undefined) h(evt)
-    }
-  }
   for(let i = 1; i < n+1; ++i) {
     if (oname && oname !== onames[i]) continue
     DEBUG && console.log("Add swipe event listener")
@@ -37,30 +37,33 @@ function add_overlay_swipes(oname){
     }
 
     let hmap = {}
+    const swipe_min_fingers = 2 // For switching share folder.
+
 
     if (overlays[onames[i]] === toggleShares){
       // refresh share with swipeDown and switch Share with two fingers + left/right
       hmap.left = function(evt) {
-        if (evt.detail.fingers > 1){
+        if (evt.detail.fingers >= swipe_min_fingers){
           cycle_share(1)
         }else{
           _switch_overlay(i, i-1)()
         }
       }
       hmap.right = function(evt) {
-        if (evt.detail.fingers > 1){
+        if (evt.detail.fingers >= swipe_min_fingers){
           cycle_share(-1)
         }else{
           _switch_overlay(i, i+1)()
         }
       }
       //if (onames[i] === "overlay2"){
-      hmap["down"] = function(){
+      hmap.down = function(){
         DEBUG && console.log("Refresh current share directory");
         share_change_dir('.')
         share_change(document.getElementById("share_selector"))
       }
-      /*hmap["up"] = function(){
+      /*
+      hmap.up = function(){
         DEBUG && console.log("Up");
         cycle_share(1)
       }
@@ -74,7 +77,6 @@ function add_overlay_swipes(oname){
     document.getElementById(onames[i]).addEventListener('swiped',
       _overlay_switch(hmap))
 
-
     document.getElementById(onames[i]).addEventListener('mousedown',
       function(evt) {
         if (evt.button == 1) { // Middle or scroll wheel
@@ -85,3 +87,16 @@ function add_overlay_swipes(oname){
   }
 }
 
+/*
+ * Swipe gestures on non-overlay plane
+ */
+function add_main_swipes() {
+  let hmap = {}
+  hmap.up = function(evt) {
+    show_next_overlay()
+    // toggleOverlay("overlay1", "visible")
+  }
+
+  document.getElementsByTagName("BODY")[0].addEventListener('swiped',
+    _overlay_switch(hmap))
+}
