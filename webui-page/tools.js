@@ -65,7 +65,7 @@ function send_url_input(evt, select_if_empty) {
     send("playlist_add", "append", url, false)
     url_field.value = ""
   } else if (select_if_empty === true) {
-    url_field.s
+    url_field.select()
   }
 }
 

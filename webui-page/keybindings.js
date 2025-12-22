@@ -168,6 +168,11 @@ function webui_keydown(evt) {
   }
   DEBUG && console.log("Key pressed: " + evt.keyCode + " " + evt.key )
   DEBUG && console.log(evt)
+  if (evt.key == "Unidentified"){
+    /* FF Mobile returns keyCode == 0 und evt.key == "Unidentified" for press on Finger sensor ?! This if statement prevents triggering of '0' command (add_volume)…
+     * TODO: Replace this check by some more robust/verbose variant, e.g. checking some event type which differs?!*/
+    return
+  }
 
   let binding = KeyBindings.for_event(evt) // null or Object assigned to this key+modifier combination.
   if (binding === null) return

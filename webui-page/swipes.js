@@ -2,6 +2,9 @@ function _overlay_switch(hmap){
   return function(evt){
     let h = hmap[evt.detail.dir]
     if (h !== undefined) h(evt)
+
+    // Skip bubbleing from overlay down to <body>, etc
+    evt.cancelBubble = true
   }
 }
 
@@ -94,8 +97,8 @@ function add_main_swipes() {
   let hmap = {}
   hmap.up = function(evt) {
     show_next_overlay()
-    // toggleOverlay("overlay1", "visible")
   }
+  hmap.down = hmap.up
 
   document.getElementsByTagName("BODY")[0].addEventListener('swiped',
     _overlay_switch(hmap))

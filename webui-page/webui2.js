@@ -814,7 +814,7 @@ function init(){
   status_init_ws()
   add_button_listener()
 
-  USE_SWIPES && add_mainy_swipes()
+  USE_SWIPES && add_main_swipes()
 }
 
 window.addEventListener('keydown', webui_keydown, true) /* capture=true to skip scrolling on overlays*/
