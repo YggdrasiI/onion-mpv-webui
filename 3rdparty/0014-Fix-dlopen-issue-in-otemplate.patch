@@ -1,0 +1,50 @@
+From 9dc12a3a6fba8784734d29cb06e742819bc49e77 Mon Sep 17 00:00:00 2001
+From: Olaf Schulz <947069+YggdrasiI@users.noreply.github.com>
+Date: Wed, 4 Feb 2026 23:27:54 +0100
+Subject: [PATCH] Fix dlopen issue in otemplate
+
+Without -rdynamic compiler flag, the dlopen call
+for libi18n.so fails due 'unknown symbol' error.
+The symbols of the binary (otemplate) where not visible.
+---
+ tools/opack/opack.c            | 4 ++--
+ tools/otemplate/CMakeLists.txt | 1 +
+ 2 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/tools/opack/opack.c b/tools/opack/opack.c
+index fb63675..6b92eed 100644
+--- a/tools/opack/opack.c
++++ b/tools/opack/opack.c
+@@ -33,7 +33,7 @@
+ 
+ #include "../common/updateassets.h"
+ 
+-void print_help();
++void print_help(const char *name);
+ char *funcname(const char *prefix, const char *filename);
+ void parse_file(const char *prefix, const char *filename, FILE * outfd,
+                 onion_assets_file * assets);
+@@ -49,7 +49,7 @@ int main(int argc, char **argv) {
+   // First pass cancel out the options, let only the files
+   for (i = 1; i < argc; i++) {
+     if (strcmp(argv[i], "--help") == 0)
+-      print_help();
++      print_help(argv[0]);
+     else if (strcmp(argv[i], "-o") == 0) {
+       if (i >= argc - 1) {
+         fprintf(stderr, "ERROR: Need an argument for -o");
+diff --git a/tools/otemplate/CMakeLists.txt b/tools/otemplate/CMakeLists.txt
+index 5d08c91..67c327d 100644
+--- a/tools/otemplate/CMakeLists.txt
++++ b/tools/otemplate/CMakeLists.txt
+@@ -9,6 +9,7 @@ add_executable(otemplate otemplate.c parser.c tags.c variables.c list.c function
+ 
+ if (CMAKE_SYSTEM_NAME  STREQUAL "Linux")
+   target_link_libraries(otemplate dl)
++  SET(CMAKE_EXE_LINKER_FLAGS "-rdynamic")
+ else (CMAKE_SYSTEM_NAME  STREQUAL "Linux")
+   SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--export-dynamic")
+ endif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+-- 
+2.52.0
+
