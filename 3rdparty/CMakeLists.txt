@@ -65,20 +65,13 @@ if(ONION_BUILD)
 		-DONION_USE_BINDINGS_CPP=false
 		-DONION_POLLER=epoll
 		-DCMAKE_C_FLAGS="-I\ ${PROJECT_SOURCE_DIR}/src/include -D_FILE_OFFSET_BITS=64"
+		-DCMAKE_POLICY_VERSION_MINIMUM=3.5
 		${TERMUX_EXTRA_OPTIONS}
 		${ONION_DIR}
 		WORKING_DIRECTORY "${ONION_BUILD_DIR}"
 	)
 
 	message("libonion repo configured in '${ONION_BUILD_DIR}'.")
-
-	# Compile onion lib (at build time)
-	add_custom_command(
-		OUTPUT .onion_build
-		COMMAND make
-		COMMAND cmake -E touch .onion_build
-		WORKING_DIRECTORY "${ONION_BUILD_DIR}"
-	)
 
 	## 3. Crosscompiling: Build onion tools on native plattform, too.
 	if(NATIVE_TOOLS)
@@ -106,6 +99,7 @@ if(ONION_BUILD)
 			-DONION_USE_BINDINGS_CPP=false
 			-DONION_POLLER=epoll
 			-DCMAKE_C_FLAGS=-I\ ${PROJECT_SOURCE_DIR}/src/include
+			-DCMAKE_POLICY_VERSION_MINIMUM=3.5
 			${ONION_DIR}
 			WORKING_DIRECTORY "${ONION_BUILD_DIR}/../native"
 		)

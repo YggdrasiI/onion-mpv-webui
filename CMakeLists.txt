@@ -18,7 +18,7 @@ SET(NATIVE_TOOLS FALSE CACHE BOOL "Compile tools (otemplate, etc) native")
 SET(OTEMPLATE_TAGSDIR "${ONION_BUILD_DIR}/tools/otemplate/templatetags" CACHE STRING "Path to libi18n.so")
 
 
-# == Serach dependencies ==
+# == Search dependencies ==
 if(NOT ONION_BUILD)
 	find_path(ONION_INCLUDE_DIR "onion/exportlocal.h")
 	find_library(ONION_STATIC_LIB_DIR onion.a)

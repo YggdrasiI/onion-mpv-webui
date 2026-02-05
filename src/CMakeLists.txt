@@ -90,17 +90,17 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	target_compile_options(webui PUBLIC -D__DEBUG__)
 endif()
 
-## Test executable without mpv dependecies.
-#add_executable(onion-webui.bin standalone.c ${SOURCE_FILES})
-#include_directories ("include")
-#target_link_libraries(onion-webui.bin onion_static m)
-#target_compile_options(onion-webui.bin PUBLIC -fPIC)
+# # Test executable without mpv dependecies.
+# add_executable(onion-webui.bin standalone.c ${SOURCE_FILES})
+# include_directories ("include")
+# target_link_libraries(onion-webui.bin onion_static m)
+# target_compile_options(onion-webui.bin PUBLIC -fPIC)
 
-# Android dlopen test
-add_library(simple SHARED simple.c)
-target_include_directories(simple PUBLIC "include")
-# target_compile_options(simple PUBLIC -shared -fPIC)
-target_compile_options(simple PUBLIC -fPIC)
+# # Android dlopen test
+# add_library(simple SHARED simple.c)
+# target_include_directories(simple PUBLIC "include")
+# # target_compile_options(simple PUBLIC -shared -fPIC)
+# target_compile_options(simple PUBLIC -fPIC)
 
 
 #############################################################################
@@ -110,7 +110,7 @@ if(TERMUX)
 
 	target_link_libraries(webui log)
 	# target_link_libraries(onion-webui.bin log)
-	target_link_libraries(simple log)
+	# target_link_libraries(simple log)
 	# In this case, no linking on pthread.
 	# Thread functions are buildin in Bionic libc
 else()
@@ -181,6 +181,15 @@ target_link_libraries(webui ${WS_LIBS})
 
 
 if(ONION_BUILD)
+	# Compile onion lib once at build time (delete .onion_build for rebuild)
+	# (This has to be defined in the same file as compile_onion target)
+	add_custom_command(
+		OUTPUT "${ONION_BUILD_DIR}/.onion_build"  # absolute name required?!
+		COMMAND make
+		COMMAND cmake -E touch ".onion_build"
+		WORKING_DIRECTORY "${ONION_BUILD_DIR}"
+	)
+
 	add_custom_target(compile_onion ALL DEPENDS "${ONION_BUILD_DIR}/.onion_build" )
 
 	# Set flag for slightly different header file path
